@@ -2,6 +2,8 @@ import { DropZone } from '../components/DropZone';
 import { SectionList } from '../components/SectionList';
 import { StatsGrid } from '../components/StatsGrid';
 import { GuideGraph } from '../components/GuideGraph';
+import { CalibrationPlot } from '../components/CalibrationPlot';
+import { GraphToolbar } from '../components/GraphToolbar';
 import { GraphContextMenu } from '../components/ContextMenu';
 import { RecentsPanel } from '../components/RecentsPanel';
 import { useLogStore } from '../state/logStore';
@@ -12,6 +14,7 @@ export function ViewerPage() {
   const log = useLogStore((s) => s.log);
   const meta = useLogStore((s) => s.meta);
   const clear = useLogStore((s) => s.clear);
+  const sectionIdx = useLogStore((s) => s.selectedSection);
 
   if (!log) {
     return (
@@ -23,11 +26,16 @@ export function ViewerPage() {
     );
   }
 
+  const sec = sectionIdx >= 0 ? log.sections[sectionIdx] : null;
+  const isGuiding = sec?.type === 'GUIDING';
+  const isCalibration = sec?.type === 'CALIBRATION';
+
   return (
     <div className="grid h-full grid-cols-[260px_1fr_320px] grid-rows-[auto_1fr]">
       <header className="col-span-3 flex items-center justify-between border-b border-slate-800 px-4 py-2">
         <h1 className="text-sm font-medium">
           PHD2 Log Viewer — <span className="text-slate-400">{meta?.name}</span>
+          <span className="ml-2 text-xs text-slate-500">v{log.phdVersion}</span>
         </h1>
         <button
           className="text-xs text-slate-400 hover:text-slate-200"
@@ -40,15 +48,31 @@ export function ViewerPage() {
         <SectionList />
         <RecentsPanel />
       </aside>
-      <main className="relative">
-        <GraphContextMenu>
-          <div className="h-full">
-            <GuideGraph />
+      <main className="relative flex flex-col">
+        {isGuiding && (
+          <>
+            <GraphToolbar />
+            <GraphContextMenu>
+              <div className="flex-1">
+                <GuideGraph />
+              </div>
+            </GraphContextMenu>
+          </>
+        )}
+        {isCalibration && <CalibrationPlot />}
+        {!sec && (
+          <div className="flex h-full items-center justify-center text-slate-500">
+            Select a section.
           </div>
-        </GraphContextMenu>
+        )}
       </main>
       <aside className="overflow-y-auto border-l border-slate-800">
-        <StatsGrid />
+        {isGuiding && <StatsGrid />}
+        {isCalibration && (
+          <div className="p-3 text-sm text-slate-400">
+            Calibration stats coming in v2.
+          </div>
+        )}
       </aside>
     </div>
   );
