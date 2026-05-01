@@ -1,6 +1,9 @@
 import { useMemo, useCallback, useRef, useEffect, useId } from 'react';
 import Plot from 'react-plotly.js';
-import Plotly from 'plotly.js';
+// Use the prebuilt dist to avoid pulling plotly's source modules (which require
+// the `buffer/` polyfill not available in the browser bundle path).
+// @ts-expect-error -- no types for the dist bundle; we only call relayout.
+import Plotly from 'plotly.js/dist/plotly';
 import type { Data, Layout, Shape } from 'plotly.js';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
