@@ -4,7 +4,6 @@ export type CoordMode = 'RA_DEC' | 'DX_DY';
 export type Device = 'MOUNT' | 'AO';
 export type VerticalMode = 'PAN' | 'ZOOM';
 export type ScaleMode = 'PIXELS' | 'ARCSEC';
-export type AxisLock = 'X' | 'Y' | 'BOTH';
 
 export interface TraceVisibility {
   ra: boolean;
@@ -20,7 +19,6 @@ interface ViewState {
   device: Device;
   verticalMode: VerticalMode;
   scaleMode: ScaleMode;
-  axisLock: AxisLock;
   scaleLocked: boolean;
   lockedYRange: [number, number] | null;
   traces: TraceVisibility;
@@ -30,7 +28,6 @@ interface ViewState {
   setDevice: (d: Device) => void;
   setVerticalMode: (v: VerticalMode) => void;
   setScaleMode: (m: ScaleMode) => void;
-  setAxisLock: (a: AxisLock) => void;
   setScaleLocked: (b: boolean, range?: [number, number]) => void;
   toggleTrace: (k: keyof TraceVisibility) => void;
 
@@ -47,7 +44,6 @@ export const useViewStore = create<ViewState>((set, get) => ({
   device: 'MOUNT',
   verticalMode: 'PAN',
   scaleMode: 'ARCSEC',
-  axisLock: 'X',
   scaleLocked: false,
   lockedYRange: null,
   traces: { ra: true, dec: true, raPulses: true, decPulses: true, mass: false, snr: false },
@@ -57,7 +53,6 @@ export const useViewStore = create<ViewState>((set, get) => ({
   setDevice: (d) => set({ device: d }),
   setVerticalMode: (v) => set({ verticalMode: v }),
   setScaleMode: (m) => set({ scaleMode: m }),
-  setAxisLock: (a) => set({ axisLock: a }),
   setScaleLocked: (b, range) => set({ scaleLocked: b, lockedYRange: b && range ? range : null }),
   toggleTrace: (k) => set((s) => ({ traces: { ...s.traces, [k]: !s.traces[k] } })),
 

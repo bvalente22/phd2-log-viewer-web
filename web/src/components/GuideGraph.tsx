@@ -1,12 +1,13 @@
-import { useMemo, useCallback, useRef, useEffect } from 'react';
+import { useMemo, useCallback, useRef, useEffect, useId } from 'react';
 import Plot from 'react-plotly.js';
+import Plotly from 'plotly.js';
 import type { Data, Layout, Shape } from 'plotly.js';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import type { GuideSession } from '../parser';
 
 interface PlotSelectionEvent {
-  range?: { x?: [number, number] };
+  range?: { x?: [number, number]; y?: [number, number] };
   points?: unknown[];
 }
 
@@ -141,9 +142,10 @@ export function GuideGraph() {
   const log = useLogStore((s) => s.log);
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const exclusions = useViewStore((s) => s.exclusions);
-  const verticalMode = useViewStore((s) => s.verticalMode);
   const scaleMode = useViewStore((s) => s.scaleMode);
-  const axisLock = useViewStore((s) => s.axisLock);
+  const plotId = useId().replace(/:/g, '_');
+  const yRangeRef = useRef<[number, number] | null>(null);
+  const xRangeRef = useRef<[number, number] | null>(null);
   const traces = useViewStore((s) => s.traces);
   const excludeRange = useViewStore((s) => s.excludeRange);
   const includeRange = useViewStore((s) => s.includeRange);
@@ -183,7 +185,26 @@ export function GuideGraph() {
   const onSelected = useCallback((ev: PlotSelectionEvent) => {
     if (!data) return;
     const xrange = ev?.range?.x;
-    if (!xrange) return;
+    const yrange = ev?.range?.y;
+    if (!xrange || !yrange) return;
+
+    // Detect drag direction via normalized extent of the selection box.
+    const xCur = xRangeRef.current;
+    const yCur = yRangeRef.current;
+    const xSpan = xCur ? Math.abs(xCur[1] - xCur[0]) : Math.abs(xrange[1] - xrange[0]) || 1;
+    const ySpan = yCur ? Math.abs(yCur[1] - yCur[0]) : Math.abs(yrange[1] - yrange[0]) || 1;
+    const dxNorm = Math.abs(xrange[1] - xrange[0]) / xSpan;
+    const dyNorm = Math.abs(yrange[1] - yrange[0]) / ySpan;
+
+    if (dyNorm > dxNorm * 1.5) {
+      // Vertical-dominant drag: zoom Y to selected range.
+      const lo = Math.min(yrange[0], yrange[1]);
+      const hi = Math.max(yrange[0], yrange[1]);
+      void Plotly.relayout(plotId, { 'yaxis.range': [lo, hi] });
+      return;
+    }
+
+    // Horizontal-dominant drag: include / exclude time range.
     const [t0, t1] = xrange;
     const entries = data.session.entries;
     const lo = Math.min(t0, t1);
@@ -204,11 +225,28 @@ export function GuideGraph() {
       lastFrame,
       entries.map((e) => e.frame),
     );
-  }, [data, excludeRange, includeRange]);
+  }, [data, excludeRange, includeRange, plotId]);
+
+  const onRelayout = useCallback((ev: Readonly<Record<string, unknown>>) => {
+    const xr0 = ev['xaxis.range[0]'];
+    const xr1 = ev['xaxis.range[1]'];
+    if (typeof xr0 === 'number' && typeof xr1 === 'number') {
+      xRangeRef.current = [xr0, xr1];
+    }
+    const yr0 = ev['yaxis.range[0]'];
+    const yr1 = ev['yaxis.range[1]'];
+    if (typeof yr0 === 'number' && typeof yr1 === 'number') {
+      yRangeRef.current = [yr0, yr1];
+    }
+    if (ev['xaxis.autorange'] === true) xRangeRef.current = null;
+    if (ev['yaxis.autorange'] === true) yRangeRef.current = null;
+  }, []);
 
   const onDoubleClick = useCallback(() => {
     if (!data) return;
     includeAll(data.sessionIdx, data.session.entries.length);
+    xRangeRef.current = null;
+    yRangeRef.current = null;
   }, [data, includeAll]);
 
   if (!data) {
@@ -232,12 +270,13 @@ export function GuideGraph() {
     font: { color: '#cbd5e1', size: 11 },
     xaxis: {
       title: { text: 'time (s)' }, gridcolor: '#1e293b', zerolinecolor: '#334155',
-      fixedrange: axisLock === 'Y',
     },
     yaxis: {
       title: { text: yTitle }, gridcolor: '#1e293b',
       zerolinecolor: '#64748b', zerolinewidth: 1,
-      fixedrange: axisLock === 'X' || verticalMode === 'PAN',
+      // y is zoomed via vertical drag selection (handled in onSelected).
+      // Locking it here keeps the scroll wheel zooming X only.
+      fixedrange: true,
     },
     yaxis4: {
       overlaying: 'y', side: 'right',
@@ -257,19 +296,21 @@ export function GuideGraph() {
     showlegend: true,
     legend: { orientation: 'h', y: 1.1 },
     dragmode: 'select',
-    selectdirection: axisLock === 'Y' ? 'v' : axisLock === 'BOTH' ? 'd' : 'h',
+    selectdirection: 'd',
     barmode: 'overlay',
   };
 
   return (
     <Plot
+      divId={plotId}
       data={data.traces}
       layout={layout}
-      config={{ displaylogo: false, responsive: true, scrollZoom: true }}
+      config={{ displaylogo: false, responsive: true, scrollZoom: true, doubleClick: 'reset' }}
       style={{ width: '100%', height: '100%' }}
       useResizeHandler
       onSelected={onSelected as never}
       onDoubleClick={onDoubleClick}
+      onRelayout={onRelayout as never}
     />
   );
 }
