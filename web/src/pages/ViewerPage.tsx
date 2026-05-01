@@ -31,8 +31,8 @@ export function ViewerPage() {
   const isCalibration = sec?.type === 'CALIBRATION';
 
   return (
-    <div className="grid h-full grid-cols-[260px_1fr_320px] grid-rows-[auto_1fr]">
-      <header className="col-span-3 flex items-center justify-between border-b border-slate-800 px-4 py-2">
+    <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[auto_1fr_auto]">
+      <header className="col-span-2 flex items-center justify-between border-b border-slate-800 px-4 py-2">
         <h1 className="text-sm font-medium">
           PHD2 Log Viewer — <span className="text-slate-400">{meta?.name}</span>
           <span className="ml-2 text-xs text-slate-500">v{log.phdVersion}</span>
@@ -48,7 +48,7 @@ export function ViewerPage() {
         <SectionList />
         <RecentsPanel />
       </aside>
-      <main className="relative flex flex-col">
+      <main className="relative flex flex-col overflow-hidden">
         {isGuiding && (
           <>
             <GraphToolbar />
@@ -66,14 +66,14 @@ export function ViewerPage() {
           </div>
         )}
       </main>
-      <aside className="overflow-y-auto border-l border-slate-800">
+      <footer className="col-span-2 border-t border-slate-800 bg-slate-900/40">
         {isGuiding && <StatsGrid />}
         {isCalibration && (
-          <div className="p-3 text-sm text-slate-400">
+          <div className="px-4 py-2 text-sm text-slate-400">
             Calibration stats coming in v2.
           </div>
         )}
-      </aside>
+      </footer>
     </div>
   );
 }
