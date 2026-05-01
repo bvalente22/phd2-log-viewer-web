@@ -23,6 +23,8 @@ export function GraphToolbar() {
   const traces = useViewStore((s) => s.traces);
   const toggleTrace = useViewStore((s) => s.toggleTrace);
   const exclusions = useViewStore((s) => s.exclusions);
+  const scaleMode = useViewStore((s) => s.scaleMode);
+  const setScaleMode = useViewStore((s) => s.setScaleMode);
 
   const sec = log && sectionIdx >= 0 ? log.sections[sectionIdx] : null;
   const session = sec && sec.type === 'GUIDING' ? log!.sessions[sec.idx] : null;
@@ -41,7 +43,7 @@ export function GraphToolbar() {
   ];
 
   return (
-    <div className="flex items-center gap-2 border-b border-slate-800 px-3 py-1 text-xs">
+    <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-1 text-xs">
       <span className="mr-1 text-slate-500">show:</span>
       {items.map((it) => (
         <ToggleChip
@@ -51,6 +53,17 @@ export function GraphToolbar() {
           onClick={() => toggleTrace(it.key)}
         />
       ))}
+      <span className="ml-3 mr-1 text-slate-500">scale:</span>
+      <ToggleChip
+        label="arc-sec"
+        active={scaleMode === 'ARCSEC'}
+        onClick={() => setScaleMode('ARCSEC')}
+      />
+      <ToggleChip
+        label="pixels"
+        active={scaleMode === 'PIXELS'}
+        onClick={() => setScaleMode('PIXELS')}
+      />
       <div className="ml-auto flex items-center gap-3 text-slate-400">
         <span>
           {totalCount > 0 ? (
@@ -62,7 +75,7 @@ export function GraphToolbar() {
             </>
           ) : null}
         </span>
-        <span className="text-slate-600">box-select to exclude · double-click to clear</span>
+        <span className="text-slate-600">drag = exclude · shift+drag = include · dbl-click = reset</span>
       </div>
     </div>
   );

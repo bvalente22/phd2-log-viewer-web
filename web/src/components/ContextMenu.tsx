@@ -79,6 +79,13 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
             Exclude dithers / settling
           </Item>
           <RCM.Separator className="my-1 h-px bg-slate-700" />
+          <Item
+            disabled={!session}
+            onSelect={() => session && includeAll(sessionIdx, session.entries.length)}
+          >
+            Reset section
+          </Item>
+          <RCM.Separator className="my-1 h-px bg-slate-700" />
           <Item disabled hint="v3">Analyze selected frames</Item>
           <Item disabled hint="v3">Analyze selected, raw RA</Item>
           {isUnguided && <Item disabled hint="v3">Analyze unguided section</Item>}

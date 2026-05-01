@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useRef, useEffect } from 'react';
 import Plot from 'react-plotly.js';
 import type { Data, Layout, Shape } from 'plotly.js';
 import { useLogStore } from '../state/logStore';
@@ -17,48 +17,49 @@ const PULSE_DEC = '#dc2626';
 const MASS_COLOR = '#a78bfa';
 const SNR_COLOR = '#34d399';
 
-function buildTraces(s: GuideSession, mask: Uint8Array | undefined, traces: ReturnType<typeof useViewStore.getState>['traces']): Data[] {
+type Traces = ReturnType<typeof useViewStore.getState>['traces'];
+type ScaleMode = ReturnType<typeof useViewStore.getState>['scaleMode'];
+
+function buildTraces(s: GuideSession, traces: Traces, scaleMode: ScaleMode): Data[] {
   const t = s.entries.map((e) => e.dt);
   const out: Data[] = [];
-
-  const masked = (i: number) => mask?.[i] === 1;
-  const gateNum = (vals: number[]) => vals.map((v, i) => (masked(i) ? null : v));
+  const k = scaleMode === 'ARCSEC' ? s.pixelScale : 1;
 
   if (traces.ra) {
     out.push({
-      x: t, y: gateNum(s.entries.map((e) => e.raraw)),
+      x: t, y: s.entries.map((e) => e.raraw * k),
       type: 'scattergl', mode: 'lines',
       name: 'RA', line: { color: RA_COLOR, width: 1 },
     } as Data);
   }
   if (traces.dec) {
     out.push({
-      x: t, y: gateNum(s.entries.map((e) => e.decraw)),
+      x: t, y: s.entries.map((e) => e.decraw * k),
       type: 'scattergl', mode: 'lines',
       name: 'Dec', line: { color: DEC_COLOR, width: 1 },
     } as Data);
   }
   if (traces.raPulses) {
     out.push({
-      x: t, y: gateNum(s.entries.map((e) => e.radur)),
+      x: t, y: s.entries.map((e) => e.radur),
       type: 'bar',
       name: 'RA pulse',
-      marker: { color: PULSE_RA, opacity: 0.5 },
+      marker: { color: PULSE_RA, opacity: 0.55 },
       yaxis: 'y3',
     } as Data);
   }
   if (traces.decPulses) {
     out.push({
-      x: t, y: gateNum(s.entries.map((e) => e.decdur)),
+      x: t, y: s.entries.map((e) => e.decdur),
       type: 'bar',
       name: 'Dec pulse',
-      marker: { color: PULSE_DEC, opacity: 0.5 },
+      marker: { color: PULSE_DEC, opacity: 0.55 },
       yaxis: 'y3',
     } as Data);
   }
   if (traces.mass) {
     out.push({
-      x: t, y: gateNum(s.entries.map((e) => e.mass)),
+      x: t, y: s.entries.map((e) => e.mass),
       type: 'scattergl', mode: 'lines',
       name: 'Mass', line: { color: MASS_COLOR, width: 1, dash: 'dot' },
       yaxis: 'y4',
@@ -66,10 +67,10 @@ function buildTraces(s: GuideSession, mask: Uint8Array | undefined, traces: Retu
   }
   if (traces.snr) {
     out.push({
-      x: t, y: gateNum(s.entries.map((e) => e.snr)),
+      x: t, y: s.entries.map((e) => e.snr),
       type: 'scattergl', mode: 'lines',
       name: 'SNR', line: { color: SNR_COLOR, width: 1, dash: 'dot' },
-      yaxis: 'y4',
+      yaxis: 'y5',
     } as Data);
   }
   return out;
@@ -78,7 +79,6 @@ function buildTraces(s: GuideSession, mask: Uint8Array | undefined, traces: Retu
 function buildShapes(s: GuideSession, mask: Uint8Array | undefined): Partial<Shape>[] {
   const shapes: Partial<Shape>[] = [];
 
-  // exclusion overlay rectangles first (so info markers draw on top)
   if (mask) {
     let runStart = -1;
     for (let i = 0; i <= s.entries.length; i++) {
@@ -89,7 +89,7 @@ function buildShapes(s: GuideSession, mask: Uint8Array | undefined): Partial<Sha
           type: 'rect', xref: 'x', yref: 'paper',
           x0: s.entries[runStart].dt, x1: s.entries[i - 1].dt,
           y0: 0, y1: 1,
-          fillcolor: 'rgba(251, 146, 60, 0.20)',
+          fillcolor: 'rgba(251, 146, 60, 0.18)',
           line: { color: 'rgba(251, 146, 60, 0.55)', width: 1 },
         });
         runStart = -1;
@@ -120,9 +120,28 @@ export function GuideGraph() {
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const exclusions = useViewStore((s) => s.exclusions);
   const verticalMode = useViewStore((s) => s.verticalMode);
+  const scaleMode = useViewStore((s) => s.scaleMode);
   const traces = useViewStore((s) => s.traces);
   const excludeRange = useViewStore((s) => s.excludeRange);
+  const includeRange = useViewStore((s) => s.includeRange);
   const includeAll = useViewStore((s) => s.includeAll);
+
+  const shiftHeldRef = useRef(false);
+  useEffect(() => {
+    const onDown = (e: KeyboardEvent) => { if (e.key === 'Shift') shiftHeldRef.current = true; };
+    const onUp = (e: KeyboardEvent) => { if (e.key === 'Shift') shiftHeldRef.current = false; };
+    const onMouse = (e: MouseEvent) => { shiftHeldRef.current = e.shiftKey; };
+    window.addEventListener('keydown', onDown);
+    window.addEventListener('keyup', onUp);
+    window.addEventListener('mousedown', onMouse, true);
+    window.addEventListener('mouseup', onMouse, true);
+    return () => {
+      window.removeEventListener('keydown', onDown);
+      window.removeEventListener('keyup', onUp);
+      window.removeEventListener('mousedown', onMouse, true);
+      window.removeEventListener('mouseup', onMouse, true);
+    };
+  }, []);
 
   const data = useMemo(() => {
     if (!log || sectionIdx < 0) return null;
@@ -133,10 +152,10 @@ export function GuideGraph() {
     return {
       session,
       sessionIdx: sec.idx,
-      traces: buildTraces(session, mask, traces),
+      traces: buildTraces(session, traces, scaleMode),
       shapes: buildShapes(session, mask),
     };
-  }, [log, sectionIdx, exclusions, traces]);
+  }, [log, sectionIdx, exclusions, traces, scaleMode]);
 
   const onSelected = useCallback((ev: PlotSelectionEvent) => {
     if (!data) return;
@@ -154,14 +173,15 @@ export function GuideGraph() {
       }
     }
     if (firstFrame < 0) return;
-    excludeRange(
+    const action = shiftHeldRef.current ? includeRange : excludeRange;
+    action(
       data.sessionIdx,
       entries.length,
       firstFrame,
       lastFrame,
       entries.map((e) => e.frame),
     );
-  }, [data, excludeRange]);
+  }, [data, excludeRange, includeRange]);
 
   const onDoubleClick = useCallback(() => {
     if (!data) return;
@@ -172,35 +192,62 @@ export function GuideGraph() {
     return <div className="flex h-full items-center justify-center text-slate-500">Select a guiding section.</div>;
   }
 
+  const yTitle = scaleMode === 'ARCSEC' ? 'arc-sec' : 'pixels';
+
+  // Compute symmetric range for pulse axis based on actual data
+  const session = data.session;
+  let maxPulse = 1;
+  for (const e of session.entries) {
+    const v = Math.max(Math.abs(e.radur), Math.abs(e.decdur));
+    if (v > maxPulse) maxPulse = v;
+  }
+  // Inflate so pulses occupy roughly the bottom third visually but stay centered on 0
+  const pulseRange: [number, number] = [-maxPulse * 3, maxPulse * 3];
+
+  // Separate ranges for mass and snr based on data
+  const massVals = session.entries.map((e) => e.mass).filter((v) => v > 0);
+  const snrVals = session.entries.map((e) => e.snr).filter((v) => v > 0);
+  const massMax = massVals.length ? Math.max(...massVals) * 1.1 : 1;
+  const snrMax = snrVals.length ? Math.max(...snrVals) * 1.1 : 1;
+
   const layout: Partial<Layout> = {
     autosize: true,
-    margin: { l: 50, r: 60, t: 20, b: 40 },
+    margin: { l: 60, r: 60, t: 20, b: 40 },
     paper_bgcolor: '#0f172a',
     plot_bgcolor: '#0f172a',
     font: { color: '#cbd5e1', size: 11 },
     xaxis: { title: { text: 'time (s)' }, gridcolor: '#1e293b', zerolinecolor: '#334155' },
     yaxis: {
-      title: { text: 'pixels' }, gridcolor: '#1e293b', zerolinecolor: '#334155',
+      title: { text: yTitle }, gridcolor: '#1e293b',
+      zerolinecolor: '#64748b', zerolinewidth: 1,
       fixedrange: verticalMode === 'PAN',
-      domain: [0, 1],
-    },
-    yaxis2: {
-      title: { text: 'arc-sec' }, overlaying: 'y', side: 'right',
-      showgrid: false,
     },
     yaxis3: {
-      overlaying: 'y', side: 'right', position: 0.97,
+      overlaying: 'y', anchor: 'x',
       showgrid: false, showticklabels: false, title: { text: '' },
+      zeroline: false,
+      range: pulseRange,
     },
     yaxis4: {
+      overlaying: 'y', side: 'right',
+      showgrid: false,
+      title: { text: 'mass', standoff: 4, font: { color: MASS_COLOR } },
+      tickfont: { color: MASS_COLOR },
+      range: [0, massMax],
+    },
+    yaxis5: {
       overlaying: 'y', side: 'right', anchor: 'free', position: 1.0,
-      showgrid: false, showticklabels: false, title: { text: '' },
+      showgrid: false,
+      title: { text: 'SNR', standoff: 4, font: { color: SNR_COLOR } },
+      tickfont: { color: SNR_COLOR },
+      range: [0, snrMax],
     },
     shapes: data.shapes,
     showlegend: true,
     legend: { orientation: 'h', y: 1.1 },
     dragmode: 'select',
     selectdirection: 'h',
+    barmode: 'overlay',
   };
 
   return (
