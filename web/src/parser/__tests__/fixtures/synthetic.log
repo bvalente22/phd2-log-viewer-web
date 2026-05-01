@@ -1,0 +1,28 @@
+PHD2 version 2.6.11, Log version 2.5. Log enabled at 2024-01-15 22:00:00
+Calibration Begins at 2024-01-15 22:00:05
+Mount = "Test Mount", xAngle = 0.0, xRate = 5.0, yAngle = 1.5708, yRate = 5.0
+Pixel scale = 1.50 arc-sec/px, Binning = 1
+Direction,Step,dx,dy,x,y,Dist
+West,1,0.5,0.0,0.5,0.0,0.5
+West,2,1.0,0.0,1.0,0.0,1.0
+East,1,0.5,0.0,0.5,0.0,0.5
+North,1,0.0,0.5,0.0,0.5,0.5
+South,1,0.0,0.0,0.0,0.0,0.0
+Calibration complete
+
+Guiding Begins at 2024-01-15 22:05:00
+Mount = "Test Mount", xAngle = 0.0, xRate = 5.0, yAngle = 1.5708, yRate = 5.0, guiding enabled
+Max RA duration = 2000, Max DEC duration = 2000
+Pixel scale = 1.50 arc-sec/px, Binning = 1
+RA = 5.0 hr, Dec = 30.0 deg, Hour angle = 0.0 hr
+X guide algorithm = Hysteresis, Minimum move = 0.10
+Y guide algorithm = Resist Switch, Minimum move = 0.20
+Frame,Time,mount,dx,dy,RARawDistance,DECRawDistance,RAGuideDistance,DECGuideDistance,RADuration,RADirection,DECDuration,DECDirection,XStep,YStep,StarMass,SNR,ErrorCode,Info
+1,1.000,"Mount",0.10,0.05,0.10,0.05,0.10,0.05,100,W,50,N,,,1500,15.5,0
+2,2.000,"Mount",-0.05,0.10,-0.05,0.10,-0.05,0.10,50,E,100,N,,,1500,15.0,0
+3,3.000,"Mount",0.20,-0.10,0.20,-0.10,0.20,-0.10,200,W,100,S,,,1500,14.5,0
+INFO: SETTLING STATE CHANGE, state=1
+4,4.000,"Mount",0.05,0.00,0.05,0.00,0.05,0.00,50,W,0,N,,,1500,15.0,0
+INFO: SETTLING STATE CHANGE, state=0
+5,5.000,"Mount",-0.10,0.05,-0.10,0.05,-0.10,0.05,100,E,50,N,,,1500,15.5,0
+Guiding Ends at 2024-01-15 22:10:00
