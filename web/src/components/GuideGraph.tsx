@@ -25,6 +25,24 @@ function buildTraces(s: GuideSession, traces: Traces, scaleMode: ScaleMode): Dat
   const out: Data[] = [];
   const k = scaleMode === 'ARCSEC' ? s.pixelScale : 1;
 
+  // Pulses share the main y-axis so 0 == 0 visually. Scale milliseconds into
+  // the same units as the error trace, sized to ~50% of the error magnitude.
+  let maxErr = 0;
+  for (const e of s.entries) {
+    const a = Math.abs(e.raraw * k);
+    const b = Math.abs(e.decraw * k);
+    if (a > maxErr) maxErr = a;
+    if (b > maxErr) maxErr = b;
+  }
+  let maxPulse = 0;
+  for (const e of s.entries) {
+    const a = Math.abs(e.radur);
+    const b = Math.abs(e.decdur);
+    if (a > maxPulse) maxPulse = a;
+    if (b > maxPulse) maxPulse = b;
+  }
+  const pulseScale = maxPulse > 0 && maxErr > 0 ? (maxErr * 0.5) / maxPulse : 0;
+
   if (traces.ra) {
     out.push({
       x: t, y: s.entries.map((e) => e.raraw * k),
@@ -41,20 +59,24 @@ function buildTraces(s: GuideSession, traces: Traces, scaleMode: ScaleMode): Dat
   }
   if (traces.raPulses) {
     out.push({
-      x: t, y: s.entries.map((e) => e.radur),
+      x: t,
+      y: s.entries.map((e) => e.radur * pulseScale),
+      customdata: s.entries.map((e) => e.radur),
       type: 'bar',
       name: 'RA pulse',
       marker: { color: PULSE_RA, opacity: 0.55 },
-      yaxis: 'y3',
+      hovertemplate: 'RA pulse: %{customdata} ms<extra></extra>',
     } as Data);
   }
   if (traces.decPulses) {
     out.push({
-      x: t, y: s.entries.map((e) => e.decdur),
+      x: t,
+      y: s.entries.map((e) => e.decdur * pulseScale),
+      customdata: s.entries.map((e) => e.decdur),
       type: 'bar',
       name: 'Dec pulse',
       marker: { color: PULSE_DEC, opacity: 0.55 },
-      yaxis: 'y3',
+      hovertemplate: 'Dec pulse: %{customdata} ms<extra></extra>',
     } as Data);
   }
   if (traces.mass) {
@@ -194,16 +216,7 @@ export function GuideGraph() {
 
   const yTitle = scaleMode === 'ARCSEC' ? 'arc-sec' : 'pixels';
 
-  // Compute symmetric range for pulse axis based on actual data
   const session = data.session;
-  let maxPulse = 1;
-  for (const e of session.entries) {
-    const v = Math.max(Math.abs(e.radur), Math.abs(e.decdur));
-    if (v > maxPulse) maxPulse = v;
-  }
-  // Inflate so pulses occupy roughly the bottom third visually but stay centered on 0
-  const pulseRange: [number, number] = [-maxPulse * 3, maxPulse * 3];
-
   // Separate ranges for mass and snr based on data
   const massVals = session.entries.map((e) => e.mass).filter((v) => v > 0);
   const snrVals = session.entries.map((e) => e.snr).filter((v) => v > 0);
@@ -221,12 +234,6 @@ export function GuideGraph() {
       title: { text: yTitle }, gridcolor: '#1e293b',
       zerolinecolor: '#64748b', zerolinewidth: 1,
       fixedrange: verticalMode === 'PAN',
-    },
-    yaxis3: {
-      overlaying: 'y', anchor: 'x',
-      showgrid: false, showticklabels: false, title: { text: '' },
-      zeroline: false,
-      range: pulseRange,
     },
     yaxis4: {
       overlaying: 'y', side: 'right',
