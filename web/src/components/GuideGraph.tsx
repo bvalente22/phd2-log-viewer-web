@@ -143,6 +143,7 @@ export function GuideGraph() {
   const exclusions = useViewStore((s) => s.exclusions);
   const verticalMode = useViewStore((s) => s.verticalMode);
   const scaleMode = useViewStore((s) => s.scaleMode);
+  const axisLock = useViewStore((s) => s.axisLock);
   const traces = useViewStore((s) => s.traces);
   const excludeRange = useViewStore((s) => s.excludeRange);
   const includeRange = useViewStore((s) => s.includeRange);
@@ -229,11 +230,14 @@ export function GuideGraph() {
     paper_bgcolor: '#0f172a',
     plot_bgcolor: '#0f172a',
     font: { color: '#cbd5e1', size: 11 },
-    xaxis: { title: { text: 'time (s)' }, gridcolor: '#1e293b', zerolinecolor: '#334155' },
+    xaxis: {
+      title: { text: 'time (s)' }, gridcolor: '#1e293b', zerolinecolor: '#334155',
+      fixedrange: axisLock === 'Y',
+    },
     yaxis: {
       title: { text: yTitle }, gridcolor: '#1e293b',
       zerolinecolor: '#64748b', zerolinewidth: 1,
-      fixedrange: verticalMode === 'PAN',
+      fixedrange: axisLock === 'X' || verticalMode === 'PAN',
     },
     yaxis4: {
       overlaying: 'y', side: 'right',
@@ -253,7 +257,7 @@ export function GuideGraph() {
     showlegend: true,
     legend: { orientation: 'h', y: 1.1 },
     dragmode: 'select',
-    selectdirection: 'h',
+    selectdirection: axisLock === 'Y' ? 'v' : axisLock === 'BOTH' ? 'd' : 'h',
     barmode: 'overlay',
   };
 
