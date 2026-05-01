@@ -25,6 +25,8 @@ export function GraphToolbar() {
   const exclusions = useViewStore((s) => s.exclusions);
   const scaleMode = useViewStore((s) => s.scaleMode);
   const setScaleMode = useViewStore((s) => s.setScaleMode);
+  const axisLock = useViewStore((s) => s.axisLock);
+  const setAxisLock = useViewStore((s) => s.setAxisLock);
 
   const sec = log && sectionIdx >= 0 ? log.sections[sectionIdx] : null;
   const session = sec && sec.type === 'GUIDING' ? log!.sessions[sec.idx] : null;
@@ -63,6 +65,22 @@ export function GraphToolbar() {
         label="pixels"
         active={scaleMode === 'PIXELS'}
         onClick={() => setScaleMode('PIXELS')}
+      />
+      <span className="ml-3 mr-1 text-slate-500">axis:</span>
+      <ToggleChip
+        label="X"
+        active={axisLock === 'X'}
+        onClick={() => setAxisLock('X')}
+      />
+      <ToggleChip
+        label="Y"
+        active={axisLock === 'Y'}
+        onClick={() => setAxisLock('Y')}
+      />
+      <ToggleChip
+        label="both"
+        active={axisLock === 'BOTH'}
+        onClick={() => setAxisLock('BOTH')}
       />
       <div className="ml-auto flex items-center gap-3 text-slate-400">
         <span>
