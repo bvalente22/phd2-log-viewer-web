@@ -54,6 +54,7 @@ export function ViewerPage() {
         <button
           className="text-xs text-slate-400 hover:text-slate-200"
           onClick={clear}
+          title="Close the current log and return to the drop zone to open a different one"
         >
           Open another
         </button>

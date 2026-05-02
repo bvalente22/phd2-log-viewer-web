@@ -15,6 +15,7 @@ export function DropZone() {
 
   return (
     <div
+      title="Drop a PHD2 guide log file here. The log is parsed locally; nothing is uploaded."
       className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors ${
         dragOver ? 'border-sky-400 bg-sky-950/30' : 'border-slate-600'
       }`}
@@ -31,6 +32,7 @@ export function DropZone() {
       <button
         className="rounded bg-sky-600 px-3 py-1 text-sm hover:bg-sky-500"
         onClick={() => inputRef.current?.click()}
+        title="Open the file picker to choose a PHD2 guide log"
       >
         or pick a file
       </button>

@@ -48,6 +48,7 @@ export function RecentsDropdown() {
       <button
         className="flex w-full items-center justify-between px-3 py-2 text-left text-xs uppercase tracking-wide text-slate-400 hover:bg-slate-800"
         onClick={() => setOpen((v) => !v)}
+        title={open ? 'Hide the recent logs list' : 'Show recently-opened logs (stored locally in your browser)'}
       >
         <span>Recent logs ({items.length})</span>
         <span className="text-slate-500">{open ? '▴' : '▾'}</span>
@@ -70,7 +71,7 @@ export function RecentsDropdown() {
                     <button
                       className="flex-1 truncate px-3 py-2 text-left text-sm text-slate-200 hover:bg-slate-800"
                       onClick={() => void openRecent(r.id)}
-                      title={r.name}
+                      title={`Reopen ${r.name}`}
                     >
                       {r.name}
                       {isCurrent && <span className="ml-2 text-xs text-sky-400">(current)</span>}
@@ -78,7 +79,7 @@ export function RecentsDropdown() {
                     <button
                       className="px-2 text-slate-500 hover:text-red-400"
                       onClick={(e) => void removeRecent(r.id, e)}
-                      title="Remove from recents"
+                      title={`Remove ${r.name} from the recents list`}
                     >
                       ×
                     </button>
@@ -91,6 +92,7 @@ export function RecentsDropdown() {
             className="w-full border-t border-slate-700 px-3 py-2 text-left text-xs text-slate-400 hover:bg-slate-800 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
             disabled={items.length === 0}
             onClick={() => void clearAll()}
+            title="Permanently delete all recently-opened logs from your browser's local storage"
           >
             Clear all recents
           </button>
