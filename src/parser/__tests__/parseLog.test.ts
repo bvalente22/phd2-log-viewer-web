@@ -30,7 +30,7 @@ describe('parseLog', () => {
   it('parses guiding entries with correct direction-flipped durations', () => {
     const log = parseLog(FIXTURE);
     const s = log.sessions[0];
-    expect(s.entries.length).toBe(16);
+    expect(s.entries.length).toBe(21);
     expect(s.entries[0].radur).toBe(-100);
     expect(s.entries[0].decdur).toBe(50);
     expect(s.entries[2].radur).toBe(-200);
@@ -62,24 +62,22 @@ describe('parseLog', () => {
 
   it('records duration as last entry dt', () => {
     const log = parseLog(FIXTURE);
-    expect(log.sessions[0].duration).toBe(16);
+    expect(log.sessions[0].duration).toBe(21);
   });
 
   it('marks frames inside the unguided window as guiding=false and the rest as guiding=true', () => {
     const log = parseLog(FIXTURE);
     const entries = log.sessions[0].entries;
-    // Frames 1-5 (idx 0..4) and frames 9-16 (idx 8..15) are guided.
-    expect(entries[0].guiding).toBe(true);
-    expect(entries[1].guiding).toBe(true);
-    expect(entries[2].guiding).toBe(true);
-    expect(entries[3].guiding).toBe(true);
-    expect(entries[4].guiding).toBe(true);
-    for (let i = 8; i < entries.length; i++) {
+    // Frames 1-5 (idx 0..4) and frames 18-21 (idx 17..20) are guided.
+    for (let i = 0; i <= 4; i++) {
       expect(entries[i].guiding).toBe(true);
     }
-    // Frames 6-8 (idx 5..7) sit inside the unguided window.
-    expect(entries[5].guiding).toBe(false);
-    expect(entries[6].guiding).toBe(false);
-    expect(entries[7].guiding).toBe(false);
+    for (let i = 17; i < entries.length; i++) {
+      expect(entries[i].guiding).toBe(true);
+    }
+    // Frames 6-17 (idx 5..16) sit inside the unguided window.
+    for (let i = 5; i <= 16; i++) {
+      expect(entries[i].guiding).toBe(false);
+    }
   });
 });

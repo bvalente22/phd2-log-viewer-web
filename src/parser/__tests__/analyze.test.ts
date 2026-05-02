@@ -58,7 +58,8 @@ describe('findUnguidedWindow', () => {
       mkE(5, 5, true, true),
       mkE(6, 6, true, false),
     ];
-    expect(findUnguidedWindow(s)).toEqual({ begin: 1, end: 3 });
+    // Half-open: indices 1, 2, 3 are unguided so end = 4 (one past last).
+    expect(findUnguidedWindow(s)).toEqual({ begin: 1, end: 4 });
   });
 
   it('finds the run starting at index 0 when the session opens unguided', () => {
@@ -68,7 +69,8 @@ describe('findUnguidedWindow', () => {
       mkE(2, 2, true, false),
       mkE(3, 3, true, true),
     ];
-    expect(findUnguidedWindow(s)).toEqual({ begin: 0, end: 1 });
+    // Indices 0, 1 are unguided; idx 2 is guided. end = 2 (half-open).
+    expect(findUnguidedWindow(s)).toEqual({ begin: 0, end: 2 });
   });
 });
 

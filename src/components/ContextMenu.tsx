@@ -3,6 +3,9 @@ import { ReactNode } from 'react';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import type { GuideSession } from '../parser';
+import { canAnalyze, analyze, findUnguidedWindow } from '../parser/analyze';
+import type { AnalysisKind } from '../state/analysisStore';
+import { useAnalysisStore } from '../state/analysisStore';
 
 const DITHER_SETTLE_FRAMES = 5;
 
@@ -59,7 +62,41 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
   const sec = log && sectionIdx >= 0 ? log.sections[sectionIdx] : null;
   const session = sec && sec.type === 'GUIDING' ? log!.sessions[sec.idx] : null;
   const sessionIdx = sec && sec.type === 'GUIDING' ? sec.idx : -1;
-  const isUnguided = !!session && session.entries.length > 0 && !session.entries[0].guiding;
+
+  const openAnalysis = useAnalysisStore((s) => s.open);
+  const scaleModeForAnalysis = useViewStore((s) => s.scaleMode);
+  const sessionMask = sessionIdx >= 0 ? exclusions.get(sessionIdx) : undefined;
+
+  const canAnalyzeSession = session
+    ? canAnalyze(session, {
+        range: { begin: 0, end: session.entries.length },
+        undoRaCorrections: false,
+        mask: sessionMask,
+      })
+    : false;
+
+  const unguidedRange = session ? findUnguidedWindow(session) : null;
+  const canAnalyzeUnguided = !!session && !!unguidedRange && canAnalyze(session, {
+    range: unguidedRange,
+    undoRaCorrections: false,
+    mask: sessionMask,
+  });
+  const isUnguided = !!unguidedRange;
+
+  const runAnalysis = (kind: AnalysisKind, undoRaCorrections: boolean, range?: { begin: number; end: number }) => {
+    if (!session) return;
+    const r = range ?? { begin: 0, end: session.entries.length };
+    try {
+      const garun = analyze(session, { range: r, undoRaCorrections, mask: sessionMask });
+      openAnalysis({ garun, kind, initialScaleMode: scaleModeForAnalysis });
+    } catch (err) {
+      // canAnalyze gates the call site, but stay defensive — if analyze
+      // throws (insufficient entries after edge-case filtering), surface
+      // it via console for now.
+      // eslint-disable-next-line no-console
+      console.error('analyze failed:', err);
+    }
+  };
 
   return (
     <RCM.Root>
@@ -107,9 +144,29 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
             Reset zoom
           </Item>
           <RCM.Separator className="my-1 h-px bg-slate-700" />
-          <Item disabled hint="v3" title="Coming in v3 — drift-corrected timeline + periodogram">Analyze selected frames</Item>
-          <Item disabled hint="v3" title="Coming in v3 — analysis with RA corrections undone">Analyze selected, raw RA</Item>
-          {isUnguided && <Item disabled hint="v3" title="Coming in v3 — analyze a Guiding Assistant unguided section">Analyze unguided section</Item>}
+          <Item
+            disabled={!session || !canAnalyzeSession}
+            onSelect={() => session && runAnalysis('all', false)}
+            title="Analyze every included, non-excluded frame: drift-corrected timeline + FFT periodogram"
+          >
+            Analyze selected frames
+          </Item>
+          <Item
+            disabled={!session || !canAnalyzeSession}
+            onSelect={() => session && runAnalysis('all-raw-ra', true)}
+            title="Same range, but with RA corrections re-added — shows what tracking would have looked like unguided"
+          >
+            Analyze selected, raw RA
+          </Item>
+          {isUnguided && (
+            <Item
+              disabled={!canAnalyzeUnguided}
+              onSelect={() => session && unguidedRange && runAnalysis('unguided', false, unguidedRange)}
+              title="Analyze the first contiguous unguided window in the session (Guiding Assistant case)"
+            >
+              Analyze unguided section
+            </Item>
+          )}
         </RCM.Content>
       </RCM.Portal>
     </RCM.Root>
