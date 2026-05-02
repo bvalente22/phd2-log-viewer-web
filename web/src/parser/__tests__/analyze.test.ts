@@ -71,3 +71,56 @@ describe('findUnguidedWindow', () => {
     expect(findUnguidedWindow(s)).toEqual({ begin: 0, end: 1 });
   });
 });
+
+import { computeDriftCorrected } from '../analyze';
+
+describe('computeDriftCorrected', () => {
+  it('recovers the slope of a clean linear ramp', () => {
+    const s = newGuideSession('x');
+    s.entries = Array.from({ length: 60 }, (_, i) => ({
+      ...mkE(i + 1, i + 1),
+      decraw: 0.5 * (i + 1),
+    }));
+    const out = computeDriftCorrected(s, { range: { begin: 0, end: 60 }, undoRaCorrections: false });
+    expect(out.driftDec).toBeCloseTo(0.5, 6);
+    for (const v of out.decc) expect(Math.abs(v)).toBeLessThan(1e-6);
+  });
+
+  it('integrates accumulated RA position from per-frame moves', () => {
+    const s = newGuideSession('x');
+    s.entries = [
+      { ...mkE(1, 1), raraw: 0, raguide: 0 },
+      { ...mkE(2, 2), raraw: 0.3, raguide: 0 },
+      { ...mkE(3, 3), raraw: 0.6, raguide: 0 },
+      ...Array.from({ length: 9 }, (_, i) => ({ ...mkE(i + 4, i + 4), raraw: 0.6, raguide: 0 })),
+    ];
+    const out = computeDriftCorrected(s, { range: { begin: 0, end: 12 }, undoRaCorrections: false });
+    expect(out.rac.length).toBe(12);
+    for (const v of out.rac) expect(Number.isFinite(v)).toBe(true);
+  });
+
+  it('undoRaCorrections changes the effective rapos when raguide is non-zero', () => {
+    const s = newGuideSession('x');
+    s.entries = Array.from({ length: 12 }, (_, i) => ({
+      ...mkE(i + 1, i + 1),
+      raraw: 0,
+      raguide: 0.1,
+    }));
+    const off = computeDriftCorrected(s, { range: { begin: 0, end: 12 }, undoRaCorrections: false });
+    const on = computeDriftCorrected(s, { range: { begin: 0, end: 12 }, undoRaCorrections: true });
+    expect(Math.abs(off.driftRa)).toBeLessThan(1e-6);
+    expect(Math.abs(on.driftRa)).toBeGreaterThan(0.05);
+  });
+
+  it('honors the user mask in the drift fit', () => {
+    const s = newGuideSession('x');
+    s.entries = Array.from({ length: 12 }, (_, i) => ({
+      ...mkE(i + 1, i + 1),
+      decraw: i === 11 ? 1000 : 0,
+    }));
+    const mask = new Uint8Array(12);
+    mask[11] = 1;
+    const out = computeDriftCorrected(s, { range: { begin: 0, end: 12 }, undoRaCorrections: false, mask });
+    expect(Math.abs(out.driftDec)).toBeLessThan(1e-6);
+  });
+});
