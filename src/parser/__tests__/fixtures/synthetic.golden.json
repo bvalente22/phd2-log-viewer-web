@@ -3,12 +3,13 @@
   "sectionCount": 2,
   "sessions": [
     {
-      "entryCount": 5,
-      "infoCount": 2,
+      "entryCount": 16,
+      "infoCount": 4,
       "pixelScale": 1.5,
-      "duration": 5,
+      "duration": 16,
       "mountValid": true,
-      "guidingEnabled": true
+      "guidedEntryCount": 13,
+      "unguidedEntryCount": 3
     }
   ],
   "calibrations": [
