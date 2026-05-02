@@ -24,6 +24,25 @@ const EXCLUDE_BORDER = 'rgba(251, 146, 60, 0.7)';
 type Traces = ReturnType<typeof useViewStore.getState>['traces'];
 type ScaleMode = ReturnType<typeof useViewStore.getState>['scaleMode'];
 
+/**
+ * Per-section pan/zoom state. Module-level (not a useRef) so the map
+ * survives GuideGraph unmount/remount, which happens whenever the user
+ * switches between guiding and calibration sections (the latter is rendered
+ * by a different component). Cleared by `resetSectionViews` when a new log
+ * is loaded.
+ */
+const sectionViews = new Map<number, { x?: [number, number]; y?: [number, number] }>();
+let sectionViewsLogToken: unknown = null;
+let lockedYView: [number, number] | null = null;
+
+const ensureViewsForLog = (token: unknown) => {
+  if (sectionViewsLogToken !== token) {
+    sectionViews.clear();
+    lockedYView = null;
+    sectionViewsLogToken = token;
+  }
+};
+
 interface PlotDiv extends HTMLDivElement {
   _fullLayout?: {
     xaxis?: { _offset: number; _length: number; range: [number, number] };
@@ -273,8 +292,9 @@ export function GuideGraph() {
   const includeRange = useViewStore((s) => s.includeRange);
 
   const plotId = useId().replace(/:/g, '_');
-  const yRangeRef = useRef<[number, number] | null>(null);
-  const xRangeRef = useRef<[number, number] | null>(null);
+  // Reset the module-level per-section view map when the loaded log changes
+  // — views from a prior log shouldn't leak into a freshly-opened one.
+  ensureViewsForLog(log);
   const [hoverInfo, setHoverInfo] = useState<string | null>(null);
 
   // Latest values used by the long-lived event handlers.
@@ -284,20 +304,32 @@ export function GuideGraph() {
   useEffect(() => { includeRangeRef.current = includeRange; }, [includeRange]);
   useEffect(() => { excludeRangeRef.current = excludeRange; }, [excludeRange]);
 
-  // Reset zoom on section change. When the user has the vertical scale lock
-  // enabled (matches the desktop "lock vertical scale" feature), preserve the
-  // y range so they can compare nights at the same scale.
+  // Switching sections does NOT clear viewsRef anymore — that map is what
+  // gives each section its own remembered pan/zoom view.
+  // Toggling auto-Y is an explicit "re-fit Y" action across all sections:
+  // wipe every section's saved Y range (and the global locked Y) so the new
+  // default (robust percentile vs. raw max) takes effect everywhere.
   useEffect(() => {
-    xRangeRef.current = null;
-    if (!scaleLocked) yRangeRef.current = null;
-  }, [sectionIdx, scaleLocked]);
-
-  // Toggling auto-Y is an explicit "re-fit Y" action: clear any user-driven
-  // zoom so the new default range (robust percentile vs. raw max) takes
-  // effect immediately.
-  useEffect(() => {
-    yRangeRef.current = null;
+    for (const [k, v] of sectionViews) {
+      sectionViews.set(k, { x: v.x }); // drop y, keep x
+    }
+    lockedYView = null;
   }, [autoScaleY]);
+
+  // Toggling scale-lock on snapshots the current section's Y range as the
+  // global lock; toggling off clears the global ref so per-section Y views
+  // take over again.
+  useEffect(() => {
+    if (scaleLocked) {
+      const v = sectionViews.get(sectionIdx);
+      lockedYView = v?.y ?? null;
+    } else {
+      lockedYView = null;
+    }
+    // Intentionally not depending on sectionIdx — we only want this snapshot
+    // when the user toggles the lock button, not on every navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scaleLocked]);
 
   const data = useMemo(() => {
     if (!log || sectionIdx < 0) return null;
@@ -382,12 +414,13 @@ export function GuideGraph() {
   // first scroll because `_fullLayout.xaxis._offset` could be transiently
   // missing right after autorange completed.
 
-  // Reset zoom event from context menu.
+  // Reset zoom event from context menu — clears only the current section's
+  // saved view, leaving every other section's view alone.
   useEffect(() => {
     const onReset = () => {
       void Plotly.relayout(plotId, { 'xaxis.autorange': true, 'yaxis.autorange': true });
-      xRangeRef.current = null;
-      yRangeRef.current = null;
+      const idx = dataRef.current?.sessionIdx;
+      if (idx !== undefined) sectionViews.delete(idx);
     };
     window.addEventListener('phd-reset-zoom', onReset);
     return () => window.removeEventListener('phd-reset-zoom', onReset);
@@ -400,12 +433,18 @@ export function GuideGraph() {
       const r = div?._fullLayout?.yaxis?.range;
       if (!r) return;
       const half = (r[1] - r[0]) / 2;
-      void Plotly.relayout(plotId, { 'yaxis.range': [-half, half] });
-      yRangeRef.current = [-half, half];
+      const newRange: [number, number] = [-half, half];
+      void Plotly.relayout(plotId, { 'yaxis.range': newRange });
+      const idx = dataRef.current?.sessionIdx;
+      if (idx !== undefined) {
+        const cur = sectionViews.get(idx) ?? {};
+        sectionViews.set(idx, { ...cur, y: newRange });
+      }
+      if (scaleLocked) lockedYView = newRange;
     };
     window.addEventListener('phd-recenter-y', onRecenter);
     return () => window.removeEventListener('phd-recenter-y', onRecenter);
-  }, [plotId]);
+  }, [plotId, scaleLocked]);
 
   // PNG export. Plotly's downloadImage triggers a browser save with the
   // current chart rendered at the requested size; we use 2x the visible
@@ -427,15 +466,22 @@ export function GuideGraph() {
     return () => window.removeEventListener('phd-export-png', onExport);
   }, [plotId]);
 
-  // All custom drag gestures (Y zoom, include/exclude). Plotly's dragmode is
-  // disabled — we own the drag entirely so there's no race between modifier
-  // detection and Plotly's internal state.
+  // All custom drag gestures (Y zoom + X pan, include/exclude). Plotly's
+  // dragmode is disabled — we own the drag entirely so there's no race
+  // between modifier detection and Plotly's internal state.
+  //
+  // Performance: every mousemove during drag would trigger a Plotly.relayout
+  // and force the rangeslider beneath the chart to redraw all its traces,
+  // making the chart feel sluggish on long sessions. We mitigate two ways:
+  //   1) requestAnimationFrame-throttle the relayout so it fires at most
+  //      once per display refresh instead of once per mousemove.
+  //   2) Hide the rangeslider for the duration of the drag and re-show it
+  //      on mouseup, so its expensive thumbnail render skips entirely.
   useEffect(() => {
     const div = document.getElementById(plotId) as PlotDiv | null;
     if (!div) return;
     div.style.position = 'relative';
 
-    // Selection overlay band (shown for shift/ctrl drags).
     const overlay = document.createElement('div');
     overlay.style.cssText = [
       'position:absolute',
@@ -454,9 +500,22 @@ export function GuideGraph() {
       return !!t?.closest('.nsewdrag, .bglayer, .draglayer');
     };
 
-    // Plain drag combines two gestures simultaneously: vertical motion zooms
-    // Y around the data point under the initial cursor, horizontal motion
-    // pans X by the equivalent data delta. Either component can be zero.
+    // rAF throttle for Plotly.relayout. Drag mousemove can fire >120 Hz on
+    // modern devices; coalescing to display refresh keeps Plotly from
+    // re-laying-out faster than the user can possibly perceive.
+    let rafId: number | null = null;
+    let pendingPatch: Record<string, [number, number]> | null = null;
+    const queueRelayout = (patch: Record<string, [number, number]>) => {
+      pendingPatch = pendingPatch ? { ...pendingPatch, ...patch } : { ...patch };
+      if (rafId == null) {
+        rafId = requestAnimationFrame(() => {
+          if (pendingPatch) void Plotly.relayout(plotId, pendingPatch);
+          pendingPatch = null;
+          rafId = null;
+        });
+      }
+    };
+
     type DragKind = 'PAN_ZOOM' | 'X_INCLUDE' | 'X_EXCLUDE' | null;
     let kind: DragKind = null;
     let startClientX = 0;
@@ -466,6 +525,7 @@ export function GuideGraph() {
     let yAnchor = 0;
     let yAnchorFrac = 0.5;
     let xStartFrac = 0;
+    let sliderHidden = false;
 
     const onDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
@@ -500,6 +560,10 @@ export function GuideGraph() {
       startClientY = e.clientY;
       startYRange = [y0, y1];
       startXRange = [...xa.range] as [number, number];
+      // Hide the rangeslider for the duration of the drag so it skips its
+      // expensive trace redraw. Restored on mouseup.
+      void Plotly.relayout(plotId, { 'xaxis.rangeslider.visible': false });
+      sliderHidden = true;
       e.preventDefault();
     };
 
@@ -509,31 +573,31 @@ export function GuideGraph() {
       if (!xa) return;
 
       if (kind === 'PAN_ZOOM') {
-        // Vertical component -> Y zoom anchored on initial data Y.
         const dy = e.clientY - startClientY;
         const factor = Math.exp(dy / 200);
         const oldYSpan = startYRange[1] - startYRange[0];
         const newYSpan = oldYSpan * factor;
         const newY0 = yAnchor - yAnchorFrac * newYSpan;
         const newY1 = newY0 + newYSpan;
-        // Horizontal component -> X pan: shift the visible range so the data
-        // point under the initial cursor follows the mouse.
         const dx = e.clientX - startClientX;
         const xSpan = startXRange[1] - startXRange[0];
         const dxData = (dx / xa._length) * xSpan;
         const newX0 = startXRange[0] - dxData;
         const newX1 = startXRange[1] - dxData;
-        const patch: Record<string, [number, number]> = {
+        queueRelayout({
           'yaxis.range': [newY0, newY1],
           'xaxis.range': [newX0, newX1],
-        };
-        void Plotly.relayout(plotId, patch);
-        yRangeRef.current = [newY0, newY1];
-        xRangeRef.current = [newX0, newX1];
+        });
+        const idx = dataRef.current?.sessionIdx;
+        if (idx !== undefined) {
+          const cur = sectionViews.get(idx) ?? {};
+          sectionViews.set(idx, { x: [newX0, newX1], y: [newY0, newY1] });
+          if (cur) { /* keep TS happy */ }
+        }
+        if (scaleLocked) lockedYView = [newY0, newY1];
         return;
       }
 
-      // X selection: update the overlay width.
       const rect = div.getBoundingClientRect();
       const curPx = e.clientX - rect.left - xa._offset;
       const curFrac = Math.min(1, Math.max(0, curPx / xa._length));
@@ -582,6 +646,22 @@ export function GuideGraph() {
         }
       }
 
+      // Drain any pending throttled relayout immediately and bring the
+      // rangeslider back so it re-syncs to the final range.
+      if (rafId != null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      const finalPatch: Record<string, unknown> = pendingPatch ?? {};
+      pendingPatch = null;
+      if (sliderHidden) {
+        finalPatch['xaxis.rangeslider.visible'] = true;
+        sliderHidden = false;
+      }
+      if (Object.keys(finalPatch).length > 0) {
+        void Plotly.relayout(plotId, finalPatch);
+      }
+
       kind = null;
     };
 
@@ -593,8 +673,9 @@ export function GuideGraph() {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp, true);
       overlay.remove();
+      if (rafId != null) cancelAnimationFrame(rafId);
     };
-  }, [plotId]);
+  }, [plotId, scaleLocked]);
 
   // Plotly's plotly_hover event fires with the nearest point on the topmost
   // trace. We use just its x (= time in seconds) and look up the actual
@@ -609,20 +690,33 @@ export function GuideGraph() {
 
   const onUnhover = useCallback(() => setHoverInfo(null), []);
 
+  // Plotly fires plotly_relayout for any user-driven range change (scroll
+  // zoom, drag-zoom, etc.). Persist the new range into the per-section view
+  // so the next time we revisit this section the same view is restored.
   const onRelayout = useCallback((ev: Readonly<Record<string, unknown>>) => {
+    const idx = dataRef.current?.sessionIdx;
+    if (idx === undefined) return;
+    const cur = sectionViews.get(idx) ?? {};
+    const next = { ...cur };
+
     const xr0 = ev['xaxis.range[0]'];
     const xr1 = ev['xaxis.range[1]'];
     if (typeof xr0 === 'number' && typeof xr1 === 'number') {
-      xRangeRef.current = [xr0, xr1];
+      next.x = [xr0, xr1];
     }
     const yr0 = ev['yaxis.range[0]'];
     const yr1 = ev['yaxis.range[1]'];
     if (typeof yr0 === 'number' && typeof yr1 === 'number') {
-      yRangeRef.current = [yr0, yr1];
+      next.y = [yr0, yr1];
+      if (scaleLocked) lockedYView = [yr0, yr1];
     }
-    if (ev['xaxis.autorange'] === true) xRangeRef.current = null;
-    if (ev['yaxis.autorange'] === true) yRangeRef.current = null;
-  }, []);
+    if (ev['xaxis.autorange'] === true) next.x = undefined;
+    if (ev['yaxis.autorange'] === true) {
+      next.y = undefined;
+      if (scaleLocked) lockedYView = null;
+    }
+    sectionViews.set(idx, next);
+  }, [scaleLocked]);
 
   if (!data) {
     return <div className="flex h-full items-center justify-center text-slate-500">Select a guiding section.</div>;
@@ -642,11 +736,11 @@ export function GuideGraph() {
       // it via the wheel; Plotly handles cursor-anchored zoom correctly. Drag
       // gestures are owned by our custom handlers (Plotly dragmode:false),
       // so leaving fixedrange:false here does not enable any unwanted drag.
-      // We always provide an *explicit* range (data extent on first render,
-      // user's zoom thereafter) so Plotly never sees autorange:true and the
-      // first wheel event can't anchor on a stale 0 offset.
+      // We always provide an *explicit* range (this section's saved view, or
+      // the data extent on first visit) so Plotly never sees autorange:true
+      // and the first wheel event can't anchor on a stale 0 offset.
       fixedrange: false,
-      range: xRangeRef.current ?? data.xExtent,
+      range: sectionViews.get(data.sessionIdx)?.x ?? data.xExtent,
       // Compact range-slider thumbnail beneath the chart shows the full
       // session at a glance and lets the user drag to scrub a window.
       rangeslider: {
@@ -664,9 +758,11 @@ export function GuideGraph() {
       // calls Plotly.relayout({yaxis.range:...}) directly, which bypasses
       // fixedrange.
       fixedrange: true,
-      ...(yRangeRef.current
-        ? { range: yRangeRef.current }
-        : { range: [-data.yMax, data.yMax] }),
+      // Y range source: scale-locked global > per-section saved Y > the
+      // computed default (auto-Y percentile or raw min/max of this session).
+      range: (scaleLocked && lockedYView)
+        ? lockedYView
+        : sectionViews.get(data.sessionIdx)?.y ?? [-data.yMax, data.yMax],
     },
     shapes: data.shapes,
     showlegend: true,
