@@ -81,6 +81,24 @@ range so future readers can cross-check. Same for any place the web port had
 to diverge for platform reasons (Plotly quirks, browser APIs, etc.). See
 existing examples in `parseLog.ts`, `stats.ts`, `GuideGraph.tsx`.
 
+## Deploying
+
+The app is a static build (`npm run build` → `dist/`), so any static host works.
+Three pre-configured options:
+
+- **Vercel** — connect the GitHub repo on https://vercel.com/, select
+  this directory as the root. `vercel.json` handles build command, output
+  directory, and SPA-style rewrites.
+- **Netlify** — connect on https://app.netlify.com/, point it at this
+  directory. `netlify.toml` does the rest.
+- **GitHub Pages** — `.github/workflows/deploy-pages.yml` ships a manual
+  workflow (`workflow_dispatch` only — never auto-deploys). Enable Pages in
+  Settings → Pages, choose "GitHub Actions" as the source, then run the
+  workflow from the Actions tab to publish the latest `main`.
+
+For LAN-only or self-hosted use, run `npm run build` and serve `dist/` with any
+static file server (Caddy, nginx, an nginx Docker container, etc.).
+
 ## License
 
 Same as the upstream PHD2 Log Viewer (GPLv3).
