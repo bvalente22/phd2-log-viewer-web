@@ -1,0 +1,9 @@
+{
+  "len": 21,
+  "nfft": 15,
+  "fftAmpMax": 0.4143171296708217,
+  "driftRa": -0.01928571428571431,
+  "driftDec": 0.005207792207792217,
+  "fftPeriodFirst": 2.1333333333333333,
+  "fftPeriodLast": 32
+}

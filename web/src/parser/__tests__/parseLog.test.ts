@@ -30,7 +30,7 @@ describe('parseLog', () => {
   it('parses guiding entries with correct direction-flipped durations', () => {
     const log = parseLog(FIXTURE);
     const s = log.sessions[0];
-    expect(s.entries.length).toBe(5);
+    expect(s.entries.length).toBe(21);
     expect(s.entries[0].radur).toBe(-100);
     expect(s.entries[0].decdur).toBe(50);
     expect(s.entries[2].radur).toBe(-200);
@@ -53,18 +53,31 @@ describe('parseLog', () => {
   it('captures INFO events with prefix stripped', () => {
     const log = parseLog(FIXTURE);
     const s = log.sessions[0];
-    expect(s.infos.length).toBe(2);
+    expect(s.infos.length).toBe(4);
     expect(s.infos[0].info).toBe('state=1');
     expect(s.infos[1].info).toBe('state=0');
+    expect(s.infos[2].info).toBe('MountGuidingEnabled = false');
+    expect(s.infos[3].info).toBe('MountGuidingEnabled = true');
   });
 
   it('records duration as last entry dt', () => {
     const log = parseLog(FIXTURE);
-    expect(log.sessions[0].duration).toBe(5);
+    expect(log.sessions[0].duration).toBe(21);
   });
 
-  it('marks all entries as guiding=true since "guiding enabled" is in the mount header', () => {
+  it('marks frames inside the unguided window as guiding=false and the rest as guiding=true', () => {
     const log = parseLog(FIXTURE);
-    expect(log.sessions[0].entries.every(e => e.guiding)).toBe(true);
+    const entries = log.sessions[0].entries;
+    // Frames 1-5 (idx 0..4) and frames 18-21 (idx 17..20) are guided.
+    for (let i = 0; i <= 4; i++) {
+      expect(entries[i].guiding).toBe(true);
+    }
+    for (let i = 17; i < entries.length; i++) {
+      expect(entries[i].guiding).toBe(true);
+    }
+    // Frames 6-17 (idx 5..16) sit inside the unguided window.
+    for (let i = 5; i <= 16; i++) {
+      expect(entries[i].guiding).toBe(false);
+    }
   });
 });
