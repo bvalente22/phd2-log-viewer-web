@@ -47,6 +47,7 @@ export function ScatterView() {
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const exclusions = useViewStore((s) => s.exclusions);
   const scaleMode = useViewStore((s) => s.scaleMode);
+  const device = useViewStore((s) => s.device);
 
   const data = useMemo(() => {
     if (!log || sectionIdx < 0) return null;
@@ -55,6 +56,9 @@ export function ScatterView() {
     const session = log.sessions[sec.idx];
     const mask = exclusions.get(sec.idx);
     const k = scaleMode === 'ARCSEC' ? session.pixelScale : 1;
+    // For sessions with AO data, only show frames from the selected device.
+    // Mount-only sessions have no AO entries, so the filter passes everything.
+    const hasAo = session.entries.some((e) => e.mount === 'AO');
 
     const incX: number[] = [];
     const incY: number[] = [];
@@ -65,8 +69,12 @@ export function ScatterView() {
 
     for (let i = 0; i < session.entries.length; i++) {
       const e = session.entries[i];
+      if (hasAo && e.mount !== device) continue;
+      // Scatter view always uses RA/Dec axes (matches the desktop). The Dec
+      // negation here matches LogViewFrame.cpp's chart convention where
+      // positive Dec = up.
       const x = e.raraw * k;
-      const y = e.decraw * k;
+      const y = -e.decraw * k;
       const isExcluded = !e.included || mask?.[i] === 1;
       if (isExcluded) {
         exX.push(x);
@@ -122,7 +130,7 @@ export function ScatterView() {
     ];
 
     return { traces, shapes, range, k };
-  }, [log, sectionIdx, exclusions, scaleMode]);
+  }, [log, sectionIdx, exclusions, scaleMode, device]);
 
   if (!data) {
     return <div className="flex h-full items-center justify-center text-slate-500">Select a guiding section.</div>;
