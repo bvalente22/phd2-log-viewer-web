@@ -132,3 +132,99 @@ export function computeDriftCorrected(s: GuideSession, opts: AnalyzeOptions): Dr
   }
   return { t, rac, decc, driftRa: lineR.slope, driftDec: lineD.slope };
 }
+
+import { Spline } from './spline';
+import { forwardFftMagnitudes } from './fft';
+
+export interface GARun {
+  starts: number | null;
+  pixelScale: number;
+  range: { begin: number; end: number };
+  undoRaCorrections: boolean;
+  driftRa: number;
+  driftDec: number;
+  t: Float64Array;
+  rac: Float64Array;
+  decc: Float64Array;
+  fftPeriod: Float64Array;
+  fftAmplitude: Float64Array;
+  fftAmpMax: number;
+  fftSpline: Spline;
+}
+
+const nextPow2 = (n: number): number => {
+  let p = 1;
+  while (p < n) p <<= 1;
+  return p;
+};
+
+/**
+ * Full GARun port. Equivalent to AnalysisWin.cpp:283-411.
+ *
+ *   1. computeDriftCorrected → (t, rac, decc, driftRa, driftDec)
+ *   2. Spline-resample rac onto a uniform grid of length n
+ *      (rounded up to the next power of two so the FFT can run; the C++
+ *      code uses an arbitrary-N GSL FFT, but `fft.js` requires p2)
+ *   3. Apply a Hamming window
+ *   4. forwardFftMagnitudes → bin magnitudes
+ *   5. Convert bins to (period, amplitude); skip DC; sort ascending by
+ *      period; build a smoothing spline
+ */
+export function analyze(s: GuideSession, opts: AnalyzeOptions): GARun {
+  if (!canAnalyze(s, opts)) {
+    throw new Error('analyze: need at least 12 usable entries; canAnalyze returned false');
+  }
+  const drift = computeDriftCorrected(s, opts);
+  const n0 = drift.t.length;
+  const dt = (drift.t[n0 - 1] - drift.t[0]) / (n0 - 1);
+  const n = nextPow2(n0);
+
+  const sp = new Spline(Array.from(drift.t), Array.from(drift.rac));
+  const sig = new Float64Array(n);
+  const k = (Math.PI * 2) / (n0 - 1);
+  for (let i = 0; i < n0; i++) {
+    let x = drift.t[0] + i * dt;
+    if (x > drift.t[n0 - 1]) x = drift.t[n0 - 1];
+    const hw = 0.54 - 0.46 * Math.cos(i * k);
+    sig[i] = hw * sp.at(x);
+  }
+  // sig[n0..n-1] stays at zero (Float64Array default), serving as zero-pad.
+
+  const mags = forwardFftMagnitudes(sig);
+  // AnalysisWin.cpp:393 — periodogram amplitude scaling. Use n0 (the count of
+  // populated samples) rather than n so the amplitude reflects the actual
+  // signal energy, not the padded length.
+  const scale = 4 / n0;
+  const nfft = n / 2 - 1;
+  const period = new Float64Array(nfft);
+  const amplitude = new Float64Array(nfft);
+  let amax = 0;
+  for (let i = 0; i < nfft; i++) {
+    const f = (i + 1) / (n * dt);
+    const p = 1 / f;
+    const a = mags[i + 1] * scale;
+    // Reverse-write so periods land in ascending order (longest period first
+    // would otherwise be index 0). Matches the C++ ordering at
+    // AnalysisWin.cpp:401-403.
+    period[nfft - 1 - i] = p;
+    amplitude[nfft - 1 - i] = a;
+    if (a > amax) amax = a;
+  }
+  const spline = new Spline(Array.from(period), Array.from(amplitude));
+
+  return {
+    starts: s.startsMs,
+    pixelScale: s.pixelScale,
+    range: { begin: opts.range.begin, end: opts.range.end },
+    undoRaCorrections: opts.undoRaCorrections,
+    driftRa: drift.driftRa,
+    driftDec: drift.driftDec,
+    t: drift.t,
+    rac: drift.rac,
+    decc: drift.decc,
+    fftPeriod: period,
+    fftAmplitude: amplitude,
+    fftAmpMax: amax,
+    fftSpline: spline,
+  };
+}

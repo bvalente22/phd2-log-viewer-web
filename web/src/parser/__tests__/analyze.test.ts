@@ -124,3 +124,58 @@ describe('computeDriftCorrected', () => {
     expect(Math.abs(out.driftDec)).toBeLessThan(1e-6);
   });
 });
+
+import { analyze } from '../analyze';
+
+describe('analyze (full pipeline)', () => {
+  it('recovers a known sinusoid period and approximate amplitude', () => {
+    const s = newGuideSession('x');
+    s.pixelScale = 1;
+    s.entries = Array.from({ length: 256 }, (_, i) => ({
+      ...mkE(i + 1, i + 1),
+      raraw: Math.cos((2 * Math.PI * (i + 1)) / 30),
+    }));
+    const ga = analyze(s, { range: { begin: 0, end: 256 }, undoRaCorrections: false });
+    let imax = 0;
+    for (let i = 1; i < ga.fftAmplitude.length; i++) {
+      if (ga.fftAmplitude[i] > ga.fftAmplitude[imax]) imax = i;
+    }
+    const peakPeriod = ga.fftPeriod[imax];
+    expect(peakPeriod).toBeGreaterThan(28);
+    expect(peakPeriod).toBeLessThan(32);
+    expect(ga.fftAmplitude[imax]).toBeGreaterThan(0.3);
+    expect(ga.fftAmplitude[imax]).toBeLessThan(2.0);
+  });
+
+  it('produces fftPeriod sorted ascending and skips DC', () => {
+    const s = newGuideSession('x');
+    s.entries = Array.from({ length: 64 }, (_, i) => ({
+      ...mkE(i + 1, i + 1),
+      raraw: Math.sin(i * 0.4),
+    }));
+    const ga = analyze(s, { range: { begin: 0, end: 64 }, undoRaCorrections: false });
+    expect(ga.fftPeriod.length).toBe(ga.fftAmplitude.length);
+    expect(ga.fftPeriod.length).toBeGreaterThanOrEqual(5);
+    for (let i = 1; i < ga.fftPeriod.length; i++) {
+      expect(ga.fftPeriod[i]).toBeGreaterThanOrEqual(ga.fftPeriod[i - 1]);
+    }
+    for (const p of ga.fftPeriod) expect(Number.isFinite(p)).toBe(true);
+  });
+
+  it('attaches the requested undoRaCorrections flag and the session pixelScale', () => {
+    const s = newGuideSession('x');
+    s.pixelScale = 1.7;
+    s.entries = Array.from({ length: 32 }, (_, i) => mkE(i + 1, i + 1));
+    const ga = analyze(s, { range: { begin: 0, end: 32 }, undoRaCorrections: true });
+    expect(ga.undoRaCorrections).toBe(true);
+    expect(ga.pixelScale).toBeCloseTo(1.7);
+    expect(ga.range).toEqual({ begin: 0, end: 32 });
+  });
+
+  it('throws when not enough entries are usable', () => {
+    const s = newGuideSession('x');
+    s.entries = Array.from({ length: 5 }, (_, i) => mkE(i + 1, i + 1));
+    expect(() => analyze(s, { range: { begin: 0, end: 5 }, undoRaCorrections: false }))
+      .toThrow(/at least 12/i);
+  });
+});
