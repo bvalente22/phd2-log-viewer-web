@@ -14,13 +14,16 @@ const formatClockUTC = (ms: number | null, dt: number): string => {
 /**
  * Identify the top-N local-maximum peaks in the periodogram (a[i] > a[i-1] &&
  * a[i] > a[i+1]) and return them sorted by descending amplitude. Skips the
- * boundary samples so we don't flag the edges of the FFT range as "peaks".
+ * boundary samples so we don't flag the edges of the FFT range as "peaks",
+ * and skips any peak whose period exceeds `maxPeriodSec` so very-long-period
+ * components (drift artefacts) don't dominate the summary.
  */
-function topPeaks(garun: GARun, n: number): { period: number; amplitude: number }[] {
+function topPeaks(garun: GARun, n: number, maxPeriodSec: number): { period: number; amplitude: number }[] {
   const periods = garun.fftPeriod;
   const amps = garun.fftAmplitude;
   const peaks: { period: number; amplitude: number }[] = [];
   for (let i = 1; i < periods.length - 1; i++) {
+    if (periods[i] > maxPeriodSec) continue;
     if (amps[i] > amps[i - 1] && amps[i] > amps[i + 1]) {
       peaks.push({ period: periods[i], amplitude: amps[i] });
     }
@@ -50,13 +53,13 @@ export function AnalysisModal() {
   }, [s]);
 
   const peaks = useMemo(
-    () => (s.state === 'open' ? topPeaks(s.garun, 3) : []),
+    () => (s.state === 'open' ? topPeaks(s.garun, 3, s.maxPeriodSec) : []),
     [s],
   );
 
   if (s.state === 'closed') return null;
 
-  const { garun, kind, showRa, showDec, scaleMode } = s;
+  const { garun, kind, showRa, showDec, scaleMode, maxPeriodSec } = s;
   const startClock = formatClockUTC(garun.starts, garun.t[0] ?? 0);
   const endClock = formatClockUTC(garun.starts, garun.t[garun.t.length - 1] ?? 0);
   let title: string;
@@ -87,27 +90,29 @@ export function AnalysisModal() {
     // the user explicitly requested that the analysis screen show only the
     // analysis, hiding the regular chart entirely.
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-950 text-slate-100">
-      {/* Distinct accent banner so the modal is unmistakable. */}
-      <header className="flex items-center justify-between border-b-2 border-sky-700 bg-sky-950/60 px-4 py-3">
+      {/* Wheat / amber-toned banner — complementary to the sky-blue accents
+          used everywhere else in the app, so the modal context is visually
+          unmistakable without clashing. */}
+      <header className="flex items-center justify-between border-b-2 border-amber-700 bg-amber-200 px-4 py-3 text-amber-950">
         <div className="flex items-center gap-3">
           <span
-            className="rounded bg-sky-700 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-white"
+            className="rounded bg-amber-700 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-amber-50"
             title="You are in the Analysis modal — click 'Close' or press Esc to return"
           >
             Analysis
           </span>
-          <h2 className="text-sm font-medium text-slate-200" title="Source range and analysis mode for this run">
+          <h2 className="text-sm font-medium" title="Source range and analysis mode for this run">
             {title}
           </h2>
         </div>
         <button
-          className="flex items-center gap-1 rounded bg-slate-800 px-3 py-1 text-sm text-slate-200 ring-1 ring-slate-700 hover:bg-rose-700 hover:text-white hover:ring-rose-600"
+          className="flex items-center gap-1 rounded bg-amber-50 px-3 py-1 text-sm text-amber-950 ring-1 ring-amber-700 hover:bg-rose-700 hover:text-white hover:ring-rose-600"
           onClick={s.close}
           title="Close the analysis view (Esc)"
         >
           <span className="text-base leading-none">✕</span>
           <span>Close</span>
-          <span className="ml-1 text-xs text-slate-400">Esc</span>
+          <span className="ml-1 text-xs opacity-70">Esc</span>
         </button>
       </header>
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-1 text-xs">
@@ -134,13 +139,34 @@ export function AnalysisModal() {
       </div>
       {/* Top-3 peaks summary. Reads the same FFT result the periodogram is
           drawing — caller can spot the dominant periodic-error contributors
-          at a glance without hovering. */}
-      <div className="border-t-2 border-sky-800 bg-slate-900/70 px-4 py-2 text-xs">
-        <div className="mb-1 font-semibold uppercase tracking-wider text-slate-400">
-          Top 3 peaks
+          at a glance without hovering. The "max period" filter excludes very
+          long periods (>10 minutes by default) which are usually drift
+          artefacts rather than real PE components. */}
+      <div className="border-t-2 border-amber-800 bg-slate-900/70 px-4 py-2 text-xs">
+        <div className="mb-1 flex items-center gap-3">
+          <span className="font-semibold uppercase tracking-wider text-slate-400">
+            Top 3 peaks
+          </span>
+          <label className="flex items-center gap-1 text-slate-400" title="Excludes any peak whose period exceeds this many seconds; 600s (10 min) is the default since PE worm cycles are typically well below that.">
+            <span>max period</span>
+            <input
+              type="number"
+              min={10}
+              step={10}
+              value={maxPeriodSec}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (Number.isFinite(v) && v > 0) s.setMaxPeriodSec(v);
+              }}
+              className="w-20 rounded border border-slate-700 bg-slate-900 px-2 py-0.5 font-mono text-slate-200"
+            />
+            <span>s</span>
+          </label>
         </div>
         {peaks.length === 0 ? (
-          <div className="text-slate-500">No periodogram peaks detected (signal may be too short or flat).</div>
+          <div className="text-slate-500">
+            No periodogram peaks under {maxPeriodSec}s detected. Try raising the max-period filter or check the signal.
+          </div>
         ) : (
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-3">
             {peaks.map((p, i) => {
