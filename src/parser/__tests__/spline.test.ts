@@ -41,6 +41,13 @@ describe('Spline', () => {
     expect(sp.at(3.5)).toBeCloseTo(3.5 ** 3, 0);
   });
 
+  it('handles the n=2 straight-line case', () => {
+    const sp = new Spline([0, 1], [10, 20]);
+    expect(sp.at(0)).toBeCloseTo(10);
+    expect(sp.at(0.5)).toBeCloseTo(15);
+    expect(sp.at(1)).toBeCloseTo(20);
+  });
+
   it('throws on non-monotonic x', () => {
     expect(() => new Spline([0, 2, 1], [0, 0, 0])).toThrow(/monotonic/i);
   });

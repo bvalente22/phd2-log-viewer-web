@@ -3,11 +3,17 @@
  *
  * Used by the analysis pipeline (`analyze.ts`) for two purposes:
  *   1. Resample the drift-corrected RA signal onto a uniform time grid before
- *      FFT (matches `gsl_spline` use in AnalysisWin.cpp:366-375).
+ *      FFT (corresponds to the `gsl_spline` use in AnalysisWin.cpp:366-375).
  *   2. Smoothly draw the periodogram and snap the cursor to local maxima
- *      (matches `GARun::ffts` use in AnalysisWin.cpp:408 / OnMove peak-snap).
+ *      (corresponds to `GARun::ffts` in AnalysisWin.cpp:408 / OnMove peak-snap).
  *
- * Natural boundary conditions match GSL's default `gsl_interp_cspline`.
+ * Note: the C++ source uses `gsl_interp_akima` (AnalysisWin.cpp:42), whereas
+ * this is a natural-BC cubic spline. We deliberately substitute a JS-portable
+ * algorithm here — the spec lists bit-exact parity with the desktop as a
+ * non-goal, and the resulting numerical differences are well below the
+ * visual / interpretive resolution of the periodogram. Expect small residuals
+ * vs. the C++ output near sharp transitions where Akima's anti-overshoot
+ * design differs from natural-BC behavior.
  */
 export class Spline {
   private readonly xs: number[];
