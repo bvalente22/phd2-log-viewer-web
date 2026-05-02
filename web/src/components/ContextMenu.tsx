@@ -1,11 +1,36 @@
 import * as RCM from '@radix-ui/react-context-menu';
-import { ReactNode } from 'react';
+import { ReactNode, useRef } from 'react';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import type { GuideSession } from '../parser';
-import { canAnalyze, analyze, findUnguidedWindow } from '../parser/analyze';
+import { canAnalyze, analyze, findUnguidedWindow, findUnguidedWindowAtTime } from '../parser/analyze';
 import type { AnalysisKind } from '../state/analysisStore';
 import { useAnalysisStore } from '../state/analysisStore';
+
+interface PlotlyContainerEl extends HTMLElement {
+  _fullLayout?: {
+    xaxis?: { _offset: number; _length: number; range: [number, number] };
+  };
+}
+
+/**
+ * Translate a viewport-coordinate `clientX` (from a contextmenu event) into
+ * the equivalent data-X on the rendered Plotly chart that received the
+ * click. Returns null when the cursor wasn't actually over a chart's plot
+ * area (e.g. right-click happened on a sidebar) or Plotly's internal
+ * layout coords aren't ready.
+ */
+const clientXToChartTime = (clientX: number, target: HTMLElement | null): number | null => {
+  if (!target) return null;
+  const plot = target.closest('.js-plotly-plot') as PlotlyContainerEl | null;
+  const xa = plot?._fullLayout?.xaxis;
+  if (!plot || !xa || !xa._length) return null;
+  const rect = plot.getBoundingClientRect();
+  const px = clientX - rect.left - xa._offset;
+  if (px < 0 || px > xa._length) return null;
+  const frac = px / xa._length;
+  return xa.range[0] + frac * (xa.range[1] - xa.range[0]);
+};
 
 const DITHER_SETTLE_FRAMES = 5;
 
@@ -75,13 +100,34 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
       })
     : false;
 
-  const unguidedRange = session ? findUnguidedWindow(session) : null;
-  const canAnalyzeUnguided = !!session && !!unguidedRange && canAnalyze(session, {
-    range: unguidedRange,
+  // Time of the most recent right-click within a chart's plot area, in
+  // session-elapsed seconds. Set by the contextmenu capture handler below
+  // and read when the user picks "Analyze unguided section" — lets the
+  // user choose *which* unguided window to analyze (in sessions with more
+  // than one) by right-clicking inside it. Falls back to the first window
+  // when the cursor wasn't over the chart at right-click time.
+  const lastClickTimeRef = useRef<number | null>(null);
+
+  const firstUnguidedRange = session ? findUnguidedWindow(session) : null;
+  const isUnguided = !!firstUnguidedRange;
+
+  /** Pick the unguided window the user actually right-clicked on, falling
+   * back to the first one in the session. */
+  const pickUnguidedRange = (): { begin: number; end: number } | null => {
+    if (!session) return null;
+    const t = lastClickTimeRef.current;
+    if (t !== null) {
+      const atClick = findUnguidedWindowAtTime(session, t);
+      if (atClick) return atClick;
+    }
+    return firstUnguidedRange;
+  };
+
+  const canAnalyzeUnguided = !!session && !!firstUnguidedRange && canAnalyze(session, {
+    range: firstUnguidedRange,
     undoRaCorrections: false,
     mask: sessionMask,
   });
-  const isUnguided = !!unguidedRange;
 
   const runAnalysis = (kind: AnalysisKind, undoRaCorrections: boolean, range?: { begin: number; end: number }) => {
     if (!session) return;
@@ -100,7 +146,17 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
 
   return (
     <RCM.Root>
-      <RCM.Trigger asChild>{children}</RCM.Trigger>
+      {/* Capturing the contextmenu event on the trigger lets us record where
+          the cursor was at right-click time. Radix re-fires its own
+          contextmenu handler after this — capture phase keeps both running. */}
+      <RCM.Trigger
+        asChild
+        onContextMenu={(e) => {
+          lastClickTimeRef.current = clientXToChartTime(e.clientX, e.target as HTMLElement);
+        }}
+      >
+        {children}
+      </RCM.Trigger>
       <RCM.Portal>
         <RCM.Content className="min-w-[16rem] rounded border border-slate-700 bg-slate-900 p-1 text-sm shadow-lg">
           <Item
@@ -161,8 +217,12 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
           {isUnguided && (
             <Item
               disabled={!canAnalyzeUnguided}
-              onSelect={() => session && unguidedRange && runAnalysis('unguided', false, unguidedRange)}
-              title="Analyze the first contiguous unguided window in the session (Guiding Assistant case)"
+              onSelect={() => {
+                if (!session) return;
+                const range = pickUnguidedRange();
+                if (range) runAnalysis('unguided', false, range);
+              }}
+              title="Analyze the unguided window under the cursor (or the first one in the session if you right-clicked elsewhere)"
             >
               Analyze unguided section
             </Item>

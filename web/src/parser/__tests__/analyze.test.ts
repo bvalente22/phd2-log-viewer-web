@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { canAnalyze, findUnguidedWindow } from '../analyze';
+import { canAnalyze, findUnguidedWindow, findUnguidedWindowAtTime } from '../analyze';
 import { newGuideSession } from '../types';
 import type { GuideEntry } from '../types';
 
@@ -71,6 +71,47 @@ describe('findUnguidedWindow', () => {
     ];
     // Indices 0, 1 are unguided; idx 2 is guided. end = 2 (half-open).
     expect(findUnguidedWindow(s)).toEqual({ begin: 0, end: 2 });
+  });
+});
+
+describe('findUnguidedWindowAtTime', () => {
+  // Two unguided windows: [1..3] and [5..7] (using inclusive index labels).
+  const session = (() => {
+    const s = newGuideSession('x');
+    s.entries = [
+      mkE(1, 1.0, true, true),    // idx 0 guided
+      mkE(2, 2.0, true, false),   // idx 1 unguided
+      mkE(3, 3.0, true, false),   // idx 2 unguided
+      mkE(4, 4.0, true, false),   // idx 3 unguided
+      mkE(5, 5.0, true, true),    // idx 4 guided
+      mkE(6, 6.0, true, false),   // idx 5 unguided
+      mkE(7, 7.0, true, false),   // idx 6 unguided
+      mkE(8, 8.0, true, false),   // idx 7 unguided
+      mkE(9, 9.0, true, true),    // idx 8 guided
+    ];
+    return s;
+  })();
+
+  it('returns the FIRST unguided window for clicks inside it', () => {
+    expect(findUnguidedWindowAtTime(session, 2.5)).toEqual({ begin: 1, end: 4 });
+  });
+
+  it('returns the SECOND unguided window for clicks inside it', () => {
+    expect(findUnguidedWindowAtTime(session, 6.5)).toEqual({ begin: 5, end: 8 });
+  });
+
+  it('returns null when the click lands on a guided frame', () => {
+    expect(findUnguidedWindowAtTime(session, 5.0)).toBeNull();
+  });
+
+  it('snaps to the closest entry when the time is between samples', () => {
+    // Time 1.9 is closer to entry idx 1 (dt=2.0, unguided) than idx 0 (dt=1.0, guided).
+    expect(findUnguidedWindowAtTime(session, 1.9)).toEqual({ begin: 1, end: 4 });
+  });
+
+  it('returns null on an empty session', () => {
+    const s = newGuideSession('x');
+    expect(findUnguidedWindowAtTime(s, 0)).toBeNull();
   });
 });
 

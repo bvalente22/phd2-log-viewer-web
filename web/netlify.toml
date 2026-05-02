@@ -1,0 +1,17 @@
+# Netlify configuration for the PHD2 Log Viewer web app.
+#
+# Connect this repository on https://app.netlify.com/, point it at the
+# `web` subdirectory as the base, and Netlify will pick up this file
+# automatically. No further dashboard configuration is required.
+
+[build]
+  command   = "npm run build"
+  publish   = "dist"
+
+# SPA-style redirect — every URL serves index.html so client-side routes
+# don't 404 on a hard refresh. (The current app is a single page; this is
+# future-proofing.)
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200

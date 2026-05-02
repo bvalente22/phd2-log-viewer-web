@@ -49,6 +49,37 @@ export function findUnguidedWindow(s: GuideSession): { begin: number; end: numbe
   return null;
 }
 
+/**
+ * The contiguous unguided window that contains the entry whose `dt` is
+ * closest to `tSec` (seconds since session start). Used to let the user
+ * pick *which* unguided window to analyze when a session has more than one
+ * — the right-click-menu code converts the cursor's data X to a time and
+ * passes it here. Returns null when no unguided run covers that time.
+ */
+export function findUnguidedWindowAtTime(
+  s: GuideSession,
+  tSec: number,
+): { begin: number; end: number } | null {
+  if (s.entries.length === 0) return null;
+  // Locate the entry closest to tSec (linear scan is fine — sessions rarely
+  // exceed tens of thousands of entries, and this only fires on a click).
+  let nearest = 0;
+  let bestDist = Math.abs(s.entries[0].dt - tSec);
+  for (let i = 1; i < s.entries.length; i++) {
+    const d = Math.abs(s.entries[i].dt - tSec);
+    if (d < bestDist) {
+      bestDist = d;
+      nearest = i;
+    }
+  }
+  if (s.entries[nearest].guiding) return null;
+  let begin = nearest;
+  while (begin > 0 && !s.entries[begin - 1].guiding) begin--;
+  let end = nearest;
+  while (end + 1 < s.entries.length && !s.entries[end + 1].guiding) end++;
+  return { begin, end: end + 1 }; // half-open
+}
+
 export interface DriftCorrected {
   /** Filtered timestamps (seconds) of every used entry, in order. */
   t: Float64Array;
