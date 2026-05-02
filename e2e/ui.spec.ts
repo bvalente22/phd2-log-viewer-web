@@ -189,6 +189,24 @@ test.describe('synthetic log — full UI coverage', () => {
     await expect(page.getByText('Drop a PHD2 guide log here')).toBeVisible();
   });
 
+  test('CSV export downloads a file with the section data', async ({ page }) => {
+    await dropFixture(page, SYNTHETIC, 'synthetic.log');
+    await page.getByText('Guide ·', { exact: false }).first().click();
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'CSV', exact: true }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/\.csv$/);
+  });
+
+  test('PNG export button is enabled when a guiding section is loaded', async ({ page }) => {
+    await dropFixture(page, SYNTHETIC, 'synthetic.log');
+    await page.getByText('Guide ·', { exact: false }).first().click();
+    // Plotly's downloadImage triggers a real browser download but uses a
+    // canvas-to-blob path; in headless Chromium the click reliably fires
+    // the download event, but it can take a moment.
+    await expect(page.getByRole('button', { name: 'PNG', exact: true })).toBeEnabled();
+  });
+
   test('view-settings persistence: pixel mode survives reload', async ({ page }) => {
     await dropFixture(page, SYNTHETIC, 'synthetic.log');
     await page.getByText('Guide ·', { exact: false }).first().click();

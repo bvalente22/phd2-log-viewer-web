@@ -1,6 +1,54 @@
 import { useViewStore } from '../state/viewStore';
 import { useLogStore } from '../state/logStore';
 import type { TraceVisibility } from '../state/viewStore';
+import type { GuideSession } from '../parser';
+
+/**
+ * Build a CSV blob for the active section. Columns mirror the PHD2 log row
+ * order (so the output is round-trippable for downstream tooling) plus an
+ * `excluded` flag that records whether the user excluded the frame in the
+ * viewer. Line endings are CRLF for Excel friendliness.
+ */
+function sessionToCsv(s: GuideSession, mask: Uint8Array | undefined): string {
+  const header = [
+    'Frame', 'Time', 'Mount', 'dx', 'dy',
+    'RARawDistance', 'DECRawDistance', 'RAGuideDistance', 'DECGuideDistance',
+    'RADuration', 'DECDuration', 'StarMass', 'SNR', 'ErrorCode',
+    'Info', 'Excluded',
+  ];
+  const lines: string[] = [header.join(',')];
+  const escape = (v: string) => {
+    if (v.includes(',') || v.includes('"') || v.includes('\n')) {
+      return `"${v.replace(/"/g, '""')}"`;
+    }
+    return v;
+  };
+  for (let i = 0; i < s.entries.length; i++) {
+    const e = s.entries[i];
+    const excluded = !e.included || mask?.[i] === 1;
+    lines.push([
+      e.frame, e.dt.toFixed(3), e.mount,
+      e.dx.toFixed(3), e.dy.toFixed(3),
+      e.raraw.toFixed(3), e.decraw.toFixed(3),
+      e.raguide.toFixed(3), e.decguide.toFixed(3),
+      e.radur, e.decdur, e.mass, e.snr.toFixed(2), e.err,
+      escape(e.info), excluded ? '1' : '0',
+    ].join(','));
+  }
+  return lines.join('\r\n');
+}
+
+const triggerDownload = (filename: string, content: string, mime: string) => {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 
 const ToggleChip = ({
   label, active, onClick, disabled, title,
@@ -23,6 +71,7 @@ const ToggleChip = ({
 
 export function GraphToolbar() {
   const log = useLogStore((s) => s.log);
+  const meta = useLogStore((s) => s.meta);
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const traces = useViewStore((s) => s.traces);
   const toggleTrace = useViewStore((s) => s.toggleTrace);
@@ -147,6 +196,32 @@ export function GraphToolbar() {
         title="Recenter Y axis around 0 without changing the current zoom level"
       >
         recenter Y
+      </button>
+      <button
+        className="ml-1 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-40"
+        disabled={!session}
+        onClick={() => {
+          const stem = meta?.name?.replace(/\.[^.]+$/, '') ?? 'log';
+          const fname = `phd2-${stem}-${session?.date ?? ''}`.replace(/[^a-zA-Z0-9-_]+/g, '-');
+          window.dispatchEvent(new CustomEvent('phd-export-png', { detail: { filename: fname } }));
+        }}
+        title="Download a high-resolution PNG snapshot of the current chart"
+      >
+        PNG
+      </button>
+      <button
+        className="ml-1 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-40"
+        disabled={!session}
+        onClick={() => {
+          if (!session) return;
+          const csv = sessionToCsv(session, mask);
+          const stem = meta?.name?.replace(/\.[^.]+$/, '') ?? 'log';
+          const dateTag = session.date.replace(/[^a-zA-Z0-9]+/g, '-');
+          triggerDownload(`${stem}-${dateTag}.csv`, csv, 'text/csv;charset=utf-8');
+        }}
+        title="Download the entries of the current section as a CSV (includes an Excluded column for frames you've removed from the analysis)"
+      >
+        CSV
       </button>
       <div className="ml-auto flex items-center gap-3 text-slate-400">
         <span
