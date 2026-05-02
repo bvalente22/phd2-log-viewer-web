@@ -268,6 +268,7 @@ export function GuideGraph() {
   const coordMode = useViewStore((s) => s.coordMode);
   const device = useViewStore((s) => s.device);
   const scaleLocked = useViewStore((s) => s.scaleLocked);
+  const autoScaleY = useViewStore((s) => s.autoScaleY);
   const excludeRange = useViewStore((s) => s.excludeRange);
   const includeRange = useViewStore((s) => s.includeRange);
 
@@ -291,6 +292,13 @@ export function GuideGraph() {
     if (!scaleLocked) yRangeRef.current = null;
   }, [sectionIdx, scaleLocked]);
 
+  // Toggling auto-Y is an explicit "re-fit Y" action: clear any user-driven
+  // zoom so the new default range (robust percentile vs. raw max) takes
+  // effect immediately.
+  useEffect(() => {
+    yRangeRef.current = null;
+  }, [autoScaleY]);
+
   const data = useMemo(() => {
     if (!log || sectionIdx < 0) return null;
     const sec = log.sections[sectionIdx];
@@ -303,16 +311,45 @@ export function GuideGraph() {
     // entries that will actually be visible (filtered by device when AO is
     // present) and using the active coord mode.
     const visible = hasAo ? session.entries.filter((e) => e.mount === device) : session.entries;
-    let maxErr = 0;
     const k = scaleMode === 'ARCSEC' ? session.pixelScale : 1;
-    for (const e of visible) {
-      const v = valuePair(e, coordMode);
-      const a = Math.abs(v.x * k);
-      const b = Math.abs(v.y * k);
-      if (a > maxErr) maxErr = a;
-      if (b > maxErr) maxErr = b;
+
+    let yMax: number;
+    if (autoScaleY) {
+      // Robust percentile-based extent. Take |x| and |y| of visible entries,
+      // sort them, and use the 99th percentile multiplied by 1.5. This pins
+      // the visible range to where the typical guiding lives (often <2"),
+      // while letting dithers and lost-stars draw off-screen — they're still
+      // there and exclude/include works on them, they just don't dominate
+      // the scale.
+      const absVals: number[] = [];
+      for (const e of visible) {
+        const v = valuePair(e, coordMode);
+        const a = Math.abs(v.x * k);
+        const b = Math.abs(v.y * k);
+        if (Number.isFinite(a)) absVals.push(a);
+        if (Number.isFinite(b)) absVals.push(b);
+      }
+      if (absVals.length === 0) {
+        yMax = 1;
+      } else {
+        absVals.sort((p, q) => p - q);
+        const idx = Math.floor(absVals.length * 0.99);
+        const p99 = absVals[Math.min(idx, absVals.length - 1)];
+        // Floor at 1" / 1px so a near-perfectly-flat session still has a
+        // visible range, and use 1.5× headroom so the trace breathes.
+        yMax = Math.max(p99 * 1.5, 1);
+      }
+    } else {
+      let maxErr = 0;
+      for (const e of visible) {
+        const v = valuePair(e, coordMode);
+        const a = Math.abs(v.x * k);
+        const b = Math.abs(v.y * k);
+        if (a > maxErr) maxErr = a;
+        if (b > maxErr) maxErr = b;
+      }
+      yMax = maxErr > 0 ? maxErr * 1.1 : 1;
     }
-    const yMax = maxErr > 0 ? maxErr * 1.1 : 1;
 
     return {
       session,
@@ -322,24 +359,52 @@ export function GuideGraph() {
       traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo),
       shapes: buildShapes(session, mask),
     };
-  }, [log, sectionIdx, exclusions, scaleMode, traces, coordMode, device]);
+  }, [log, sectionIdx, exclusions, scaleMode, traces, coordMode, device, autoScaleY]);
 
   useEffect(() => {
     dataRef.current = data ? { session: data.session, sessionIdx: data.sessionIdx } : null;
   }, [data]);
 
-  // Custom mouse-wheel: X zoom around cursor.
+  // Custom mouse-wheel: X zoom around cursor. Plotly's `_fullLayout.xaxis.range`
+  // can briefly be a degenerate `[0, 0]` (or similar) on the very first wheel
+  // event after autorange runs, which made the previous code zoom to a
+  // single-point range at x=0. We guard against that by validating the range
+  // before using it, falling back to the cached `xRangeRef` and finally to
+  // the actual session's [first dt, last dt] extent.
   useEffect(() => {
     const div = document.getElementById(plotId) as PlotDiv | null;
     if (!div) return;
     const onWheel = (e: WheelEvent) => {
       const xa = div._fullLayout?.xaxis;
-      if (!xa) return;
+      if (!xa || !xa._length) return;
       e.preventDefault();
+
+      // Pick a valid current X range. Order of preference:
+      //   1. Plotly's live range, if it's a sane finite numeric pair.
+      //   2. Our cached range from prior interactions.
+      //   3. The session's natural extent (first dt → last dt).
+      let x0 = NaN;
+      let x1 = NaN;
+      const liveRange = xa.range;
+      if (Array.isArray(liveRange) && liveRange.length === 2 &&
+          Number.isFinite(liveRange[0]) && Number.isFinite(liveRange[1]) &&
+          liveRange[0] !== liveRange[1]) {
+        x0 = liveRange[0];
+        x1 = liveRange[1];
+      } else if (xRangeRef.current) {
+        [x0, x1] = xRangeRef.current;
+      } else {
+        const ctx = dataRef.current;
+        if (ctx && ctx.session.entries.length > 1) {
+          x0 = ctx.session.entries[0].dt;
+          x1 = ctx.session.entries[ctx.session.entries.length - 1].dt;
+        }
+      }
+      if (!Number.isFinite(x0) || !Number.isFinite(x1) || x0 === x1) return;
+
       const rect = div.getBoundingClientRect();
       const px = e.clientX - rect.left - xa._offset;
       const xFrac = Math.min(1, Math.max(0, px / xa._length));
-      const [x0, x1] = xa.range;
       const cursorX = x0 + xFrac * (x1 - x0);
       const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
       const newSpan = (x1 - x0) * factor;
