@@ -6,6 +6,7 @@ import { CalibrationPlot } from '../components/CalibrationPlot';
 import { GraphToolbar } from '../components/GraphToolbar';
 import { GraphContextMenu } from '../components/ContextMenu';
 import { RecentsPanel } from '../components/RecentsPanel';
+import { RecentsDropdown } from '../components/RecentsDropdown';
 import { useLogStore } from '../state/logStore';
 import { useKeyboardShortcuts } from '../state/useKeyboard';
 
@@ -44,9 +45,11 @@ export function ViewerPage() {
           Open another
         </button>
       </header>
-      <aside className="overflow-y-auto border-r border-slate-800">
-        <SectionList />
-        <RecentsPanel />
+      <aside className="flex flex-col overflow-hidden border-r border-slate-800">
+        <RecentsDropdown />
+        <div className="flex-1 overflow-y-auto">
+          <SectionList />
+        </div>
       </aside>
       <main className="relative flex flex-col overflow-hidden">
         {isGuiding && (

@@ -152,22 +152,33 @@ export function GuideGraph() {
   const traces = useViewStore((s) => s.traces);
   const excludeRange = useViewStore((s) => s.excludeRange);
   const includeRange = useViewStore((s) => s.includeRange);
-  const includeAll = useViewStore((s) => s.includeAll);
+  // Listen for the "reset zoom" event dispatched by the context menu.
+  useEffect(() => {
+    const onReset = () => {
+      void Plotly.relayout(plotId, { 'xaxis.autorange': true, 'yaxis.autorange': true });
+      xRangeRef.current = null;
+      yRangeRef.current = null;
+    };
+    window.addEventListener('phd-reset-zoom', onReset);
+    return () => window.removeEventListener('phd-reset-zoom', onReset);
+  }, [plotId]);
 
   const shiftHeldRef = useRef(false);
+  const ctrlHeldRef = useRef(false);
   useEffect(() => {
-    const onDown = (e: KeyboardEvent) => { if (e.key === 'Shift') shiftHeldRef.current = true; };
-    const onUp = (e: KeyboardEvent) => { if (e.key === 'Shift') shiftHeldRef.current = false; };
-    const onMouse = (e: MouseEvent) => { shiftHeldRef.current = e.shiftKey; };
-    window.addEventListener('keydown', onDown);
-    window.addEventListener('keyup', onUp);
-    window.addEventListener('mousedown', onMouse, true);
-    window.addEventListener('mouseup', onMouse, true);
+    const sync = (e: KeyboardEvent | MouseEvent) => {
+      shiftHeldRef.current = e.shiftKey;
+      ctrlHeldRef.current = e.ctrlKey || ('metaKey' in e && e.metaKey);
+    };
+    window.addEventListener('keydown', sync);
+    window.addEventListener('keyup', sync);
+    window.addEventListener('mousedown', sync, true);
+    window.addEventListener('mouseup', sync, true);
     return () => {
-      window.removeEventListener('keydown', onDown);
-      window.removeEventListener('keyup', onUp);
-      window.removeEventListener('mousedown', onMouse, true);
-      window.removeEventListener('mouseup', onMouse, true);
+      window.removeEventListener('keydown', sync);
+      window.removeEventListener('keyup', sync);
+      window.removeEventListener('mousedown', sync, true);
+      window.removeEventListener('mouseup', sync, true);
     };
   }, []);
 
@@ -191,7 +202,32 @@ export function GuideGraph() {
     const yrange = ev?.range?.y;
     if (!xrange || !yrange) return;
 
-    // Detect drag direction via normalized extent of the selection box.
+    // Modifier-driven include/exclude on the X range.
+    if (shiftHeldRef.current || ctrlHeldRef.current) {
+      const action = shiftHeldRef.current ? includeRange : excludeRange;
+      const [t0, t1] = xrange;
+      const entries = data.session.entries;
+      const lo = Math.min(t0, t1);
+      const hi = Math.max(t0, t1);
+      let firstFrame = -1, lastFrame = -1;
+      for (const e of entries) {
+        if (e.dt >= lo && e.dt <= hi) {
+          if (firstFrame < 0) firstFrame = e.frame;
+          lastFrame = e.frame;
+        }
+      }
+      if (firstFrame < 0) return;
+      action(
+        data.sessionIdx,
+        entries.length,
+        firstFrame,
+        lastFrame,
+        entries.map((e) => e.frame),
+      );
+      return;
+    }
+
+    // No modifier: zoom Y only when the drag was vertical-dominant.
     const xCur = xRangeRef.current;
     const yCur = yRangeRef.current;
     const xSpan = xCur ? Math.abs(xCur[1] - xCur[0]) : Math.abs(xrange[1] - xrange[0]) || 1;
@@ -200,34 +236,11 @@ export function GuideGraph() {
     const dyNorm = Math.abs(yrange[1] - yrange[0]) / ySpan;
 
     if (dyNorm > dxNorm * 1.5) {
-      // Vertical-dominant drag: zoom Y to selected range.
       const lo = Math.min(yrange[0], yrange[1]);
       const hi = Math.max(yrange[0], yrange[1]);
       void Plotly.relayout(plotId, { 'yaxis.range': [lo, hi] });
-      return;
     }
-
-    // Horizontal-dominant drag: include / exclude time range.
-    const [t0, t1] = xrange;
-    const entries = data.session.entries;
-    const lo = Math.min(t0, t1);
-    const hi = Math.max(t0, t1);
-    let firstFrame = -1, lastFrame = -1;
-    for (const e of entries) {
-      if (e.dt >= lo && e.dt <= hi) {
-        if (firstFrame < 0) firstFrame = e.frame;
-        lastFrame = e.frame;
-      }
-    }
-    if (firstFrame < 0) return;
-    const action = shiftHeldRef.current ? includeRange : excludeRange;
-    action(
-      data.sessionIdx,
-      entries.length,
-      firstFrame,
-      lastFrame,
-      entries.map((e) => e.frame),
-    );
+    // else: no-op (drag did nothing)
   }, [data, excludeRange, includeRange, plotId]);
 
   const onRelayout = useCallback((ev: Readonly<Record<string, unknown>>) => {
@@ -244,13 +257,6 @@ export function GuideGraph() {
     if (ev['xaxis.autorange'] === true) xRangeRef.current = null;
     if (ev['yaxis.autorange'] === true) yRangeRef.current = null;
   }, []);
-
-  const onDoubleClick = useCallback(() => {
-    if (!data) return;
-    includeAll(data.sessionIdx, data.session.entries.length);
-    xRangeRef.current = null;
-    yRangeRef.current = null;
-  }, [data, includeAll]);
 
   if (!data) {
     return <div className="flex h-full items-center justify-center text-slate-500">Select a guiding section.</div>;
@@ -308,11 +314,10 @@ export function GuideGraph() {
       divId={plotId}
       data={data.traces}
       layout={layout}
-      config={{ displaylogo: false, responsive: true, scrollZoom: true, doubleClick: 'reset' }}
+      config={{ displayModeBar: false, responsive: true, scrollZoom: true, doubleClick: false }}
       style={{ width: '100%', height: '100%' }}
       useResizeHandler
       onSelected={onSelected as never}
-      onDoubleClick={onDoubleClick}
       onRelayout={onRelayout as never}
     />
   );

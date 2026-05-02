@@ -75,7 +75,7 @@ export function GraphToolbar() {
             </>
           ) : null}
         </span>
-        <span className="text-slate-600">scroll = X zoom · drag↔ = exclude · drag↕ = Y zoom · shift+drag↔ = include · dbl-click = reset</span>
+        <span className="text-slate-600">scroll = X zoom · drag↕ = Y zoom · shift+drag = include · ctrl+drag = exclude · right-click = menu</span>
       </div>
     </div>
   );
