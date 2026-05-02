@@ -100,9 +100,6 @@ function buildAxisShapes(cal: Calibration): Partial<Shape>[] {
   return shapes;
 }
 
-const fmt = (n: number, d = 2) => Number.isFinite(n) ? n.toFixed(d) : '—';
-const fmtAngle = (rad: number) => `${fmt((rad * 180) / Math.PI, 1)}°`;
-
 export function CalibrationPlot() {
   const log = useLogStore((s) => s.log);
   const sectionIdx = useLogStore((s) => s.selectedSection);
@@ -149,40 +146,17 @@ export function CalibrationPlot() {
     dragmode: 'pan',
   };
 
-  // The parser keeps the calibration header lines as raw text; pull rate/angle
-  // out of them on the fly. Lines look like:
-  //   Mount = "Name", xAngle = 0.0, xRate = 5.0, yAngle = 1.5708, yRate = 5.0
-  const mountLine = data.cal.hdr.find((l) => l.startsWith('Mount = ') || l.startsWith('AO = ')) ?? '';
-  const pullAfter = (key: string): number | null => {
-    const i = mountLine.indexOf(key);
-    if (i < 0) return null;
-    const tail = mountLine.slice(i + key.length);
-    const v = parseFloat(tail);
-    return Number.isFinite(v) ? v : null;
-  };
-  const xRate = pullAfter(', xRate = ');
-  const yRate = pullAfter(', yRate = ');
-  const xAngle = pullAfter(', xAngle = ');
-  const yAngle = pullAfter(', yAngle = ');
+  // The full set of calibration metrics lives in the stats panel below the
+  // chart (rates and angles are computed from the entries — they aren't in
+  // the calibration header itself). The bar above the plot just shows the
+  // basic identification: device + step count + date.
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-800 px-3 py-1 text-xs text-slate-400">
-        <span>Calibration · {data.cal.device}</span>
-        <span>{data.cal.entries.length} steps</span>
-        <span className="text-slate-500">{data.cal.date}</span>
-        {xRate !== null && (
-          <span>xRate <span className="font-mono text-slate-200">{fmt(xRate)}</span> px/s</span>
-        )}
-        {yRate !== null && (
-          <span>yRate <span className="font-mono text-slate-200">{fmt(yRate)}</span> px/s</span>
-        )}
-        {xAngle !== null && (
-          <span>xAngle <span className="font-mono text-slate-200">{fmtAngle(xAngle)}</span></span>
-        )}
-        {yAngle !== null && (
-          <span>yAngle <span className="font-mono text-slate-200">{fmtAngle(yAngle)}</span></span>
-        )}
+        <span title="Whether this calibration was performed for the Mount or an AO unit">Calibration · {data.cal.device}</span>
+        <span title="Total calibration steps recorded">{data.cal.entries.length} steps</span>
+        <span className="text-slate-500" title="Calibration start time as recorded in the log">{data.cal.date}</span>
       </div>
       <div className="flex-1">
         <Plot
