@@ -153,7 +153,7 @@ export function GuideGraph() {
   const xRangeRef = useRef<[number, number] | null>(null);
   const shiftHeldRef = useRef(false);
   const ctrlHeldRef = useRef(false);
-  const dragModeRef = useRef<'zoom' | 'select'>('zoom');
+  const dragModeRef = useRef<'select' | false>(false);
 
   // Reset the saved zoom when the section changes.
   useEffect(() => {
@@ -161,22 +161,22 @@ export function GuideGraph() {
     yRangeRef.current = null;
   }, [sectionIdx]);
 
-  // Track Shift/Ctrl, and swap Plotly dragmode while one is held so that
-  // shift/ctrl + drag does horizontal selection (for include/exclude) and
-  // plain drag stays in zoom mode (for Y zoom).
+  // Track Shift/Ctrl, and swap Plotly dragmode so shift/ctrl + drag does
+  // horizontal selection (for include/exclude). Plain drag uses our custom
+  // continuous Y-zoom handler below; Plotly dragmode is disabled then.
   useEffect(() => {
-    const setMode = (next: 'zoom' | 'select') => {
+    const setMode = (next: 'select' | false) => {
       if (dragModeRef.current === next) return;
       dragModeRef.current = next;
       const patch = next === 'select'
         ? { dragmode: 'select', selectdirection: 'h' }
-        : { dragmode: 'zoom' };
+        : { dragmode: false };
       void Plotly.relayout(plotId, patch);
     };
     const sync = (e: KeyboardEvent | MouseEvent) => {
       shiftHeldRef.current = e.shiftKey;
       ctrlHeldRef.current = e.ctrlKey || ('metaKey' in e && e.metaKey);
-      setMode(shiftHeldRef.current || ctrlHeldRef.current ? 'select' : 'zoom');
+      setMode(shiftHeldRef.current || ctrlHeldRef.current ? 'select' : false);
     };
     window.addEventListener('keydown', sync);
     window.addEventListener('keyup', sync);
@@ -188,6 +188,87 @@ export function GuideGraph() {
       window.removeEventListener('mousedown', sync, true);
       window.removeEventListener('mouseup', sync, true);
     };
+  }, [plotId]);
+
+  // Custom continuous Y zoom: drag up = zoom in, drag down = zoom out, anchored
+  // on the data Y where the drag started. Active only when no modifier is held.
+  useEffect(() => {
+    const div = document.getElementById(plotId) as
+      | (HTMLDivElement & { _fullLayout?: { yaxis?: { _offset: number; _length: number; range: [number, number] } } })
+      | null;
+    if (!div) return;
+
+    let dragging = false;
+    let startClientY = 0;
+    let startRange: [number, number] = [0, 0];
+    let anchorY = 0;
+    let anchorFrac = 0.5;
+
+    const isInPlotArea = (e: MouseEvent): boolean => {
+      const t = e.target as HTMLElement | null;
+      if (!t) return false;
+      // The Plotly background rect that catches drags lives under .nsewdrag.
+      return !!t.closest('.nsewdrag') || !!t.closest('.bglayer');
+    };
+
+    const onDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      if (e.shiftKey || e.ctrlKey || e.metaKey) return;
+      const ya = div._fullLayout?.yaxis;
+      if (!ya) return;
+      if (!isInPlotArea(e)) return;
+      const rect = div.getBoundingClientRect();
+      const py = e.clientY - rect.top - ya._offset;
+      const frac = Math.min(1, Math.max(0, 1 - py / ya._length));
+      const [y0, y1] = ya.range;
+      anchorY = y0 + frac * (y1 - y0);
+      anchorFrac = frac;
+      startClientY = e.clientY;
+      startRange = [y0, y1];
+      dragging = true;
+      e.preventDefault();
+    };
+
+    const onMove = (e: MouseEvent) => {
+      if (!dragging) return;
+      e.preventDefault();
+      const dy = e.clientY - startClientY;
+      // Drag up (negative dy) = zoom in (factor < 1). Exponential feels natural.
+      const factor = Math.exp(dy / 200);
+      const oldSpan = startRange[1] - startRange[0];
+      const newSpan = oldSpan * factor;
+      const newY0 = anchorY - anchorFrac * newSpan;
+      const newY1 = newY0 + newSpan;
+      void Plotly.relayout(plotId, { 'yaxis.range': [newY0, newY1] });
+      yRangeRef.current = [newY0, newY1];
+    };
+
+    const onUp = () => { dragging = false; };
+
+    div.addEventListener('mousedown', onDown);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      div.removeEventListener('mousedown', onDown);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [plotId]);
+
+  // Recenter Y around 0 without changing zoom level.
+  useEffect(() => {
+    const onRecenter = () => {
+      const div = document.getElementById(plotId) as
+        | (HTMLDivElement & { _fullLayout?: { yaxis?: { range: [number, number] } } })
+        | null;
+      const r = div?._fullLayout?.yaxis?.range;
+      if (!r) return;
+      const half = (r[1] - r[0]) / 2;
+      void Plotly.relayout(plotId, { 'yaxis.range': [-half, half] });
+      yRangeRef.current = [-half, half];
+    };
+    window.addEventListener('phd-recenter-y', onRecenter);
+    return () => window.removeEventListener('phd-recenter-y', onRecenter);
   }, [plotId]);
 
   // Custom mouse-wheel handler: zoom X around the cursor position. Plotly's
@@ -334,7 +415,7 @@ export function GuideGraph() {
     shapes: data.shapes,
     showlegend: true,
     legend: { orientation: 'h', y: 1.1 },
-    dragmode: dragModeRef.current,
+    dragmode: dragModeRef.current === 'select' ? 'select' : false,
     selectdirection: 'h',
     barmode: 'overlay',
   };
