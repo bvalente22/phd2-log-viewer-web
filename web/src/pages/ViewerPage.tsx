@@ -40,7 +40,7 @@ export function ViewerPage() {
   const isCalibration = sec?.type === 'CALIBRATION';
 
   return (
-    <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[auto_1fr_auto]">
+    <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[auto_1fr]">
       <header className="col-span-2 flex items-center justify-between border-b border-slate-800 px-4 py-2">
         <h1 className="text-sm font-medium">
           PHD2 Log Viewer
@@ -58,21 +58,28 @@ export function ViewerPage() {
           Open another
         </button>
       </header>
+      {/* Sidebar spans the full content height so its scrollable section list
+          extends to the bottom of the page, independent of the stats footer. */}
       <aside className="flex flex-col overflow-hidden border-r border-slate-800">
         <RecentsDropdown />
         <div className="flex-1 overflow-y-auto">
           <SectionList />
         </div>
       </aside>
+      {/* Main column owns the toolbar, chart, and stats stack. The stats
+          appear directly under the graph area (not under the sidebar). */}
       <main className="relative flex flex-col overflow-hidden">
         {isGuiding && (
           <>
             <GraphToolbar />
             <GraphContextMenu>
-              <div className="flex-1">
+              <div className="flex-1 overflow-hidden">
                 {graphMode === 'TIME' ? <GuideGraph /> : <ScatterView />}
               </div>
             </GraphContextMenu>
+            <div className="border-t border-slate-800 bg-slate-900/40">
+              <StatsGrid />
+            </div>
           </>
         )}
         {isCalibration && <CalibrationPlot />}
@@ -82,14 +89,6 @@ export function ViewerPage() {
           </div>
         )}
       </main>
-      <footer className="col-span-2 border-t border-slate-800 bg-slate-900/40">
-        {isGuiding && <StatsGrid />}
-        {isCalibration && (
-          <div className="px-4 py-2 text-sm text-slate-400">
-            Calibration stats coming in v2.
-          </div>
-        )}
-      </footer>
     </div>
   );
 }
