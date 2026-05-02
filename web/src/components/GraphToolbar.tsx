@@ -3,12 +3,15 @@ import { useLogStore } from '../state/logStore';
 import type { TraceVisibility } from '../state/viewStore';
 
 const ToggleChip = ({
-  label, active, onClick,
-}: { label: string; active: boolean; onClick: () => void }) => (
+  label, active, onClick, disabled,
+}: { label: string; active: boolean; onClick: () => void; disabled?: boolean }) => (
   <button
     onClick={onClick}
+    disabled={disabled}
     className={`rounded px-2 py-0.5 text-xs transition-colors ${
-      active
+      disabled
+        ? 'cursor-not-allowed bg-slate-900 text-slate-600'
+        : active
         ? 'bg-sky-700 text-white hover:bg-sky-600'
         : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
     }`}
@@ -25,6 +28,8 @@ export function GraphToolbar() {
   const exclusions = useViewStore((s) => s.exclusions);
   const scaleMode = useViewStore((s) => s.scaleMode);
   const setScaleMode = useViewStore((s) => s.setScaleMode);
+  const graphMode = useViewStore((s) => s.graphMode);
+  const setGraphMode = useViewStore((s) => s.setGraphMode);
 
   const sec = log && sectionIdx >= 0 ? log.sections[sectionIdx] : null;
   const session = sec && sec.type === 'GUIDING' ? log!.sessions[sec.idx] : null;
@@ -44,13 +49,25 @@ export function GraphToolbar() {
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-1 text-xs">
-      <span className="mr-1 text-slate-500">show:</span>
+      <span className="mr-1 text-slate-500">view:</span>
+      <ToggleChip
+        label="time"
+        active={graphMode === 'TIME'}
+        onClick={() => setGraphMode('TIME')}
+      />
+      <ToggleChip
+        label="scatter"
+        active={graphMode === 'SCATTER'}
+        onClick={() => setGraphMode('SCATTER')}
+      />
+      <span className="ml-3 mr-1 text-slate-500">show:</span>
       {items.map((it) => (
         <ToggleChip
           key={it.key}
           label={it.label}
           active={traces[it.key]}
           onClick={() => toggleTrace(it.key)}
+          disabled={graphMode === 'SCATTER'}
         />
       ))}
       <span className="ml-3 mr-1 text-slate-500">scale:</span>
