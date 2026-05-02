@@ -14,9 +14,14 @@ const DITHER_SETTLE_FRAMES = 5;
  *     settling").
  *   - As a fallback (newer logs may only emit DITHER), also exclude the
  *     N entries immediately following any DITHER event.
+ *
+ * The result is always OR-merged with the caller's existing mask so picking
+ * this menu item adds to whatever the user has already excluded by hand.
  */
-const computeSettlingMask = (s: GuideSession): Uint8Array => {
-  const m = new Uint8Array(s.entries.length);
+const computeSettlingMask = (s: GuideSession, base?: Uint8Array): Uint8Array => {
+  const m = base && base.length === s.entries.length
+    ? new Uint8Array(base)
+    : new Uint8Array(s.entries.length);
 
   let inSettle = false;
   let startEntryIdx = 0;
@@ -49,6 +54,7 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
   const includeAll = useViewStore((s) => s.includeAll);
   const excludeAll = useViewStore((s) => s.excludeAll);
   const setMask = useViewStore((s) => s.setMask);
+  const exclusions = useViewStore((s) => s.exclusions);
 
   const sec = log && sectionIdx >= 0 ? log.sections[sectionIdx] : null;
   const session = sec && sec.type === 'GUIDING' ? log!.sessions[sec.idx] : null;
@@ -74,7 +80,12 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
           </Item>
           <Item
             disabled={!session}
-            onSelect={() => session && setMask(sessionIdx, computeSettlingMask(session))}
+            onSelect={() => {
+              if (!session) return;
+              // OR with whatever the user has already excluded by hand.
+              const current = exclusions.get(sessionIdx);
+              setMask(sessionIdx, computeSettlingMask(session, current));
+            }}
           >
             Exclude dithers / settling
           </Item>
