@@ -4,6 +4,7 @@ import { StatsGrid } from '../components/StatsGrid';
 import { GuideGraph } from '../components/GuideGraph';
 import { ScatterView } from '../components/ScatterView';
 import { CalibrationPlot } from '../components/CalibrationPlot';
+import { CalibrationStats } from '../components/CalibrationStats';
 import { GraphToolbar } from '../components/GraphToolbar';
 import { GraphContextMenu } from '../components/ContextMenu';
 import { RecentsPanel } from '../components/RecentsPanel';
@@ -83,7 +84,16 @@ export function ViewerPage() {
             </div>
           </>
         )}
-        {isCalibration && <CalibrationPlot />}
+        {isCalibration && (
+          <>
+            <div className="flex-1 overflow-hidden">
+              <CalibrationPlot />
+            </div>
+            <div className="border-t border-slate-800 bg-slate-900/40">
+              <CalibrationStats />
+            </div>
+          </>
+        )}
         {!sec && (
           <div className="flex h-full items-center justify-center text-slate-500">
             Select a section.
