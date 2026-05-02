@@ -64,6 +64,13 @@ export function GraphToolbar() {
         active={scaleMode === 'PIXELS'}
         onClick={() => setScaleMode('PIXELS')}
       />
+      <button
+        className="ml-3 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700"
+        onClick={() => window.dispatchEvent(new CustomEvent('phd-recenter-y'))}
+        title="Recenter Y axis around 0 without changing zoom"
+      >
+        recenter Y
+      </button>
       <div className="ml-auto flex items-center gap-3 text-slate-400">
         <span>
           {totalCount > 0 ? (
@@ -75,7 +82,7 @@ export function GraphToolbar() {
             </>
           ) : null}
         </span>
-        <span className="text-slate-600">scroll = X zoom · drag↕ = Y zoom · shift+drag = include · ctrl+drag = exclude · right-click = menu</span>
+        <span className="text-slate-600">scroll = X zoom · drag↕ = Y zoom · shift+drag = include · ctrl+drag = exclude</span>
       </div>
     </div>
   );
