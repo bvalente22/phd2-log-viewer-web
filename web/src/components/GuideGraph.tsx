@@ -365,57 +365,12 @@ export function GuideGraph() {
     dataRef.current = data ? { session: data.session, sessionIdx: data.sessionIdx } : null;
   }, [data]);
 
-  // Custom mouse-wheel: X zoom around cursor. Plotly's `_fullLayout.xaxis.range`
-  // can briefly be a degenerate `[0, 0]` (or similar) on the very first wheel
-  // event after autorange runs, which made the previous code zoom to a
-  // single-point range at x=0. We guard against that by validating the range
-  // before using it, falling back to the cached `xRangeRef` and finally to
-  // the actual session's [first dt, last dt] extent.
-  useEffect(() => {
-    const div = document.getElementById(plotId) as PlotDiv | null;
-    if (!div) return;
-    const onWheel = (e: WheelEvent) => {
-      const xa = div._fullLayout?.xaxis;
-      if (!xa || !xa._length) return;
-      e.preventDefault();
-
-      // Pick a valid current X range. Order of preference:
-      //   1. Plotly's live range, if it's a sane finite numeric pair.
-      //   2. Our cached range from prior interactions.
-      //   3. The session's natural extent (first dt → last dt).
-      let x0 = NaN;
-      let x1 = NaN;
-      const liveRange = xa.range;
-      if (Array.isArray(liveRange) && liveRange.length === 2 &&
-          Number.isFinite(liveRange[0]) && Number.isFinite(liveRange[1]) &&
-          liveRange[0] !== liveRange[1]) {
-        x0 = liveRange[0];
-        x1 = liveRange[1];
-      } else if (xRangeRef.current) {
-        [x0, x1] = xRangeRef.current;
-      } else {
-        const ctx = dataRef.current;
-        if (ctx && ctx.session.entries.length > 1) {
-          x0 = ctx.session.entries[0].dt;
-          x1 = ctx.session.entries[ctx.session.entries.length - 1].dt;
-        }
-      }
-      if (!Number.isFinite(x0) || !Number.isFinite(x1) || x0 === x1) return;
-
-      const rect = div.getBoundingClientRect();
-      const px = e.clientX - rect.left - xa._offset;
-      const xFrac = Math.min(1, Math.max(0, px / xa._length));
-      const cursorX = x0 + xFrac * (x1 - x0);
-      const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
-      const newSpan = (x1 - x0) * factor;
-      const newX0 = cursorX - xFrac * newSpan;
-      const newX1 = newX0 + newSpan;
-      void Plotly.relayout(plotId, { 'xaxis.range': [newX0, newX1] });
-      xRangeRef.current = [newX0, newX1];
-    };
-    div.addEventListener('wheel', onWheel, { passive: false });
-    return () => div.removeEventListener('wheel', onWheel);
-  }, [plotId]);
+  // Mouse-wheel X zoom is handled by Plotly's built-in scrollZoom (config),
+  // constrained to the X axis by setting yaxis.fixedrange:true on the layout.
+  // Plotly already does cursor-anchored zoom correctly across all browsers,
+  // so we don't roll our own — earlier custom-handler attempts broke on the
+  // first scroll because `_fullLayout.xaxis._offset` could be transiently
+  // missing right after autorange completed.
 
   // Reset zoom event from context menu.
   useEffect(() => {
@@ -653,12 +608,19 @@ export function GuideGraph() {
     font: { color: '#cbd5e1', size: 11 },
     xaxis: {
       title: { text: 'time (s)' }, gridcolor: '#1e293b', zerolinecolor: '#334155',
-      fixedrange: true,
+      // X is unfixed so Plotly's built-in scrollZoom (config below) can zoom
+      // it via the wheel; Plotly handles cursor-anchored zoom correctly. Drag
+      // gestures are owned by our custom handlers (Plotly dragmode:false),
+      // so leaving fixedrange:false here does not enable any unwanted drag.
+      fixedrange: false,
       ...(xRangeRef.current ? { range: xRangeRef.current } : { autorange: true }),
     },
     yaxis: {
       title: { text: yTitle }, gridcolor: '#1e293b',
       zerolinecolor: '#64748b', zerolinewidth: 1,
+      // Y stays fixed so scrollZoom only ever affects X. Our drag handler
+      // calls Plotly.relayout({yaxis.range:...}) directly, which bypasses
+      // fixedrange.
       fixedrange: true,
       ...(yRangeRef.current
         ? { range: yRangeRef.current }
@@ -677,7 +639,7 @@ export function GuideGraph() {
         divId={plotId}
         data={data.traces}
         layout={layout}
-        config={{ displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false }}
+        config={{ displayModeBar: false, responsive: true, scrollZoom: true, doubleClick: false }}
         style={{ width: '100%', height: '100%' }}
         useResizeHandler
         onRelayout={onRelayout as never}
