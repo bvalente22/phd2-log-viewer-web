@@ -23,7 +23,12 @@ export function ViewerPage() {
   if (!log) {
     return (
       <div className="mx-auto flex h-full max-w-2xl flex-col justify-center gap-4 p-6">
-        <h1 className="text-2xl font-semibold">PHD2 Log Viewer</h1>
+        <div>
+          <h1 className="text-2xl font-semibold">PHD2 Log Viewer</h1>
+          <p className="mt-1 text-xs text-slate-500" title={`build ${__APP_GITHASH__}`}>
+            v{__APP_VERSION__} · {__APP_GITHASH__}
+          </p>
+        </div>
         <DropZone />
         <RecentsPanel />
       </div>
@@ -38,8 +43,13 @@ export function ViewerPage() {
     <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[auto_1fr_auto]">
       <header className="col-span-2 flex items-center justify-between border-b border-slate-800 px-4 py-2">
         <h1 className="text-sm font-medium">
-          PHD2 Log Viewer — <span className="text-slate-400">{meta?.name}</span>
-          <span className="ml-2 text-xs text-slate-500">v{log.phdVersion}</span>
+          PHD2 Log Viewer
+          <span className="ml-2 text-xs text-slate-500" title={`build ${__APP_GITHASH__}`}>
+            v{__APP_VERSION__} · {__APP_GITHASH__}
+          </span>
+          <span className="mx-2 text-slate-700">|</span>
+          <span className="text-slate-400">{meta?.name}</span>
+          <span className="ml-2 text-xs text-slate-500">PHD2 v{log.phdVersion}</span>
         </h1>
         <button
           className="text-xs text-slate-400 hover:text-slate-200"

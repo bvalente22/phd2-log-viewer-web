@@ -1,0 +1,28 @@
+#!/bin/sh
+# Auto-bump the patch version in package.json on every commit so each commit
+# carries a unique, monotonically-increasing version number that the UI can
+# display (see vite.config.ts -> __APP_VERSION__).
+#
+# Skip when:
+#  - this commit is *itself* the version bump (avoids infinite recursion when
+#    `npm version` writes package.json and we bump again)
+#  - package.json was hand-edited and is already staged for this commit
+#  - the commit is on a detached HEAD or during a rebase / cherry-pick
+set -e
+
+# Bail during in-progress rebases / merges to avoid surprising history rewrites.
+if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ] || [ -f .git/MERGE_HEAD ] || [ -f .git/CHERRY_PICK_HEAD ]; then
+  exit 0
+fi
+
+# If package.json is already part of the staged diff, the developer is
+# explicitly versioning this commit — leave it alone.
+if git diff --cached --name-only | grep -qx package.json; then
+  exit 0
+fi
+
+# Bump patch version without creating a tag, without committing.
+npm version patch --no-git-tag-version --silent >/dev/null
+
+# Re-stage so the bump is part of the same commit.
+git add package.json
