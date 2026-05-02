@@ -1,0 +1,17 @@
+{
+  "phdVersion": "2.6.11",
+  "sectionCount": 2,
+  "sessions": [
+    {
+      "entryCount": 5,
+      "infoCount": 2,
+      "pixelScale": 1.5,
+      "duration": 5,
+      "mountValid": true,
+      "guidingEnabled": true
+    }
+  ],
+  "calibrations": [
+    { "device": "MOUNT", "entryCount": 5 }
+  ]
+}

@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+playwright-report
+test-results
+.vite
+*.tsbuildinfo
+src/**/*.js
+src/**/*.d.ts
+vite.config.js
+vite.config.d.ts
