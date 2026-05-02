@@ -407,6 +407,26 @@ export function GuideGraph() {
     return () => window.removeEventListener('phd-recenter-y', onRecenter);
   }, [plotId]);
 
+  // PNG export. Plotly's downloadImage triggers a browser save with the
+  // current chart rendered at the requested size; we use 2x the visible
+  // dimensions for a high-DPI screenshot.
+  useEffect(() => {
+    const onExport = (ev: Event) => {
+      const div = document.getElementById(plotId) as PlotDiv | null;
+      if (!div) return;
+      const detail = (ev as CustomEvent<{ filename?: string }>).detail || {};
+      const baseName = detail.filename || 'phd2-log';
+      void Plotly.downloadImage(div, {
+        format: 'png',
+        width: (div.clientWidth || 1200) * 2,
+        height: (div.clientHeight || 600) * 2,
+        filename: baseName,
+      });
+    };
+    window.addEventListener('phd-export-png', onExport);
+    return () => window.removeEventListener('phd-export-png', onExport);
+  }, [plotId]);
+
   // All custom drag gestures (Y zoom, include/exclude). Plotly's dragmode is
   // disabled — we own the drag entirely so there's no race between modifier
   // detection and Plotly's internal state.
@@ -627,6 +647,15 @@ export function GuideGraph() {
       // first wheel event can't anchor on a stale 0 offset.
       fixedrange: false,
       range: xRangeRef.current ?? data.xExtent,
+      // Compact range-slider thumbnail beneath the chart shows the full
+      // session at a glance and lets the user drag to scrub a window.
+      rangeslider: {
+        visible: true,
+        thickness: 0.06,
+        bgcolor: '#020617',
+        bordercolor: '#1e293b',
+        borderwidth: 1,
+      },
     },
     yaxis: {
       title: { text: yTitle }, gridcolor: '#1e293b',
