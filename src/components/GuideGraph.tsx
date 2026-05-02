@@ -337,10 +337,15 @@ export function GuideGraph() {
       return !!t?.closest('.nsewdrag, .bglayer, .draglayer');
     };
 
-    type DragKind = 'Y_ZOOM' | 'X_INCLUDE' | 'X_EXCLUDE' | null;
+    // Plain drag combines two gestures simultaneously: vertical motion zooms
+    // Y around the data point under the initial cursor, horizontal motion
+    // pans X by the equivalent data delta. Either component can be zero.
+    type DragKind = 'PAN_ZOOM' | 'X_INCLUDE' | 'X_EXCLUDE' | null;
     let kind: DragKind = null;
+    let startClientX = 0;
     let startClientY = 0;
     let startYRange: [number, number] = [0, 0];
+    let startXRange: [number, number] = [0, 0];
     let yAnchor = 0;
     let yAnchorFrac = 0.5;
     let xStartFrac = 0;
@@ -368,14 +373,16 @@ export function GuideGraph() {
         return;
       }
 
-      kind = 'Y_ZOOM';
+      kind = 'PAN_ZOOM';
       const py = e.clientY - rect.top - ya._offset;
       const frac = Math.min(1, Math.max(0, 1 - py / ya._length));
       const [y0, y1] = ya.range;
       yAnchor = y0 + frac * (y1 - y0);
       yAnchorFrac = frac;
+      startClientX = e.clientX;
       startClientY = e.clientY;
       startYRange = [y0, y1];
+      startXRange = [...xa.range] as [number, number];
       e.preventDefault();
     };
 
@@ -384,15 +391,28 @@ export function GuideGraph() {
       const xa = div._fullLayout?.xaxis;
       if (!xa) return;
 
-      if (kind === 'Y_ZOOM') {
+      if (kind === 'PAN_ZOOM') {
+        // Vertical component -> Y zoom anchored on initial data Y.
         const dy = e.clientY - startClientY;
         const factor = Math.exp(dy / 200);
-        const oldSpan = startYRange[1] - startYRange[0];
-        const newSpan = oldSpan * factor;
-        const newY0 = yAnchor - yAnchorFrac * newSpan;
-        const newY1 = newY0 + newSpan;
-        void Plotly.relayout(plotId, { 'yaxis.range': [newY0, newY1] });
+        const oldYSpan = startYRange[1] - startYRange[0];
+        const newYSpan = oldYSpan * factor;
+        const newY0 = yAnchor - yAnchorFrac * newYSpan;
+        const newY1 = newY0 + newYSpan;
+        // Horizontal component -> X pan: shift the visible range so the data
+        // point under the initial cursor follows the mouse.
+        const dx = e.clientX - startClientX;
+        const xSpan = startXRange[1] - startXRange[0];
+        const dxData = (dx / xa._length) * xSpan;
+        const newX0 = startXRange[0] - dxData;
+        const newX1 = startXRange[1] - dxData;
+        const patch: Record<string, [number, number]> = {
+          'yaxis.range': [newY0, newY1],
+          'xaxis.range': [newX0, newX1],
+        };
+        void Plotly.relayout(plotId, patch);
         yRangeRef.current = [newY0, newY1];
+        xRangeRef.current = [newX0, newX1];
         return;
       }
 
@@ -410,7 +430,7 @@ export function GuideGraph() {
       if (!kind) return;
       const xa = div._fullLayout?.xaxis;
 
-      if (kind !== 'Y_ZOOM' && xa) {
+      if (kind !== 'PAN_ZOOM' && xa) {
         overlay.style.display = 'none';
         const rect = div.getBoundingClientRect();
         const endPx = e.clientX - rect.left - xa._offset;
