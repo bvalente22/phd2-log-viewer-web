@@ -306,6 +306,15 @@ export function GuideGraph() {
     const session = log.sessions[sec.idx];
     const mask = exclusions.get(sec.idx);
     const hasAo = session.entries.some((e) => e.mount === 'AO');
+    // Compute the natural X extent from the entries themselves rather than
+    // relying on Plotly's autorange. We pass this as the layout's xaxis.range
+    // so Plotly always has an explicit, stable X range to scroll-zoom from.
+    // (When the xaxis is in autorange mode, Plotly's first scrollZoom event
+    // can occasionally anchor the zoom on x=0 rather than the cursor — the
+    // bug that "jumps to the start of the data".)
+    const xExtent: [number, number] = session.entries.length >= 2
+      ? [session.entries[0].dt, session.entries[session.entries.length - 1].dt]
+      : [0, 1];
 
     // Compute initial Y range so we know mass/snr scaling. We sample only the
     // entries that will actually be visible (filtered by device when AO is
@@ -356,6 +365,7 @@ export function GuideGraph() {
       sessionIdx: sec.idx,
       hasAo,
       yMax,
+      xExtent,
       traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo),
       shapes: buildShapes(session, mask),
     };
@@ -612,8 +622,11 @@ export function GuideGraph() {
       // it via the wheel; Plotly handles cursor-anchored zoom correctly. Drag
       // gestures are owned by our custom handlers (Plotly dragmode:false),
       // so leaving fixedrange:false here does not enable any unwanted drag.
+      // We always provide an *explicit* range (data extent on first render,
+      // user's zoom thereafter) so Plotly never sees autorange:true and the
+      // first wheel event can't anchor on a stale 0 offset.
       fixedrange: false,
-      ...(xRangeRef.current ? { range: xRangeRef.current } : { autorange: true }),
+      range: xRangeRef.current ?? data.xExtent,
     },
     yaxis: {
       title: { text: yTitle }, gridcolor: '#1e293b',
