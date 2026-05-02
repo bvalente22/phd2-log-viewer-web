@@ -46,11 +46,13 @@ function buildTraces(cal: Calibration): Data[] {
       y: items.map((e) => e.dy),
       type: 'scatter',
       mode: 'text+markers',
-      name: dir,
+      name: `${dir} (${items.length})`,
       marker: { color: COLORS[dir], size: 10, line: { color: '#0f172a', width: 1 } },
       text: items.map((e) => `${LETTER[dir]}${e.step}`),
       textposition: 'top right',
       textfont: { color: COLORS[dir], size: 10 },
+      customdata: items.map((e) => [dir, e.step]),
+      hovertemplate: '%{customdata[0]} step %{customdata[1]}<br>dx=%{x:.3f} · dy=%{y:.3f}<extra></extra>',
     } as Data);
   }
   return traces;
@@ -76,7 +78,7 @@ function buildAxisShapes(cal: Calibration): Partial<Shape>[] {
       line: { color: DEC_COLOR, width: 2 },
     });
   }
-  // Reference circles at 5,10,15,20,25 px
+  // Reference circles at 5,10,15,20,25 px (matches LogViewFrame.cpp:1389-1397).
   for (const r of [5, 10, 15, 20, 25]) {
     shapes.push({
       type: 'circle', xref: 'x', yref: 'y',
@@ -84,8 +86,22 @@ function buildAxisShapes(cal: Calibration): Partial<Shape>[] {
       line: { color: 'rgba(148,163,184,0.25)', width: 1, dash: 'dot' },
     });
   }
+  // Origin crosshair (matches LogViewFrame.cpp:1377-1379).
+  shapes.push({
+    type: 'line', xref: 'x', yref: 'y',
+    x0: -1.5, y0: 0, x1: 1.5, y1: 0,
+    line: { color: '#94a3b8', width: 1.5 },
+  });
+  shapes.push({
+    type: 'line', xref: 'x', yref: 'y',
+    x0: 0, y0: -1.5, x1: 0, y1: 1.5,
+    line: { color: '#94a3b8', width: 1.5 },
+  });
   return shapes;
 }
+
+const fmt = (n: number, d = 2) => Number.isFinite(n) ? n.toFixed(d) : '—';
+const fmtAngle = (rad: number) => `${fmt((rad * 180) / Math.PI, 1)}°`;
 
 export function CalibrationPlot() {
   const log = useLogStore((s) => s.log);
@@ -133,12 +149,40 @@ export function CalibrationPlot() {
     dragmode: 'pan',
   };
 
+  // The parser keeps the calibration header lines as raw text; pull rate/angle
+  // out of them on the fly. Lines look like:
+  //   Mount = "Name", xAngle = 0.0, xRate = 5.0, yAngle = 1.5708, yRate = 5.0
+  const mountLine = data.cal.hdr.find((l) => l.startsWith('Mount = ') || l.startsWith('AO = ')) ?? '';
+  const pullAfter = (key: string): number | null => {
+    const i = mountLine.indexOf(key);
+    if (i < 0) return null;
+    const tail = mountLine.slice(i + key.length);
+    const v = parseFloat(tail);
+    return Number.isFinite(v) ? v : null;
+  };
+  const xRate = pullAfter(', xRate = ');
+  const yRate = pullAfter(', yRate = ');
+  const xAngle = pullAfter(', xAngle = ');
+  const yAngle = pullAfter(', yAngle = ');
+
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 border-b border-slate-800 px-3 py-1 text-xs text-slate-400">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-800 px-3 py-1 text-xs text-slate-400">
         <span>Calibration · {data.cal.device}</span>
         <span>{data.cal.entries.length} steps</span>
         <span className="text-slate-500">{data.cal.date}</span>
+        {xRate !== null && (
+          <span>xRate <span className="font-mono text-slate-200">{fmt(xRate)}</span> px/s</span>
+        )}
+        {yRate !== null && (
+          <span>yRate <span className="font-mono text-slate-200">{fmt(yRate)}</span> px/s</span>
+        )}
+        {xAngle !== null && (
+          <span>xAngle <span className="font-mono text-slate-200">{fmtAngle(xAngle)}</span></span>
+        )}
+        {yAngle !== null && (
+          <span>yAngle <span className="font-mono text-slate-200">{fmtAngle(yAngle)}</span></span>
+        )}
       </div>
       <div className="flex-1">
         <Plot

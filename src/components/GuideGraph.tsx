@@ -31,25 +31,49 @@ interface PlotDiv extends HTMLDivElement {
   };
 }
 
+/**
+ * Pull the (x, y) value pair to plot for a given entry.
+ *
+ * Mirrors the desktop app's coord switch in `LogViewFrame.cpp:1731-1750`:
+ *   val_x = radec ? raraw : dx
+ *   val_y = radec ? -decraw : dy
+ * The Dec negation is what makes "north up" on the chart while keeping
+ * the raw PHD2 values in the log unchanged.
+ */
+const valuePair = (
+  e: GuideSession['entries'][number],
+  coordMode: ReturnType<typeof useViewStore.getState>['coordMode'],
+): { x: number; y: number } => {
+  if (coordMode === 'RA_DEC') return { x: e.raraw, y: -e.decraw };
+  return { x: e.dx, y: e.dy };
+};
+
 function buildTraces(
   s: GuideSession,
   traces: Traces,
   scaleMode: ScaleMode,
   yMax: number,
+  coordMode: ReturnType<typeof useViewStore.getState>['coordMode'],
+  device: ReturnType<typeof useViewStore.getState>['device'],
+  hasAo: boolean,
 ): Data[] {
-  const t = s.entries.map((e) => e.dt);
+  // When AO data is present in the session, filter entries to the chosen
+  // device. Mount-only sessions skip this filter (every entry is MOUNT).
+  const visibleEntries = hasAo ? s.entries.filter((e) => e.mount === device) : s.entries;
+  const t = visibleEntries.map((e) => e.dt);
   const out: Data[] = [];
   const k = scaleMode === 'ARCSEC' ? s.pixelScale : 1;
 
   let maxErr = 0;
-  for (const e of s.entries) {
-    const a = Math.abs(e.raraw * k);
-    const b = Math.abs(e.decraw * k);
+  for (const e of visibleEntries) {
+    const v = valuePair(e, coordMode);
+    const a = Math.abs(v.x * k);
+    const b = Math.abs(v.y * k);
     if (a > maxErr) maxErr = a;
     if (b > maxErr) maxErr = b;
   }
   let maxPulse = 0;
-  for (const e of s.entries) {
+  for (const e of visibleEntries) {
     const a = Math.abs(e.radur);
     const b = Math.abs(e.decdur);
     if (a > maxPulse) maxPulse = a;
@@ -57,36 +81,39 @@ function buildTraces(
   }
   const pulseScale = maxPulse > 0 && maxErr > 0 ? (maxErr * 0.5) / maxPulse : 0;
 
-  // Mass/SNR live in the bottom half of the chart (matches the C++ desktop:
+  // Mass/SNR live in the bottom half of the chart (matches LogViewFrame.cpp:1678-1719:
   // each scaled to (height/2)/max_value, anchored to the bottom edge).
   // Half-height in data-space is yMax (since y range is [-yMax, yMax]).
   // Offset by -yMax so the value 0 sits at the bottom of the chart.
   let maxMass = 0;
-  for (const e of s.entries) if (e.mass > maxMass) maxMass = e.mass;
+  for (const e of visibleEntries) if (e.mass > maxMass) maxMass = e.mass;
   let maxSnr = 0;
-  for (const e of s.entries) if (e.snr > maxSnr) maxSnr = e.snr;
+  for (const e of visibleEntries) if (e.snr > maxSnr) maxSnr = e.snr;
   const massScale = maxMass > 0 ? yMax / maxMass : 0;
   const snrScale = maxSnr > 0 ? yMax / maxSnr : 0;
 
+  const xName = coordMode === 'RA_DEC' ? 'RA' : 'dx';
+  const yName = coordMode === 'RA_DEC' ? 'Dec' : 'dy';
+
   if (traces.ra) {
     out.push({
-      x: t, y: s.entries.map((e) => e.raraw * k),
+      x: t, y: visibleEntries.map((e) => valuePair(e, coordMode).x * k),
       type: 'scattergl', mode: 'lines',
-      name: 'RA', line: { color: RA_COLOR, width: 1 },
+      name: xName, line: { color: RA_COLOR, width: 1 },
     } as Data);
   }
   if (traces.dec) {
     out.push({
-      x: t, y: s.entries.map((e) => e.decraw * k),
+      x: t, y: visibleEntries.map((e) => valuePair(e, coordMode).y * k),
       type: 'scattergl', mode: 'lines',
-      name: 'Dec', line: { color: DEC_COLOR, width: 1 },
+      name: yName, line: { color: DEC_COLOR, width: 1 },
     } as Data);
   }
   if (traces.raPulses) {
     out.push({
       x: t,
-      y: s.entries.map((e) => e.radur * pulseScale),
-      customdata: s.entries.map((e) => e.radur),
+      y: visibleEntries.map((e) => e.radur * pulseScale),
+      customdata: visibleEntries.map((e) => e.radur),
       type: 'bar',
       name: 'RA pulse',
       marker: { color: PULSE_RA, opacity: 0.55 },
@@ -96,8 +123,8 @@ function buildTraces(
   if (traces.decPulses) {
     out.push({
       x: t,
-      y: s.entries.map((e) => e.decdur * pulseScale),
-      customdata: s.entries.map((e) => e.decdur),
+      y: visibleEntries.map((e) => e.decdur * pulseScale),
+      customdata: visibleEntries.map((e) => e.decdur),
       type: 'bar',
       name: 'Dec pulse',
       marker: { color: PULSE_DEC, opacity: 0.55 },
@@ -107,8 +134,8 @@ function buildTraces(
   if (traces.mass) {
     out.push({
       x: t,
-      y: s.entries.map((e) => -yMax + e.mass * massScale),
-      customdata: s.entries.map((e) => e.mass),
+      y: visibleEntries.map((e) => -yMax + e.mass * massScale),
+      customdata: visibleEntries.map((e) => e.mass),
       type: 'scattergl', mode: 'lines',
       name: 'Mass', line: { color: MASS_COLOR, width: 1 },
       hovertemplate: 'Mass: %{customdata}<extra></extra>',
@@ -117,8 +144,8 @@ function buildTraces(
   if (traces.snr) {
     out.push({
       x: t,
-      y: s.entries.map((e) => -yMax + e.snr * snrScale),
-      customdata: s.entries.map((e) => e.snr),
+      y: visibleEntries.map((e) => -yMax + e.snr * snrScale),
+      customdata: visibleEntries.map((e) => e.snr),
       type: 'scattergl', mode: 'lines',
       name: 'SNR', line: { color: SNR_COLOR, width: 1 },
       hovertemplate: 'SNR: %{customdata:.1f}<extra></extra>',
@@ -172,6 +199,9 @@ export function GuideGraph() {
   const exclusions = useViewStore((s) => s.exclusions);
   const scaleMode = useViewStore((s) => s.scaleMode);
   const traces = useViewStore((s) => s.traces);
+  const coordMode = useViewStore((s) => s.coordMode);
+  const device = useViewStore((s) => s.device);
+  const scaleLocked = useViewStore((s) => s.scaleLocked);
   const excludeRange = useViewStore((s) => s.excludeRange);
   const includeRange = useViewStore((s) => s.includeRange);
 
@@ -186,11 +216,13 @@ export function GuideGraph() {
   useEffect(() => { includeRangeRef.current = includeRange; }, [includeRange]);
   useEffect(() => { excludeRangeRef.current = excludeRange; }, [excludeRange]);
 
-  // Reset zoom on section change.
+  // Reset zoom on section change. When the user has the vertical scale lock
+  // enabled (matches the desktop "lock vertical scale" feature), preserve the
+  // y range so they can compare nights at the same scale.
   useEffect(() => {
     xRangeRef.current = null;
-    yRangeRef.current = null;
-  }, [sectionIdx]);
+    if (!scaleLocked) yRangeRef.current = null;
+  }, [sectionIdx, scaleLocked]);
 
   const data = useMemo(() => {
     if (!log || sectionIdx < 0) return null;
@@ -198,13 +230,18 @@ export function GuideGraph() {
     if (!sec || sec.type !== 'GUIDING') return null;
     const session = log.sessions[sec.idx];
     const mask = exclusions.get(sec.idx);
+    const hasAo = session.entries.some((e) => e.mount === 'AO');
 
-    // Compute initial Y range so we know mass/snr scaling.
+    // Compute initial Y range so we know mass/snr scaling. We sample only the
+    // entries that will actually be visible (filtered by device when AO is
+    // present) and using the active coord mode.
+    const visible = hasAo ? session.entries.filter((e) => e.mount === device) : session.entries;
     let maxErr = 0;
     const k = scaleMode === 'ARCSEC' ? session.pixelScale : 1;
-    for (const e of session.entries) {
-      const a = Math.abs(e.raraw * k);
-      const b = Math.abs(e.decraw * k);
+    for (const e of visible) {
+      const v = valuePair(e, coordMode);
+      const a = Math.abs(v.x * k);
+      const b = Math.abs(v.y * k);
       if (a > maxErr) maxErr = a;
       if (b > maxErr) maxErr = b;
     }
@@ -213,11 +250,12 @@ export function GuideGraph() {
     return {
       session,
       sessionIdx: sec.idx,
+      hasAo,
       yMax,
-      traces: buildTraces(session, traces, scaleMode, yMax),
+      traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo),
       shapes: buildShapes(session, mask),
     };
-  }, [log, sectionIdx, exclusions, scaleMode, traces]);
+  }, [log, sectionIdx, exclusions, scaleMode, traces, coordMode, device]);
 
   useEffect(() => {
     dataRef.current = data ? { session: data.session, sessionIdx: data.sessionIdx } : null;

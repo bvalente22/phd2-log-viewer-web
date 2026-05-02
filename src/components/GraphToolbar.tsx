@@ -30,6 +30,12 @@ export function GraphToolbar() {
   const setScaleMode = useViewStore((s) => s.setScaleMode);
   const graphMode = useViewStore((s) => s.graphMode);
   const setGraphMode = useViewStore((s) => s.setGraphMode);
+  const coordMode = useViewStore((s) => s.coordMode);
+  const setCoordMode = useViewStore((s) => s.setCoordMode);
+  const device = useViewStore((s) => s.device);
+  const setDevice = useViewStore((s) => s.setDevice);
+  const scaleLocked = useViewStore((s) => s.scaleLocked);
+  const setScaleLocked = useViewStore((s) => s.setScaleLocked);
 
   const sec = log && sectionIdx >= 0 ? log.sections[sectionIdx] : null;
   const session = sec && sec.type === 'GUIDING' ? log!.sessions[sec.idx] : null;
@@ -37,6 +43,10 @@ export function GraphToolbar() {
   const mask = sessionIdx >= 0 ? exclusions.get(sessionIdx) : undefined;
   const excludedCount = mask ? mask.reduce((a, b) => a + b, 0) : 0;
   const totalCount = session?.entries.length ?? 0;
+
+  // The Mount/AO toggle is only meaningful when this session has AO entries.
+  // Mirrors the desktop UI which disables the AO option for mount-only logs.
+  const hasAo = !!session?.entries.some((e) => e.mount === 'AO');
 
   const items: { key: keyof TraceVisibility; label: string }[] = [
     { key: 'ra', label: 'RA' },
@@ -70,6 +80,32 @@ export function GraphToolbar() {
           disabled={graphMode === 'SCATTER'}
         />
       ))}
+      <span className="ml-3 mr-1 text-slate-500">coord:</span>
+      <ToggleChip
+        label="RA/Dec"
+        active={coordMode === 'RA_DEC'}
+        onClick={() => setCoordMode('RA_DEC')}
+        disabled={graphMode === 'SCATTER'}
+      />
+      <ToggleChip
+        label="dx/dy"
+        active={coordMode === 'DX_DY'}
+        onClick={() => setCoordMode('DX_DY')}
+        disabled={graphMode === 'SCATTER'}
+      />
+      <span className="ml-3 mr-1 text-slate-500">device:</span>
+      <ToggleChip
+        label="Mount"
+        active={device === 'MOUNT'}
+        onClick={() => setDevice('MOUNT')}
+        disabled={!hasAo}
+      />
+      <ToggleChip
+        label="AO"
+        active={device === 'AO'}
+        onClick={() => setDevice('AO')}
+        disabled={!hasAo}
+      />
       <span className="ml-3 mr-1 text-slate-500">scale:</span>
       <ToggleChip
         label="arc-sec"
@@ -81,8 +117,13 @@ export function GraphToolbar() {
         active={scaleMode === 'PIXELS'}
         onClick={() => setScaleMode('PIXELS')}
       />
+      <ToggleChip
+        label={scaleLocked ? '🔒 Y locked' : '🔓 Y'}
+        active={scaleLocked}
+        onClick={() => setScaleLocked(!scaleLocked)}
+      />
       <button
-        className="ml-3 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700"
+        className="ml-1 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700"
         onClick={() => window.dispatchEvent(new CustomEvent('phd-recenter-y'))}
         title="Recenter Y axis around 0 without changing zoom"
       >
