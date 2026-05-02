@@ -69,12 +69,14 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
           <Item
             disabled={!session}
             onSelect={() => session && includeAll(sessionIdx, session.entries.length)}
+            title="Re-include every frame; clears all exclusions in this section"
           >
             Include all frames
           </Item>
           <Item
             disabled={!session}
             onSelect={() => session && excludeAll(sessionIdx, session.entries.length)}
+            title="Mark every frame as excluded from the analysis"
           >
             Exclude all frames
           </Item>
@@ -86,6 +88,7 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
               const current = exclusions.get(sessionIdx);
               setMask(sessionIdx, computeSettlingMask(session, current));
             }}
+            title="Add settling windows (and frames just after each DITHER event) to the existing exclusions"
           >
             Exclude dithers / settling
           </Item>
@@ -93,29 +96,34 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
           <Item
             disabled={!session}
             onSelect={() => session && includeAll(sessionIdx, session.entries.length)}
+            title="Reset this section's exclusions to its loaded state"
           >
             Reset section
           </Item>
-          <Item onSelect={() => window.dispatchEvent(new CustomEvent('phd-reset-zoom'))}>
+          <Item
+            onSelect={() => window.dispatchEvent(new CustomEvent('phd-reset-zoom'))}
+            title="Auto-fit the X and Y axes to the full data range"
+          >
             Reset zoom
           </Item>
           <RCM.Separator className="my-1 h-px bg-slate-700" />
-          <Item disabled hint="v3">Analyze selected frames</Item>
-          <Item disabled hint="v3">Analyze selected, raw RA</Item>
-          {isUnguided && <Item disabled hint="v3">Analyze unguided section</Item>}
+          <Item disabled hint="v3" title="Coming in v3 — drift-corrected timeline + periodogram">Analyze selected frames</Item>
+          <Item disabled hint="v3" title="Coming in v3 — analysis with RA corrections undone">Analyze selected, raw RA</Item>
+          {isUnguided && <Item disabled hint="v3" title="Coming in v3 — analyze a Guiding Assistant unguided section">Analyze unguided section</Item>}
         </RCM.Content>
       </RCM.Portal>
     </RCM.Root>
   );
 }
 
-function Item({ children, onSelect, disabled, hint }: {
-  children: ReactNode; onSelect?: () => void; disabled?: boolean; hint?: string;
+function Item({ children, onSelect, disabled, hint, title }: {
+  children: ReactNode; onSelect?: () => void; disabled?: boolean; hint?: string; title?: string;
 }) {
   return (
     <RCM.Item
       disabled={disabled}
       onSelect={onSelect}
+      title={title}
       className={`flex cursor-pointer items-center justify-between rounded px-2 py-1 outline-none ${
         disabled ? 'text-slate-500' : 'text-slate-100 data-[highlighted]:bg-slate-800'
       }`}
