@@ -9,22 +9,34 @@ import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import type { GuideSession } from '../parser';
 
-interface PlotSelectionEvent {
-  range?: { x?: [number, number]; y?: [number, number] };
-  points?: unknown[];
-}
-
 const RA_COLOR = '#60a5fa';
 const DEC_COLOR = '#f87171';
 const PULSE_RA = '#3b82f6';
 const PULSE_DEC = '#dc2626';
-const MASS_COLOR = '#a78bfa';
-const SNR_COLOR = '#34d399';
+const MASS_COLOR = '#facc15';
+const SNR_COLOR = '#e2e8f0';
+
+const INCLUDE_FILL = 'rgba(34, 197, 94, 0.18)';
+const INCLUDE_BORDER = 'rgba(34, 197, 94, 0.7)';
+const EXCLUDE_FILL = 'rgba(251, 146, 60, 0.18)';
+const EXCLUDE_BORDER = 'rgba(251, 146, 60, 0.7)';
 
 type Traces = ReturnType<typeof useViewStore.getState>['traces'];
 type ScaleMode = ReturnType<typeof useViewStore.getState>['scaleMode'];
 
-function buildTraces(s: GuideSession, traces: Traces, scaleMode: ScaleMode): Data[] {
+interface PlotDiv extends HTMLDivElement {
+  _fullLayout?: {
+    xaxis?: { _offset: number; _length: number; range: [number, number] };
+    yaxis?: { _offset: number; _length: number; range: [number, number] };
+  };
+}
+
+function buildTraces(
+  s: GuideSession,
+  traces: Traces,
+  scaleMode: ScaleMode,
+  yMax: number,
+): Data[] {
   const t = s.entries.map((e) => e.dt);
   const out: Data[] = [];
   const k = scaleMode === 'ARCSEC' ? s.pixelScale : 1;
@@ -44,6 +56,17 @@ function buildTraces(s: GuideSession, traces: Traces, scaleMode: ScaleMode): Dat
     if (b > maxPulse) maxPulse = b;
   }
   const pulseScale = maxPulse > 0 && maxErr > 0 ? (maxErr * 0.5) / maxPulse : 0;
+
+  // Mass/SNR live in the bottom half of the chart (matches the C++ desktop:
+  // each scaled to (height/2)/max_value, anchored to the bottom edge).
+  // Half-height in data-space is yMax (since y range is [-yMax, yMax]).
+  // Offset by -yMax so the value 0 sits at the bottom of the chart.
+  let maxMass = 0;
+  for (const e of s.entries) if (e.mass > maxMass) maxMass = e.mass;
+  let maxSnr = 0;
+  for (const e of s.entries) if (e.snr > maxSnr) maxSnr = e.snr;
+  const massScale = maxMass > 0 ? yMax / maxMass : 0;
+  const snrScale = maxSnr > 0 ? yMax / maxSnr : 0;
 
   if (traces.ra) {
     out.push({
@@ -83,18 +106,22 @@ function buildTraces(s: GuideSession, traces: Traces, scaleMode: ScaleMode): Dat
   }
   if (traces.mass) {
     out.push({
-      x: t, y: s.entries.map((e) => e.mass),
+      x: t,
+      y: s.entries.map((e) => -yMax + e.mass * massScale),
+      customdata: s.entries.map((e) => e.mass),
       type: 'scattergl', mode: 'lines',
-      name: 'Mass', line: { color: MASS_COLOR, width: 1, dash: 'dot' },
-      yaxis: 'y4',
+      name: 'Mass', line: { color: MASS_COLOR, width: 1 },
+      hovertemplate: 'Mass: %{customdata}<extra></extra>',
     } as Data);
   }
   if (traces.snr) {
     out.push({
-      x: t, y: s.entries.map((e) => e.snr),
+      x: t,
+      y: s.entries.map((e) => -yMax + e.snr * snrScale),
+      customdata: s.entries.map((e) => e.snr),
       type: 'scattergl', mode: 'lines',
-      name: 'SNR', line: { color: SNR_COLOR, width: 1, dash: 'dot' },
-      yaxis: 'y5',
+      name: 'SNR', line: { color: SNR_COLOR, width: 1 },
+      hovertemplate: 'SNR: %{customdata:.1f}<extra></extra>',
     } as Data);
   }
   return out;
@@ -151,132 +178,54 @@ export function GuideGraph() {
   const plotId = useId().replace(/:/g, '_');
   const yRangeRef = useRef<[number, number] | null>(null);
   const xRangeRef = useRef<[number, number] | null>(null);
-  const shiftHeldRef = useRef(false);
-  const ctrlHeldRef = useRef(false);
-  const dragModeRef = useRef<'select' | false>(false);
 
-  // Reset the saved zoom when the section changes.
+  // Latest values used by the long-lived event handlers.
+  const dataRef = useRef<{ session: GuideSession; sessionIdx: number } | null>(null);
+  const includeRangeRef = useRef(includeRange);
+  const excludeRangeRef = useRef(excludeRange);
+  useEffect(() => { includeRangeRef.current = includeRange; }, [includeRange]);
+  useEffect(() => { excludeRangeRef.current = excludeRange; }, [excludeRange]);
+
+  // Reset zoom on section change.
   useEffect(() => {
     xRangeRef.current = null;
     yRangeRef.current = null;
   }, [sectionIdx]);
 
-  // Track Shift/Ctrl, and swap Plotly dragmode so shift/ctrl + drag does
-  // horizontal selection (for include/exclude). Plain drag uses our custom
-  // continuous Y-zoom handler below; Plotly dragmode is disabled then.
+  const data = useMemo(() => {
+    if (!log || sectionIdx < 0) return null;
+    const sec = log.sections[sectionIdx];
+    if (!sec || sec.type !== 'GUIDING') return null;
+    const session = log.sessions[sec.idx];
+    const mask = exclusions.get(sec.idx);
+
+    // Compute initial Y range so we know mass/snr scaling.
+    let maxErr = 0;
+    const k = scaleMode === 'ARCSEC' ? session.pixelScale : 1;
+    for (const e of session.entries) {
+      const a = Math.abs(e.raraw * k);
+      const b = Math.abs(e.decraw * k);
+      if (a > maxErr) maxErr = a;
+      if (b > maxErr) maxErr = b;
+    }
+    const yMax = maxErr > 0 ? maxErr * 1.1 : 1;
+
+    return {
+      session,
+      sessionIdx: sec.idx,
+      yMax,
+      traces: buildTraces(session, traces, scaleMode, yMax),
+      shapes: buildShapes(session, mask),
+    };
+  }, [log, sectionIdx, exclusions, scaleMode, traces]);
+
   useEffect(() => {
-    const setMode = (next: 'select' | false) => {
-      if (dragModeRef.current === next) return;
-      dragModeRef.current = next;
-      const patch = next === 'select'
-        ? { dragmode: 'select', selectdirection: 'h' }
-        : { dragmode: false };
-      void Plotly.relayout(plotId, patch);
-    };
-    const sync = (e: KeyboardEvent | MouseEvent) => {
-      shiftHeldRef.current = e.shiftKey;
-      ctrlHeldRef.current = e.ctrlKey || ('metaKey' in e && e.metaKey);
-      setMode(shiftHeldRef.current || ctrlHeldRef.current ? 'select' : false);
-    };
-    window.addEventListener('keydown', sync);
-    window.addEventListener('keyup', sync);
-    window.addEventListener('mousedown', sync, true);
-    window.addEventListener('mouseup', sync, true);
-    return () => {
-      window.removeEventListener('keydown', sync);
-      window.removeEventListener('keyup', sync);
-      window.removeEventListener('mousedown', sync, true);
-      window.removeEventListener('mouseup', sync, true);
-    };
-  }, [plotId]);
+    dataRef.current = data ? { session: data.session, sessionIdx: data.sessionIdx } : null;
+  }, [data]);
 
-  // Custom continuous Y zoom: drag up = zoom in, drag down = zoom out, anchored
-  // on the data Y where the drag started. Active only when no modifier is held.
+  // Custom mouse-wheel: X zoom around cursor.
   useEffect(() => {
-    const div = document.getElementById(plotId) as
-      | (HTMLDivElement & { _fullLayout?: { yaxis?: { _offset: number; _length: number; range: [number, number] } } })
-      | null;
-    if (!div) return;
-
-    let dragging = false;
-    let startClientY = 0;
-    let startRange: [number, number] = [0, 0];
-    let anchorY = 0;
-    let anchorFrac = 0.5;
-
-    const isInPlotArea = (e: MouseEvent): boolean => {
-      const t = e.target as HTMLElement | null;
-      if (!t) return false;
-      // The Plotly background rect that catches drags lives under .nsewdrag.
-      return !!t.closest('.nsewdrag') || !!t.closest('.bglayer');
-    };
-
-    const onDown = (e: MouseEvent) => {
-      if (e.button !== 0) return;
-      if (e.shiftKey || e.ctrlKey || e.metaKey) return;
-      const ya = div._fullLayout?.yaxis;
-      if (!ya) return;
-      if (!isInPlotArea(e)) return;
-      const rect = div.getBoundingClientRect();
-      const py = e.clientY - rect.top - ya._offset;
-      const frac = Math.min(1, Math.max(0, 1 - py / ya._length));
-      const [y0, y1] = ya.range;
-      anchorY = y0 + frac * (y1 - y0);
-      anchorFrac = frac;
-      startClientY = e.clientY;
-      startRange = [y0, y1];
-      dragging = true;
-      e.preventDefault();
-    };
-
-    const onMove = (e: MouseEvent) => {
-      if (!dragging) return;
-      e.preventDefault();
-      const dy = e.clientY - startClientY;
-      // Drag up (negative dy) = zoom in (factor < 1). Exponential feels natural.
-      const factor = Math.exp(dy / 200);
-      const oldSpan = startRange[1] - startRange[0];
-      const newSpan = oldSpan * factor;
-      const newY0 = anchorY - anchorFrac * newSpan;
-      const newY1 = newY0 + newSpan;
-      void Plotly.relayout(plotId, { 'yaxis.range': [newY0, newY1] });
-      yRangeRef.current = [newY0, newY1];
-    };
-
-    const onUp = () => { dragging = false; };
-
-    div.addEventListener('mousedown', onDown);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => {
-      div.removeEventListener('mousedown', onDown);
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-  }, [plotId]);
-
-  // Recenter Y around 0 without changing zoom level.
-  useEffect(() => {
-    const onRecenter = () => {
-      const div = document.getElementById(plotId) as
-        | (HTMLDivElement & { _fullLayout?: { yaxis?: { range: [number, number] } } })
-        | null;
-      const r = div?._fullLayout?.yaxis?.range;
-      if (!r) return;
-      const half = (r[1] - r[0]) / 2;
-      void Plotly.relayout(plotId, { 'yaxis.range': [-half, half] });
-      yRangeRef.current = [-half, half];
-    };
-    window.addEventListener('phd-recenter-y', onRecenter);
-    return () => window.removeEventListener('phd-recenter-y', onRecenter);
-  }, [plotId]);
-
-  // Custom mouse-wheel handler: zoom X around the cursor position. Plotly's
-  // built-in scrollZoom would zoom both axes; we want X-only.
-  useEffect(() => {
-    const div = document.getElementById(plotId) as
-      | (HTMLDivElement & { _fullLayout?: { xaxis?: { _offset: number; _length: number; range: [number, number] } } })
-      | null;
+    const div = document.getElementById(plotId) as PlotDiv | null;
     if (!div) return;
     const onWheel = (e: WheelEvent) => {
       const xa = div._fullLayout?.xaxis;
@@ -298,7 +247,7 @@ export function GuideGraph() {
     return () => div.removeEventListener('wheel', onWheel);
   }, [plotId]);
 
-  // Listen for the "reset zoom" event dispatched by the context menu.
+  // Reset zoom event from context menu.
   useEffect(() => {
     const onReset = () => {
       void Plotly.relayout(plotId, { 'xaxis.autorange': true, 'yaxis.autorange': true });
@@ -309,46 +258,168 @@ export function GuideGraph() {
     return () => window.removeEventListener('phd-reset-zoom', onReset);
   }, [plotId]);
 
-  const data = useMemo(() => {
-    if (!log || sectionIdx < 0) return null;
-    const sec = log.sections[sectionIdx];
-    if (!sec || sec.type !== 'GUIDING') return null;
-    const session = log.sessions[sec.idx];
-    const mask = exclusions.get(sec.idx);
-    return {
-      session,
-      sessionIdx: sec.idx,
-      traces: buildTraces(session, traces, scaleMode),
-      shapes: buildShapes(session, mask),
+  // Recenter Y around 0 without changing zoom.
+  useEffect(() => {
+    const onRecenter = () => {
+      const div = document.getElementById(plotId) as PlotDiv | null;
+      const r = div?._fullLayout?.yaxis?.range;
+      if (!r) return;
+      const half = (r[1] - r[0]) / 2;
+      void Plotly.relayout(plotId, { 'yaxis.range': [-half, half] });
+      yRangeRef.current = [-half, half];
     };
-  }, [log, sectionIdx, exclusions, scaleMode, traces]);
+    window.addEventListener('phd-recenter-y', onRecenter);
+    return () => window.removeEventListener('phd-recenter-y', onRecenter);
+  }, [plotId]);
 
-  const onSelected = useCallback((ev: PlotSelectionEvent) => {
-    if (!data) return;
-    const xrange = ev?.range?.x;
-    if (!xrange) return;
-    if (!shiftHeldRef.current && !ctrlHeldRef.current) return;
-    const action = shiftHeldRef.current ? includeRange : excludeRange;
-    const [t0, t1] = xrange;
-    const entries = data.session.entries;
-    const lo = Math.min(t0, t1);
-    const hi = Math.max(t0, t1);
-    let firstFrame = -1, lastFrame = -1;
-    for (const e of entries) {
-      if (e.dt >= lo && e.dt <= hi) {
-        if (firstFrame < 0) firstFrame = e.frame;
-        lastFrame = e.frame;
+  // All custom drag gestures (Y zoom, include/exclude). Plotly's dragmode is
+  // disabled — we own the drag entirely so there's no race between modifier
+  // detection and Plotly's internal state.
+  useEffect(() => {
+    const div = document.getElementById(plotId) as PlotDiv | null;
+    if (!div) return;
+    div.style.position = 'relative';
+
+    // Selection overlay band (shown for shift/ctrl drags).
+    const overlay = document.createElement('div');
+    overlay.style.cssText = [
+      'position:absolute',
+      'top:0',
+      'bottom:0',
+      'pointer-events:none',
+      'display:none',
+      'z-index:5',
+      'border-style:solid',
+      'border-width:1px',
+    ].join(';');
+    div.appendChild(overlay);
+
+    const isInPlotArea = (e: MouseEvent): boolean => {
+      const t = e.target as HTMLElement | null;
+      return !!t?.closest('.nsewdrag, .bglayer, .draglayer');
+    };
+
+    type DragKind = 'Y_ZOOM' | 'X_INCLUDE' | 'X_EXCLUDE' | null;
+    let kind: DragKind = null;
+    let startClientY = 0;
+    let startYRange: [number, number] = [0, 0];
+    let yAnchor = 0;
+    let yAnchorFrac = 0.5;
+    let xStartFrac = 0;
+
+    const onDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      if (!isInPlotArea(e)) return;
+      const xa = div._fullLayout?.xaxis;
+      const ya = div._fullLayout?.yaxis;
+      if (!xa || !ya) return;
+      const rect = div.getBoundingClientRect();
+
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        kind = e.shiftKey ? 'X_INCLUDE' : 'X_EXCLUDE';
+        const px = e.clientX - rect.left - xa._offset;
+        xStartFrac = Math.min(1, Math.max(0, px / xa._length));
+        const isInclude = kind === 'X_INCLUDE';
+        overlay.style.display = 'block';
+        overlay.style.left = (xa._offset + xStartFrac * xa._length) + 'px';
+        overlay.style.width = '0px';
+        overlay.style.background = isInclude ? INCLUDE_FILL : EXCLUDE_FILL;
+        overlay.style.borderColor = isInclude ? INCLUDE_BORDER : EXCLUDE_BORDER;
+        e.preventDefault();
+        e.stopPropagation();
+        return;
       }
-    }
-    if (firstFrame < 0) return;
-    action(
-      data.sessionIdx,
-      entries.length,
-      firstFrame,
-      lastFrame,
-      entries.map((e) => e.frame),
-    );
-  }, [data, excludeRange, includeRange]);
+
+      kind = 'Y_ZOOM';
+      const py = e.clientY - rect.top - ya._offset;
+      const frac = Math.min(1, Math.max(0, 1 - py / ya._length));
+      const [y0, y1] = ya.range;
+      yAnchor = y0 + frac * (y1 - y0);
+      yAnchorFrac = frac;
+      startClientY = e.clientY;
+      startYRange = [y0, y1];
+      e.preventDefault();
+    };
+
+    const onMove = (e: MouseEvent) => {
+      if (!kind) return;
+      const xa = div._fullLayout?.xaxis;
+      if (!xa) return;
+
+      if (kind === 'Y_ZOOM') {
+        const dy = e.clientY - startClientY;
+        const factor = Math.exp(dy / 200);
+        const oldSpan = startYRange[1] - startYRange[0];
+        const newSpan = oldSpan * factor;
+        const newY0 = yAnchor - yAnchorFrac * newSpan;
+        const newY1 = newY0 + newSpan;
+        void Plotly.relayout(plotId, { 'yaxis.range': [newY0, newY1] });
+        yRangeRef.current = [newY0, newY1];
+        return;
+      }
+
+      // X selection: update the overlay width.
+      const rect = div.getBoundingClientRect();
+      const curPx = e.clientX - rect.left - xa._offset;
+      const curFrac = Math.min(1, Math.max(0, curPx / xa._length));
+      const a = Math.min(xStartFrac, curFrac);
+      const b = Math.max(xStartFrac, curFrac);
+      overlay.style.left = (xa._offset + a * xa._length) + 'px';
+      overlay.style.width = ((b - a) * xa._length) + 'px';
+    };
+
+    const onUp = (e: MouseEvent) => {
+      if (!kind) return;
+      const xa = div._fullLayout?.xaxis;
+
+      if (kind !== 'Y_ZOOM' && xa) {
+        overlay.style.display = 'none';
+        const rect = div.getBoundingClientRect();
+        const endPx = e.clientX - rect.left - xa._offset;
+        const endFrac = Math.min(1, Math.max(0, endPx / xa._length));
+        const a = Math.min(xStartFrac, endFrac);
+        const b = Math.max(xStartFrac, endFrac);
+        if (b - a >= 0.005) {
+          const [x0, x1] = xa.range;
+          const tA = x0 + a * (x1 - x0);
+          const tB = x0 + b * (x1 - x0);
+          const ctx = dataRef.current;
+          if (ctx) {
+            const entries = ctx.session.entries;
+            let firstFrame = -1, lastFrame = -1;
+            for (const en of entries) {
+              if (en.dt >= tA && en.dt <= tB) {
+                if (firstFrame < 0) firstFrame = en.frame;
+                lastFrame = en.frame;
+              }
+            }
+            if (firstFrame >= 0) {
+              const action = kind === 'X_INCLUDE' ? includeRangeRef.current : excludeRangeRef.current;
+              action(
+                ctx.sessionIdx,
+                entries.length,
+                firstFrame,
+                lastFrame,
+                entries.map((en) => en.frame),
+              );
+            }
+          }
+        }
+      }
+
+      kind = null;
+    };
+
+    div.addEventListener('mousedown', onDown, true);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp, true);
+    return () => {
+      div.removeEventListener('mousedown', onDown, true);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp, true);
+      overlay.remove();
+    };
+  }, [plotId]);
 
   const onRelayout = useCallback((ev: Readonly<Record<string, unknown>>) => {
     const xr0 = ev['xaxis.range[0]'];
@@ -371,12 +442,6 @@ export function GuideGraph() {
 
   const yTitle = scaleMode === 'ARCSEC' ? 'arc-sec' : 'pixels';
 
-  const session = data.session;
-  const massVals = session.entries.map((e) => e.mass).filter((v) => v > 0);
-  const snrVals = session.entries.map((e) => e.snr).filter((v) => v > 0);
-  const massMax = massVals.length ? Math.max(...massVals) * 1.1 : 1;
-  const snrMax = snrVals.length ? Math.max(...snrVals) * 1.1 : 1;
-
   const layout: Partial<Layout> = {
     autosize: true,
     margin: { l: 60, r: 60, t: 20, b: 40 },
@@ -385,38 +450,21 @@ export function GuideGraph() {
     font: { color: '#cbd5e1', size: 11 },
     xaxis: {
       title: { text: 'time (s)' }, gridcolor: '#1e293b', zerolinecolor: '#334155',
-      // Drag-zoom is locked to Y by setting xaxis.fixedrange. The custom
-      // wheel handler above is what handles X zoom.
       fixedrange: true,
       ...(xRangeRef.current ? { range: xRangeRef.current } : { autorange: true }),
     },
     yaxis: {
       title: { text: yTitle }, gridcolor: '#1e293b',
       zerolinecolor: '#64748b', zerolinewidth: 1,
-      fixedrange: false,
-      ...(yRangeRef.current ? { range: yRangeRef.current } : { autorange: true }),
-    },
-    yaxis4: {
-      overlaying: 'y', side: 'right',
-      showgrid: false,
-      title: { text: 'mass', standoff: 4, font: { color: MASS_COLOR } },
-      tickfont: { color: MASS_COLOR },
-      range: [0, massMax],
       fixedrange: true,
-    },
-    yaxis5: {
-      overlaying: 'y', side: 'right', anchor: 'free', position: 1.0,
-      showgrid: false,
-      title: { text: 'SNR', standoff: 4, font: { color: SNR_COLOR } },
-      tickfont: { color: SNR_COLOR },
-      range: [0, snrMax],
-      fixedrange: true,
+      ...(yRangeRef.current
+        ? { range: yRangeRef.current }
+        : { range: [-data.yMax, data.yMax] }),
     },
     shapes: data.shapes,
     showlegend: true,
     legend: { orientation: 'h', y: 1.1 },
-    dragmode: dragModeRef.current === 'select' ? 'select' : false,
-    selectdirection: 'h',
+    dragmode: false,
     barmode: 'overlay',
   };
 
@@ -428,7 +476,6 @@ export function GuideGraph() {
       config={{ displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false }}
       style={{ width: '100%', height: '100%' }}
       useResizeHandler
-      onSelected={onSelected as never}
       onRelayout={onRelayout as never}
     />
   );

@@ -2,12 +2,14 @@ import { DropZone } from '../components/DropZone';
 import { SectionList } from '../components/SectionList';
 import { StatsGrid } from '../components/StatsGrid';
 import { GuideGraph } from '../components/GuideGraph';
+import { ScatterView } from '../components/ScatterView';
 import { CalibrationPlot } from '../components/CalibrationPlot';
 import { GraphToolbar } from '../components/GraphToolbar';
 import { GraphContextMenu } from '../components/ContextMenu';
 import { RecentsPanel } from '../components/RecentsPanel';
 import { RecentsDropdown } from '../components/RecentsDropdown';
 import { useLogStore } from '../state/logStore';
+import { useViewStore } from '../state/viewStore';
 import { useKeyboardShortcuts } from '../state/useKeyboard';
 
 export function ViewerPage() {
@@ -16,6 +18,7 @@ export function ViewerPage() {
   const meta = useLogStore((s) => s.meta);
   const clear = useLogStore((s) => s.clear);
   const sectionIdx = useLogStore((s) => s.selectedSection);
+  const graphMode = useViewStore((s) => s.graphMode);
 
   if (!log) {
     return (
@@ -57,7 +60,7 @@ export function ViewerPage() {
             <GraphToolbar />
             <GraphContextMenu>
               <div className="flex-1">
-                <GuideGraph />
+                {graphMode === 'TIME' ? <GuideGraph /> : <ScatterView />}
               </div>
             </GraphContextMenu>
           </>
