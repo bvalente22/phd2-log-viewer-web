@@ -1,3 +1,4 @@
+import { AnalysisModal } from '../components/AnalysisModal';
 import { DropZone } from '../components/DropZone';
 import { SectionList } from '../components/SectionList';
 import { StatsGrid } from '../components/StatsGrid';
@@ -23,16 +24,19 @@ export function ViewerPage() {
 
   if (!log) {
     return (
-      <div className="mx-auto flex h-full max-w-2xl flex-col justify-center gap-4 p-6">
-        <div>
-          <h1 className="text-2xl font-semibold">PHD2 Log Viewer</h1>
-          <p className="mt-1 text-xs text-slate-500" title={`build ${__APP_GITHASH__}`}>
-            v{__APP_VERSION__} · {__APP_GITHASH__}
-          </p>
+      <>
+        <div className="mx-auto flex h-full max-w-2xl flex-col justify-center gap-4 p-6">
+          <div>
+            <h1 className="text-2xl font-semibold">PHD2 Log Viewer</h1>
+            <p className="mt-1 text-xs text-slate-500" title={`build ${__APP_GITHASH__}`}>
+              v{__APP_VERSION__} · {__APP_GITHASH__}
+            </p>
+          </div>
+          <DropZone />
+          <RecentsPanel />
         </div>
-        <DropZone />
-        <RecentsPanel />
-      </div>
+        <AnalysisModal />
+      </>
     );
   }
 
@@ -41,8 +45,9 @@ export function ViewerPage() {
   const isCalibration = sec?.type === 'CALIBRATION';
 
   return (
-    <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[auto_1fr]">
-      <header className="col-span-2 flex items-center justify-between border-b border-slate-800 px-4 py-2">
+    <>
+      <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[auto_1fr]">
+        <header className="col-span-2 flex items-center justify-between border-b border-slate-800 px-4 py-2">
         <h1 className="text-sm font-medium">
           PHD2 Log Viewer
           <span className="ml-2 text-xs text-slate-500" title={`build ${__APP_GITHASH__}`}>
@@ -100,6 +105,8 @@ export function ViewerPage() {
           </div>
         )}
       </main>
-    </div>
+      </div>
+      <AnalysisModal />
+    </>
   );
 }
