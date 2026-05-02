@@ -189,6 +189,60 @@ test.describe('synthetic log — full UI coverage', () => {
     await expect(page.getByText('Drop a PHD2 guide log here')).toBeVisible();
   });
 
+  test('per-section view memory: zoomed range is preserved when returning to a section', async ({ page }) => {
+    // After scroll-zooming the guide section, switching to the calibration
+    // section and back should restore the *zoomed* view — not reset to the
+    // section's full-data default.
+    await dropFixture(page, SYNTHETIC, 'synthetic.log');
+    await page.getByText('Guide ·', { exact: false }).first().click();
+
+    const readXRange = () => page.evaluate(() => {
+      const div = document.querySelector('.js-plotly-plot') as HTMLElement & {
+        _fullLayout?: { xaxis?: { range: [number, number] } };
+      } | null;
+      const r = div?._fullLayout?.xaxis?.range;
+      return r ? [Number(r[0]), Number(r[1])] : null;
+    });
+
+    const initial = await readXRange();
+    expect(initial).not.toBeNull();
+
+    // Scroll-zoom several times in the middle of the chart — Plotly's
+    // built-in scrollZoom shrinks the visible range around the cursor.
+    const plot = page.locator('.js-plotly-plot');
+    const box = await plot.boundingBox();
+    expect(box).not.toBeNull();
+    if (!box) return;
+    const cx = box.x + box.width / 2;
+    const cy = box.y + box.height / 2;
+    await page.mouse.move(cx, cy);
+    for (let i = 0; i < 3; i++) {
+      await page.mouse.wheel(0, -120);
+      await page.waitForTimeout(40);
+    }
+    await page.waitForTimeout(120);
+
+    const zoomed = await readXRange();
+    expect(zoomed).not.toBeNull();
+    const initialSpan = (initial as number[])[1] - (initial as number[])[0];
+    const zoomedSpan = (zoomed as number[])[1] - (zoomed as number[])[0];
+    // Sanity: scrollZoom actually shrunk the range.
+    expect(zoomedSpan).toBeLessThan(initialSpan * 0.95);
+
+    // Bounce to calibration and back.
+    await page.getByText('Cal ·', { exact: false }).first().click();
+    await page.waitForTimeout(120);
+    await page.getByText('Guide ·', { exact: false }).first().click();
+    await page.waitForTimeout(150);
+
+    const restored = await readXRange();
+    expect(restored).not.toBeNull();
+    const restoredSpan = (restored as number[])[1] - (restored as number[])[0];
+    // The restored span should match the zoomed span much more closely than
+    // the original full-extent span — that's the per-section memory at work.
+    expect(Math.abs(restoredSpan - zoomedSpan)).toBeLessThan(initialSpan * 0.1);
+  });
+
   test('CSV export downloads a file with the section data', async ({ page }) => {
     await dropFixture(page, SYNTHETIC, 'synthetic.log');
     await page.getByText('Guide ·', { exact: false }).first().click();
