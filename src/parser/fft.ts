@@ -27,6 +27,8 @@ export function forwardFftMagnitudes(signal: ArrayLike<number>): Float64Array {
   const fft = new FFT(n);
   const out = fft.createComplexArray();
   fft.realTransform(out, signal);
+  // After realTransform, the first n/2 complex pairs are populated; the
+  // rest is the conjugate spectrum we don't need.
   const mags = new Float64Array(n / 2);
   for (let i = 0; i < n / 2; i++) {
     const re = out[2 * i];
