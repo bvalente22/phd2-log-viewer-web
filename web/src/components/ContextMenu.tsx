@@ -85,6 +85,9 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
           >
             Reset section
           </Item>
+          <Item onSelect={() => window.dispatchEvent(new CustomEvent('phd-reset-zoom'))}>
+            Reset zoom
+          </Item>
           <RCM.Separator className="my-1 h-px bg-slate-700" />
           <Item disabled hint="v3">Analyze selected frames</Item>
           <Item disabled hint="v3">Analyze selected, raw RA</Item>
