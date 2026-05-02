@@ -37,6 +37,8 @@ export function GraphToolbar() {
   const setDevice = useViewStore((s) => s.setDevice);
   const scaleLocked = useViewStore((s) => s.scaleLocked);
   const setScaleLocked = useViewStore((s) => s.setScaleLocked);
+  const autoScaleY = useViewStore((s) => s.autoScaleY);
+  const setAutoScaleY = useViewStore((s) => s.setAutoScaleY);
 
   const sec = log && sectionIdx >= 0 ? log.sections[sectionIdx] : null;
   const session = sec && sec.type === 'GUIDING' ? log!.sessions[sec.idx] : null;
@@ -128,6 +130,12 @@ export function GraphToolbar() {
         title="Display Y values in raw pixels"
       />
       <ToggleChip
+        label="auto Y"
+        active={autoScaleY}
+        onClick={() => setAutoScaleY(!autoScaleY)}
+        title="Auto-fit Y to the typical guiding range (99th percentile of |error|), so dithers and lost-star spikes don't squash the routine signal. Off = use raw min/max."
+      />
+      <ToggleChip
         label={scaleLocked ? '🔒 Y locked' : '🔓 Y'}
         active={scaleLocked}
         onClick={() => setScaleLocked(!scaleLocked)}
@@ -141,6 +149,14 @@ export function GraphToolbar() {
         recenter Y
       </button>
       <div className="ml-auto flex items-center gap-3 text-slate-400">
+        <span
+          className="flex items-center gap-1 text-slate-500"
+          title="Vertical dotted line styles you'll see overlaid on the chart. Hover any line for the event text."
+        >
+          <span className="inline-block h-3 w-[2px] bg-purple-400/70" /> dither
+          <span className="ml-2 inline-block h-3 w-[2px] bg-yellow-400/70" /> info
+          <span className="ml-2 inline-block h-2 w-3 border border-orange-400/70 bg-orange-400/20" /> excluded
+        </span>
         <span title="Frames excluded from stats / total frames in this section">
           {totalCount > 0 ? (
             <>
