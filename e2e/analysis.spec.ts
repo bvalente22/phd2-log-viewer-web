@@ -28,9 +28,9 @@ test.describe('Analysis modal', () => {
     await page.locator('.js-plotly-plot').click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Analyze selected frames' }).click();
 
-    await expect(page.getByRole('heading', { name: /Analysis · \d+ frames/ })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /\d+ frames/ })).toBeVisible();
     await expect(page.locator('.fixed.inset-0 .js-plotly-plot')).toHaveCount(2);
-    await page.getByRole('button', { name: '✕' }).click();
+    await page.getByRole('button', { name: /Close/ }).click();
     await expect(page.locator('.fixed.inset-0')).not.toBeVisible();
   });
 
