@@ -32,7 +32,9 @@ export function canAnalyze(s: GuideSession, opts: AnalyzeOptions): boolean {
 
 /**
  * The first contiguous run of `guiding === false` entries (Guiding Assistant).
- * Returns indices `[begin, end]` inclusive, or null if every entry was guided.
+ * Returns a half-open `{ begin, end }` range matching `AnalyzeOptions.range`
+ * conventions — `begin` is the first unguided index, `end` is one past the
+ * last unguided index. Returns null when every entry was guided.
  */
 export function findUnguidedWindow(s: GuideSession): { begin: number; end: number } | null {
   let begin = -1;
@@ -40,10 +42,10 @@ export function findUnguidedWindow(s: GuideSession): { begin: number; end: numbe
     if (!s.entries[i].guiding) {
       if (begin < 0) begin = i;
     } else if (begin >= 0) {
-      return { begin, end: i - 1 };
+      return { begin, end: i };
     }
   }
-  if (begin >= 0) return { begin, end: s.entries.length - 1 };
+  if (begin >= 0) return { begin, end: s.entries.length };
   return null;
 }
 

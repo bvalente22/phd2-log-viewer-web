@@ -29,7 +29,15 @@ describe('golden snapshots', () => {
         expect(s.pixelScale).toBeCloseTo(g.pixelScale);
         expect(s.duration).toBeCloseTo(g.duration);
         expect(s.mount.isValid).toBe(g.mountValid);
-        expect(s.entries.every(e => e.guiding === g.guidingEnabled)).toBe(true);
+        if (typeof g.guidingEnabled === 'boolean') {
+          expect(s.entries.every(e => e.guiding === g.guidingEnabled)).toBe(true);
+        }
+        if (typeof g.guidedEntryCount === 'number') {
+          expect(s.entries.filter(e => e.guiding).length).toBe(g.guidedEntryCount);
+        }
+        if (typeof g.unguidedEntryCount === 'number') {
+          expect(s.entries.filter(e => !e.guiding).length).toBe(g.unguidedEntryCount);
+        }
       });
 
       log.calibrations.forEach((cal, i) => {
