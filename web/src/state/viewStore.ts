@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
 export type CoordMode = 'RA_DEC' | 'DX_DY';
 export type Device = 'MOUNT' | 'AO';
@@ -42,7 +43,11 @@ interface ViewState {
   includeRange: (sessionIdx: number, entryCount: number, fromFrame: number, toFrame: number, frames: number[]) => void;
 }
 
-export const useViewStore = create<ViewState>((set, get) => ({
+// View preferences are persisted to localStorage so toggles survive a reload.
+// Per-section exclusion masks and the lockedYRange snapshot are NOT persisted
+// because they only make sense with the currently-loaded log; the partialize
+// option below filters them out.
+export const useViewStore = create<ViewState>()(persist((set, get) => ({
   coordMode: 'RA_DEC',
   device: 'MOUNT',
   verticalMode: 'PAN',
@@ -117,4 +122,17 @@ export const useViewStore = create<ViewState>((set, get) => ({
     next.set(sessionIdx, m);
     set({ exclusions: next });
   },
+}), {
+  name: 'phd-view-settings',
+  // Persist UI preferences only; exclusion masks and lockedYRange are
+  // session-scoped and would be misleading to restore against a different log.
+  partialize: (s) => ({
+    coordMode: s.coordMode,
+    device: s.device,
+    verticalMode: s.verticalMode,
+    scaleMode: s.scaleMode,
+    graphMode: s.graphMode,
+    scaleLocked: s.scaleLocked,
+    traces: s.traces,
+  }),
 }));

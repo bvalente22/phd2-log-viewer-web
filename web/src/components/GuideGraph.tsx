@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useRef, useEffect, useId } from 'react';
+import { useMemo, useCallback, useRef, useEffect, useId, useState } from 'react';
 import Plot from 'react-plotly.js';
 // Use the prebuilt dist to avoid pulling plotly's source modules (which require
 // the `buffer/` polyfill not available in the browser bundle path).
@@ -29,6 +29,44 @@ interface PlotDiv extends HTMLDivElement {
     xaxis?: { _offset: number; _length: number; range: [number, number] };
     yaxis?: { _offset: number; _length: number; range: [number, number] };
   };
+}
+
+interface PlotlyHoverEvent {
+  points?: Array<{ x?: number }>;
+}
+
+/**
+ * Format a guide entry as a single-line readout. Mirrors the row info
+ * format from LogViewFrame.cpp:1124, which is what the desktop puts in
+ * its status bar when you mouse over a frame.
+ */
+function formatRowInfo(e: GuideSession['entries'][number]): string {
+  const sat = e.err === 1 ? ' SAT' : '';
+  const info = e.info ? ` ${e.info}` : '';
+  return [
+    `Frame ${e.frame}`,
+    `t=${e.dt.toFixed(2)}s`,
+    `(x,y)=(${e.dx.toFixed(2)}, ${e.dy.toFixed(2)})`,
+    `(RA,Dec)=(${e.raraw.toFixed(2)}, ${e.decraw.toFixed(2)})`,
+    `guide=(${e.raguide.toFixed(2)}, ${e.decguide.toFixed(2)})`,
+    `corr=(${e.radur}, ${e.decdur})`,
+    `m=${e.mass}`,
+    `SNR=${e.snr.toFixed(1)}`,
+  ].join(' · ') + sat + info;
+}
+
+/** Locate the nearest entry by `dt` to the hovered x value. */
+function findClosestEntry(entries: GuideSession['entries'], dt: number): GuideSession['entries'][number] | null {
+  if (entries.length === 0) return null;
+  let lo = 0, hi = entries.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (entries[mid].dt < dt) lo = mid + 1;
+    else hi = mid;
+  }
+  const a = entries[Math.max(0, lo - 1)];
+  const b = entries[lo];
+  return Math.abs(a.dt - dt) < Math.abs(b.dt - dt) ? a : b;
 }
 
 /**
@@ -151,6 +189,34 @@ function buildTraces(
       hovertemplate: 'SNR: %{customdata:.1f}<extra></extra>',
     } as Data);
   }
+
+  // Invisible hover targets at the top of each info-event marker. Plotly
+  // `shapes` don't fire hover events, so we add a thin scatter trace whose
+  // markers are placed at the top of the chart and given a hovertemplate
+  // that reveals the event text.
+  if (s.infos.length > 0) {
+    const infoX: number[] = [];
+    const infoY: number[] = [];
+    const infoText: string[] = [];
+    for (const info of s.infos) {
+      const entry = s.entries[info.idx];
+      if (!entry) continue;
+      infoX.push(entry.dt);
+      // High Y so the markers sit near the top edge regardless of zoom.
+      infoY.push(yMax * 0.95);
+      const repeats = info.repeats > 1 ? ` ×${info.repeats}` : '';
+      infoText.push(`${info.info}${repeats}`);
+    }
+    out.push({
+      x: infoX, y: infoY, text: infoText,
+      type: 'scatter', mode: 'markers',
+      name: 'events',
+      marker: { size: 14, color: 'rgba(0,0,0,0)' },
+      hovertemplate: '<b>%{text}</b><extra></extra>',
+      showlegend: false,
+    } as Data);
+  }
+
   return out;
 }
 
@@ -208,6 +274,7 @@ export function GuideGraph() {
   const plotId = useId().replace(/:/g, '_');
   const yRangeRef = useRef<[number, number] | null>(null);
   const xRangeRef = useRef<[number, number] | null>(null);
+  const [hoverInfo, setHoverInfo] = useState<string | null>(null);
 
   // Latest values used by the long-lived event handlers.
   const dataRef = useRef<{ session: GuideSession; sessionIdx: number } | null>(null);
@@ -479,6 +546,19 @@ export function GuideGraph() {
     };
   }, [plotId]);
 
+  // Plotly's plotly_hover event fires with the nearest point on the topmost
+  // trace. We use just its x (= time in seconds) and look up the actual
+  // GuideEntry, so the readout shows ALL fields, not just the trace value.
+  const onHover = useCallback((ev: PlotlyHoverEvent) => {
+    if (!data) return;
+    const x = ev.points?.[0]?.x;
+    if (typeof x !== 'number') return;
+    const entry = findClosestEntry(data.session.entries, x);
+    if (entry) setHoverInfo(formatRowInfo(entry));
+  }, [data]);
+
+  const onUnhover = useCallback(() => setHoverInfo(null), []);
+
   const onRelayout = useCallback((ev: Readonly<Record<string, unknown>>) => {
     const xr0 = ev['xaxis.range[0]'];
     const xr1 = ev['xaxis.range[1]'];
@@ -527,14 +607,26 @@ export function GuideGraph() {
   };
 
   return (
-    <Plot
-      divId={plotId}
-      data={data.traces}
-      layout={layout}
-      config={{ displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false }}
-      style={{ width: '100%', height: '100%' }}
-      useResizeHandler
-      onRelayout={onRelayout as never}
-    />
+    <div className="relative h-full w-full">
+      <Plot
+        divId={plotId}
+        data={data.traces}
+        layout={layout}
+        config={{ displayModeBar: false, responsive: true, scrollZoom: false, doubleClick: false }}
+        style={{ width: '100%', height: '100%' }}
+        useResizeHandler
+        onRelayout={onRelayout as never}
+        onHover={onHover as never}
+        onUnhover={onUnhover}
+      />
+      {hoverInfo && (
+        <div
+          className="pointer-events-none absolute bottom-1 left-2 right-2 truncate rounded border border-slate-700/70 bg-slate-900/85 px-2 py-1 font-mono text-[11px] text-slate-200 shadow"
+          title="Frame info under the cursor (matches the desktop's status bar). Press Esc / move the mouse off the chart to clear."
+        >
+          {hoverInfo}
+        </div>
+      )}
+    </div>
   );
 }
