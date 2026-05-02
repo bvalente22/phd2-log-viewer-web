@@ -1,7 +1,7 @@
 {
   "name": "phd2-log-viewer-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "sh ./scripts/install-hooks.sh || true"
   },
   "dependencies": {
     "idb-keyval": "^6.2.1",
