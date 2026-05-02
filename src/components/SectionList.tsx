@@ -39,6 +39,9 @@ export function SectionList() {
           ? `${log.calibrations[sec.idx].entries.length} steps`
           : `${log.sessions[sec.idx].entries.length} frames · ${Math.round(log.sessions[sec.idx].duration)}s`;
         const isSelected = selected === i;
+        const tip = isCal
+          ? `Calibration · ${item.date} · ${log.calibrations[sec.idx].entries.length} steps`
+          : `Guide session · ${item.date} · ${log.sessions[sec.idx].entries.length} frames · ${Math.round(log.sessions[sec.idx].duration)}s`;
         return (
           <li key={i}>
             <button
@@ -46,8 +49,12 @@ export function SectionList() {
                 isSelected ? 'bg-slate-800 text-sky-300' : 'text-slate-200'
               }`}
               onClick={() => select(i)}
+              title={tip}
             >
-              <span className={isCal ? 'text-amber-400' : 'text-sky-400'}>
+              <span
+                className={isCal ? 'text-amber-400' : 'text-sky-400'}
+                title={isCal ? 'Calibration section' : 'Guide session'}
+              >
                 {isCal ? <CalibrationIcon /> : <GuideIcon />}
               </span>
               <span className="flex-1 min-w-0">

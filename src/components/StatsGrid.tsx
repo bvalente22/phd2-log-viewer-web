@@ -54,7 +54,7 @@ export function StatsGrid() {
     <button
       className="flex items-baseline gap-2 text-left hover:opacity-80"
       onClick={() => copy(val)}
-      title="Click to copy"
+      title={`${label}: ${val} — click to copy`}
     >
       <span className="text-xs text-slate-400">{label}</span>
       <span className="font-mono text-slate-100">{val}</span>
