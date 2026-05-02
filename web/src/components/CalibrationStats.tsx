@@ -6,10 +6,8 @@ const fmt = (n: number, d = 2) => Number.isFinite(n) ? n.toFixed(d) : '—';
 const fmtAngle = (rad: number) => `${fmt((rad * 180) / Math.PI, 1)}°`;
 
 /**
- * Pull a numeric value following a literal key like ", xRate = " out of the
- * calibration's raw header line. Same approach as CalibrationPlot — the
- * parser keeps `cal.hdr` as raw text rather than splitting it into a Mount
- * struct.
+ * Pull a numeric value following a literal key like ", xRate = " out of a
+ * raw header line.
  */
 const pullAfter = (line: string, key: string): number | null => {
   const i = line.indexOf(key);
@@ -19,24 +17,34 @@ const pullAfter = (line: string, key: string): number | null => {
 };
 
 /**
- * Compute how perpendicular the two calibration axes are. With well-aligned
- * gear, xAngle and yAngle should differ by exactly 90°; orthogonality error
- * is the deviation from that, signed (negative means yAngle "leans into"
- * xAngle, positive means it leans away).
+ * PHD2's calibration *header* doesn't store xRate/yRate/xAngle/yAngle — the
+ * whole point of running calibration is to determine those values, which then
+ * appear later in the guiding session's mount header. We therefore compute the
+ * rates and angles directly from the entries here, replicating the geometry
+ * the desktop app uses to draw the calibration plot's RA/Dec axis lines (see
+ * LogViewFrame.cpp:1422-1437):
+ *
+ *   - The RA axis runs from the first West step (step 0, at the origin) to
+ *     the last West step. Its angle in the camera frame is atan2(dy, dx).
+ *   - Likewise for Dec using North steps.
+ *   - The rate (px/sec) is the distance divided by total pulse time, where
+ *     each step is the "Calibration Step = N ms" value parsed from the
+ *     header. If we can't find the step duration we fall back to per-step
+ *     pixel speed (px/step) so the field still surfaces something useful.
  */
-const orthogonalityError = (xAngle: number, yAngle: number): number => {
-  // Wrap both into [-pi, pi], then return the difference from pi/2.
-  const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
-  const diff = wrap(yAngle - xAngle);
-  return diff - Math.PI / 2;
-};
+interface AxisFit {
+  rate: number;       // pixels per second (or per step if no duration)
+  unit: string;       // "px/s" when we have step ms, otherwise "px/step"
+  angle: number;      // radians, atan2(dy, dx) of the net displacement
+  pulses: number;     // total step count covered
+  distance: number;   // net pixel distance from first to last
+}
 
-/**
- * Net displacement of the last vs. first step in a direction, used to derive
- * "effective rate" — how many pixels per step the mount is actually moving in
- * that direction (matches what the desktop labels as the rate ratio test).
- */
-const netDisplacement = (entries: CalibrationEntry[], dir: CalibrationEntry['direction']) => {
+const fitAxis = (
+  entries: CalibrationEntry[],
+  dir: CalibrationEntry['direction'],
+  stepMs: number | null,
+): AxisFit | null => {
   let first: CalibrationEntry | null = null;
   let last: CalibrationEntry | null = null;
   for (const e of entries) {
@@ -45,12 +53,37 @@ const netDisplacement = (entries: CalibrationEntry[], dir: CalibrationEntry['dir
       last = e;
     }
   }
-  if (!first || !last || first === last) return 0;
-  return Math.hypot(last.dx - first.dx, last.dy - first.dy);
+  if (!first || !last || first === last) return null;
+  const ddx = last.dx - first.dx;
+  const ddy = last.dy - first.dy;
+  const distance = Math.hypot(ddx, ddy);
+  const pulses = last.step - first.step;
+  if (pulses <= 0) return null;
+  const angle = Math.atan2(ddy, ddx);
+  if (stepMs && stepMs > 0) {
+    const totalSec = (pulses * stepMs) / 1000;
+    return { rate: distance / totalSec, unit: 'px/s', angle, pulses, distance };
+  }
+  return { rate: distance / pulses, unit: 'px/step', angle, pulses, distance };
 };
 
 const directionCount = (cal: Calibration, dir: CalibrationEntry['direction']) =>
   cal.entries.filter((e) => e.direction === dir).length;
+
+/**
+ * Orthogonality error: how far off-perpendicular the two computed axes are.
+ * Ideal mount geometry has yAngle - xAngle = ±90°; we report the deviation
+ * from 90° (always returning a value in (-π/2, π/2]).
+ */
+const orthogonalityError = (xAngle: number, yAngle: number): number => {
+  let diff = yAngle - xAngle;
+  // Wrap into (-pi, pi] then collapse to a 90° comparison regardless of
+  // direction sign so a -90° and a +90° both read as "perfectly orthogonal".
+  while (diff > Math.PI) diff -= 2 * Math.PI;
+  while (diff <= -Math.PI) diff += 2 * Math.PI;
+  const absDiff = Math.abs(diff);
+  return absDiff - Math.PI / 2;
+};
 
 export function CalibrationStats() {
   const log = useLogStore((s) => s.log);
@@ -61,21 +94,22 @@ export function CalibrationStats() {
     const sec = log.sections[sectionIdx];
     if (!sec || sec.type !== 'CALIBRATION') return null;
     const cal = log.calibrations[sec.idx];
-    const mountLine = cal.hdr.find((l) => l.startsWith('Mount = ') || l.startsWith('AO = ')) ?? '';
-    const xRate = pullAfter(mountLine, ', xRate = ');
-    const yRate = pullAfter(mountLine, ', yRate = ');
-    const xAngle = pullAfter(mountLine, ', xAngle = ');
-    const yAngle = pullAfter(mountLine, ', yAngle = ');
+    // Calibration step duration appears on the Mount line as
+    // "Calibration Step = 450 ms".
+    const mountLine = cal.hdr.find((l) => l.includes('Calibration Step = ')) ?? '';
+    const stepMs = pullAfter(mountLine, 'Calibration Step = ');
 
-    const orth = xAngle !== null && yAngle !== null
-      ? orthogonalityError(xAngle, yAngle)
-      : null;
-    const rateRatio = xRate !== null && yRate !== null && yRate !== 0 ? xRate / yRate : null;
+    const xFit = fitAxis(cal.entries, 'WEST', stepMs);
+    const yFit = fitAxis(cal.entries, 'NORTH', stepMs);
+
+    const orth = xFit && yFit ? orthogonalityError(xFit.angle, yFit.angle) : null;
+    const rateRatio = xFit && yFit && yFit.rate !== 0 ? xFit.rate / yFit.rate : null;
 
     return {
       cal,
-      device: cal.device,
-      xRate, yRate, xAngle, yAngle,
+      stepMs,
+      xFit,
+      yFit,
       orth,
       rateRatio,
       counts: {
@@ -85,58 +119,73 @@ export function CalibrationStats() {
         NORTH: directionCount(cal, 'NORTH'),
         SOUTH: directionCount(cal, 'SOUTH'),
       },
-      netWest: netDisplacement(cal.entries, 'WEST'),
-      netNorth: netDisplacement(cal.entries, 'NORTH'),
     };
   }, [log, sectionIdx]);
 
   if (!stats) return null;
 
-  // Stats grouped by topic, mirroring the layout used for guiding sections.
+  const fmtRate = (fit: AxisFit | null): string =>
+    fit ? `${fmt(fit.rate, 3)} ${fit.unit}` : '—';
+  const fmtRateAngle = (fit: AxisFit | null): string =>
+    fit ? fmtAngle(fit.angle) : '—';
+
   const common: { k: string; v: string; tip: string }[] = [
-    { k: 'Device', v: stats.device, tip: 'Whether this calibration is for a Mount or an AO unit' },
+    { k: 'Device', v: stats.cal.device, tip: 'Whether this calibration is for a Mount or an AO unit' },
     { k: 'Steps', v: String(stats.cal.entries.length), tip: 'Total calibration steps recorded' },
+    {
+      k: 'Step dur',
+      v: stats.stepMs !== null ? `${fmt(stats.stepMs, 0)} ms` : '—',
+      tip: 'Pulse duration per calibration step (parsed from the "Calibration Step" field in the header)',
+    },
     {
       k: 'Orthogonality',
       v: stats.orth !== null ? `${fmt((stats.orth * 180) / Math.PI, 2)}°` : '—',
-      tip: 'Deviation of the angle between the RA and Dec axes from 90°. Values within ±5° are usually fine.',
+      tip: 'Deviation of the angle between the RA and Dec axes from 90°. Values within ±5° are usually fine; >10° suggests a calibration problem.',
     },
     {
       k: 'Rate ratio',
       v: stats.rateRatio !== null ? fmt(stats.rateRatio, 3) : '—',
-      tip: 'xRate / yRate. A ratio far from 1 hints that the mount steps very differently in RA vs. Dec.',
+      tip: 'xRate / yRate. Far from 1 hints that the mount steps very differently in RA vs. Dec — common when Dec is near the pole.',
     },
   ];
   const ra: { k: string; v: string; tip: string }[] = [
     {
       k: 'xRate',
-      v: stats.xRate !== null ? `${fmt(stats.xRate, 2)} px/s` : '—',
-      tip: 'How many pixels the star moves per second of RA pulse',
+      v: fmtRate(stats.xFit),
+      tip: 'Effective RA rate computed from net West travel divided by total pulse time',
     },
     {
       k: 'xAngle',
-      v: stats.xAngle !== null ? fmtAngle(stats.xAngle) : '—',
-      tip: 'Camera-frame angle of the RA axis (0° = horizontal)',
+      v: fmtRateAngle(stats.xFit),
+      tip: 'Camera-frame angle of the RA axis (atan2 of the net West-step displacement)',
     },
-    { k: 'West steps', v: String(stats.counts.WEST), tip: 'Number of West calibration pulses recorded' },
-    { k: 'East steps', v: String(stats.counts.EAST), tip: 'Number of East calibration pulses recorded' },
-    { k: 'Net W travel', v: `${fmt(stats.netWest)} px`, tip: 'Distance from the first to the last West step' },
+    {
+      k: 'W travel',
+      v: stats.xFit ? `${fmt(stats.xFit.distance)} px / ${stats.xFit.pulses} pulses` : '—',
+      tip: 'Distance from the first to the last West step, and the number of pulses spanning it',
+    },
+    { k: 'West', v: String(stats.counts.WEST), tip: 'Total West calibration steps recorded' },
+    { k: 'East', v: String(stats.counts.EAST), tip: 'Total East calibration steps (return half)' },
   ];
   const dec: { k: string; v: string; tip: string }[] = [
     {
       k: 'yRate',
-      v: stats.yRate !== null ? `${fmt(stats.yRate, 2)} px/s` : '—',
-      tip: 'How many pixels the star moves per second of Dec pulse',
+      v: fmtRate(stats.yFit),
+      tip: 'Effective Dec rate computed from net North travel divided by total pulse time',
     },
     {
       k: 'yAngle',
-      v: stats.yAngle !== null ? fmtAngle(stats.yAngle) : '—',
-      tip: 'Camera-frame angle of the Dec axis (should differ from xAngle by ~90°)',
+      v: fmtRateAngle(stats.yFit),
+      tip: 'Camera-frame angle of the Dec axis (atan2 of the net North-step displacement)',
     },
-    { k: 'North steps', v: String(stats.counts.NORTH), tip: 'Number of North calibration pulses recorded' },
-    { k: 'South steps', v: String(stats.counts.SOUTH), tip: 'Number of South calibration pulses recorded' },
-    { k: 'Backlash', v: String(stats.counts.BACKLASH), tip: 'Number of backlash-detection steps' },
-    { k: 'Net N travel', v: `${fmt(stats.netNorth)} px`, tip: 'Distance from the first to the last North step' },
+    {
+      k: 'N travel',
+      v: stats.yFit ? `${fmt(stats.yFit.distance)} px / ${stats.yFit.pulses} pulses` : '—',
+      tip: 'Distance from the first to the last North step, and the number of pulses spanning it',
+    },
+    { k: 'North', v: String(stats.counts.NORTH), tip: 'Total North calibration steps recorded' },
+    { k: 'South', v: String(stats.counts.SOUTH), tip: 'Total South calibration steps (return half)' },
+    { k: 'Backlash', v: String(stats.counts.BACKLASH), tip: 'Backlash-detection steps' },
   ];
 
   const Cell = ({ k, v, tip }: { k: string; v: string; tip: string }) => (
