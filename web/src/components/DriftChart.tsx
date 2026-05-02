@@ -1,11 +1,14 @@
-import { useId, useMemo, useState, useCallback } from 'react';
+import { useId, useMemo, useState, useCallback, useEffect } from 'react';
 import Plot from 'react-plotly.js';
-import type { Data, Layout } from 'plotly.js';
+// @ts-expect-error -- no types for the dist bundle; we only call relayout.
+import Plotly from 'plotly.js/dist/plotly';
+import type { Data, Layout, Shape } from 'plotly.js';
 import type { GARun } from '../parser/analyze';
 import { useChartGestures } from './useChartGestures';
 
 const RA_COLOR = '#60a5fa';
 const DEC_COLOR = '#f87171';
+const CURSOR_COLOR = 'rgba(250, 204, 21, 0.7)';
 
 interface PlotlyHoverEvent {
   points?: Array<{ x?: number; y?: number; curveNumber?: number }>;
@@ -29,6 +32,10 @@ const formatClock = (startsMs: number | null, dt: number): string => {
  * Drift-corrected RA/Dec timeline. Mirrors PaintDrift in
  * AnalysisWin.cpp:936-1063: zero-centered Y axis, RA in sky-blue, Dec in
  * rose with the same display-time negation (positive Dec points up).
+ *
+ * On hover, a dashed vertical cursor line follows the mouse so the user
+ * can read off the time/Y readout in the strip below without losing
+ * track of where they're pointing.
  */
 export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProps) {
   const plotId = useId().replace(/:/g, '_');
@@ -66,7 +73,41 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
     return [-max * 1.1, max * 1.1];
   }, [garun, k]);
 
+  // Always provide an explicit X range to Plotly. With autorange:true a brief
+  // window after the layout pass exposes a stale `_offset = 0`, which causes
+  // the first scroll-zoom to anchor at x=0 (the same first-scroll bug we
+  // fixed in the main GuideGraph; see commit 414354a).
+  const xExtent = useMemo<[number, number]>(() => {
+    const t = garun.t;
+    if (t.length < 2) return [0, 1];
+    return [t[0], t[t.length - 1]];
+  }, [garun]);
+
   useChartGestures(plotId, {}, { enableModifierSelect: false });
+
+  // Hovered X cursor: drawn as a dashed vertical Plotly shape. We push it via
+  // Plotly.relayout (not React state) so continuous hover doesn't trigger a
+  // full chart re-render.
+  useEffect(() => {
+    const onUnhoverPage = () => {
+      void Plotly.relayout(plotId, { shapes: [] });
+    };
+    window.addEventListener('mouseleave', onUnhoverPage);
+    return () => window.removeEventListener('mouseleave', onUnhoverPage);
+  }, [plotId]);
+
+  const drawCursor = useCallback((x: number) => {
+    const shape: Partial<Shape> = {
+      type: 'line', xref: 'x', yref: 'paper',
+      x0: x, x1: x, y0: 0, y1: 1,
+      line: { color: CURSOR_COLOR, width: 1, dash: 'dash' },
+    };
+    void Plotly.relayout(plotId, { shapes: [shape] });
+  }, [plotId]);
+
+  const clearCursor = useCallback(() => {
+    void Plotly.relayout(plotId, { shapes: [] });
+  }, [plotId]);
 
   const onHover = useCallback((ev: PlotlyHoverEvent) => {
     const x = ev.points?.[0]?.x;
@@ -75,7 +116,8 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
     const yPx = scaleMode === 'ARCSEC' ? y / garun.pixelScale : y;
     const yArc = scaleMode === 'ARCSEC' ? y : y * garun.pixelScale;
     setHover(`Time: ${x.toFixed(1)}s  ${formatClock(garun.starts, x)}    Y: ${yArc.toFixed(2)}″ (${yPx.toFixed(2)}px)`);
-  }, [garun, scaleMode]);
+    drawCursor(x);
+  }, [garun, scaleMode, drawCursor]);
 
   const layout: Partial<Layout> = {
     autosize: true,
@@ -83,11 +125,15 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
     paper_bgcolor: '#0f172a',
     plot_bgcolor: '#0f172a',
     font: { color: '#cbd5e1', size: 11 },
-    xaxis: { title: { text: 'time (s)' }, gridcolor: '#1e293b', zerolinecolor: '#334155', fixedrange: false, autorange: true },
+    xaxis: {
+      title: { text: 'time (s)' }, gridcolor: '#1e293b', zerolinecolor: '#334155',
+      fixedrange: false, range: xExtent,
+    },
     yaxis: { title: { text: unit }, gridcolor: '#1e293b', zerolinecolor: '#64748b', zerolinewidth: 1, fixedrange: true, range: yRange },
     showlegend: true,
     legend: { orientation: 'h', y: 1.1 },
     dragmode: false,
+    hovermode: 'x',
   };
 
   return (
@@ -101,7 +147,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
           style={{ width: '100%', height: '100%' }}
           useResizeHandler
           onHover={onHover as never}
-          onUnhover={() => setHover(null)}
+          onUnhover={() => { setHover(null); clearCursor(); }}
         />
       </div>
       <div className="border-t border-slate-800 bg-slate-900/40 px-3 py-1 font-mono text-[11px] text-slate-300 min-h-[24px]">

@@ -1,11 +1,14 @@
 import { useId, useMemo, useState, useCallback, useEffect } from 'react';
 import Plot from 'react-plotly.js';
-import type { Data, Layout } from 'plotly.js';
+// @ts-expect-error -- no types for the dist bundle; we only call relayout.
+import Plotly from 'plotly.js/dist/plotly';
+import type { Data, Layout, Shape } from 'plotly.js';
 import type { GARun } from '../parser/analyze';
 import { useChartGestures } from './useChartGestures';
 
 const PEAK_PX = 8;
 const FFT_COLOR = '#a3e635';
+const CURSOR_COLOR = 'rgba(250, 204, 21, 0.7)';
 
 interface PlotDiv extends HTMLDivElement {
   _fullLayout?: {
@@ -23,7 +26,8 @@ interface PeriodogramChartProps {
  * AnalysisWin.cpp:1076-1182 plus the OnMove peak-snap logic at lines
  * 853-918. The hover readout is the periodic-error report — period,
  * amplitude (″/px), peak-to-peak, RMS — that the desktop puts in its
- * status bar.
+ * status bar. A dashed vertical cursor line snaps to the same peak so
+ * the user sees exactly which period they're reading.
  */
 export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
   const plotId = useId().replace(/:/g, '_');
@@ -43,6 +47,19 @@ export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
       fillcolor: 'rgba(163, 230, 53, 0.1)',
     } as Data,
   ], [garun, k]);
+
+  // Plotly's xaxis.type:'log' wants the range in log10 space. Always provide
+  // an explicit range to avoid the autorange-vs-first-scroll bug we saw in
+  // the main GuideGraph (commit 414354a) — Plotly's `_fullLayout.xaxis._offset`
+  // can be 0 immediately after autorange settles, which breaks scroll-zoom's
+  // cursor anchoring on the very first wheel event.
+  const xLogRange = useMemo<[number, number]>(() => {
+    const periods = garun.fftPeriod;
+    if (periods.length < 2) return [0, 1]; // 10^0 .. 10^1
+    const min = Math.max(periods[0], 1e-6);
+    const max = Math.max(periods[periods.length - 1], min * 10);
+    return [Math.log10(min), Math.log10(max)];
+  }, [garun]);
 
   useChartGestures(plotId, {}, { enableModifierSelect: false });
 
@@ -82,6 +99,20 @@ export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
     return { period: cursorPeriod, amplitude: garun.fftSpline.at(cursorPeriod) };
   }, [plotId, garun]);
 
+  // Cursor line drawn via Plotly.relayout (bypasses React render).
+  const drawCursor = useCallback((period: number) => {
+    const shape: Partial<Shape> = {
+      type: 'line', xref: 'x', yref: 'paper',
+      x0: period, x1: period, y0: 0, y1: 1,
+      line: { color: CURSOR_COLOR, width: 1, dash: 'dash' },
+    };
+    void Plotly.relayout(plotId, { shapes: [shape] });
+  }, [plotId]);
+
+  const clearCursor = useCallback(() => {
+    void Plotly.relayout(plotId, { shapes: [] });
+  }, [plotId]);
+
   const onHover = useCallback((ev: { points?: Array<{ x?: number }> }) => {
     const x = ev.points?.[0]?.x;
     if (typeof x !== 'number') return;
@@ -97,7 +128,8 @@ export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
       `P-P: ${ppArc.toFixed(2)}″ (${ppPx.toFixed(2)}px)  ` +
       `RMS: ${rmsArc.toFixed(2)}″ (${rmsPx.toFixed(2)}px)`,
     );
-  }, [garun, snapToPeak]);
+    drawCursor(period);
+  }, [garun, snapToPeak, drawCursor]);
 
   // Quiet the unused-variable warning for `unit/k` when scaleMode is PIXELS.
   useEffect(() => { void unit; void k; }, [unit, k]);
@@ -110,7 +142,7 @@ export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
     font: { color: '#cbd5e1', size: 11 },
     xaxis: {
       title: { text: 'period (s)' }, gridcolor: '#1e293b', zerolinecolor: '#334155',
-      type: 'log', autorange: true, fixedrange: false,
+      type: 'log', range: xLogRange, fixedrange: false,
     },
     yaxis: {
       title: { text: `amplitude (${unit === '″' ? 'arc-sec' : 'px'})` },
@@ -119,6 +151,7 @@ export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
     },
     showlegend: false,
     dragmode: false,
+    hovermode: 'x',
   };
 
   return (
@@ -132,7 +165,7 @@ export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
           style={{ width: '100%', height: '100%' }}
           useResizeHandler
           onHover={onHover as never}
-          onUnhover={() => setHover(null)}
+          onUnhover={() => { setHover(null); clearCursor(); }}
         />
       </div>
       <div className="border-t border-slate-800 bg-slate-900/40 px-3 py-1 font-mono text-[11px] text-slate-300 min-h-[24px] whitespace-pre-wrap">
