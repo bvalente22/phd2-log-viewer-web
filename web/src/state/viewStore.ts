@@ -23,6 +23,14 @@ interface ViewState {
   scaleMode: ScaleMode;
   graphMode: GraphMode;
   scaleLocked: boolean;
+  /**
+   * When true, the Y axis range is computed from a robust percentile of the
+   * visible data instead of its raw min/max. This keeps dithers and other
+   * outliers from forcing the scale wide enough that the routine guiding
+   * (typically <2 arc-sec) becomes a flat line. See GuideGraph.tsx for the
+   * actual percentile choice.
+   */
+  autoScaleY: boolean;
   lockedYRange: [number, number] | null;
   traces: TraceVisibility;
   exclusions: Map<number, Uint8Array>;
@@ -32,6 +40,7 @@ interface ViewState {
   setVerticalMode: (v: VerticalMode) => void;
   setScaleMode: (m: ScaleMode) => void;
   setGraphMode: (m: GraphMode) => void;
+  setAutoScaleY: (b: boolean) => void;
   setScaleLocked: (b: boolean, range?: [number, number]) => void;
   toggleTrace: (k: keyof TraceVisibility) => void;
 
@@ -54,6 +63,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   scaleMode: 'ARCSEC',
   graphMode: 'TIME',
   scaleLocked: false,
+  autoScaleY: true,
   lockedYRange: null,
   traces: { ra: true, dec: true, raPulses: true, decPulses: true, mass: false, snr: false },
   exclusions: new Map(),
@@ -63,6 +73,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   setVerticalMode: (v) => set({ verticalMode: v }),
   setScaleMode: (m) => set({ scaleMode: m }),
   setGraphMode: (m) => set({ graphMode: m }),
+  setAutoScaleY: (b) => set({ autoScaleY: b }),
   setScaleLocked: (b, range) => set({ scaleLocked: b, lockedYRange: b && range ? range : null }),
   toggleTrace: (k) => set((s) => ({ traces: { ...s.traces, [k]: !s.traces[k] } })),
 
@@ -133,6 +144,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
     scaleMode: s.scaleMode,
     graphMode: s.graphMode,
     scaleLocked: s.scaleLocked,
+    autoScaleY: s.autoScaleY,
     traces: s.traces,
   }),
 }));
