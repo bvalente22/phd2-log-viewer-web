@@ -14,6 +14,7 @@ export interface TraceVisibility {
   decPulses: boolean;
   mass: boolean;
   snr: boolean;
+  events: boolean;
 }
 
 interface ViewState {
@@ -65,7 +66,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   scaleLocked: false,
   autoScaleY: true,
   lockedYRange: null,
-  traces: { ra: true, dec: true, raPulses: true, decPulses: true, mass: false, snr: false },
+  traces: { ra: true, dec: true, raPulses: true, decPulses: true, mass: false, snr: false, events: false },
   exclusions: new Map(),
 
   setCoordMode: (m) => set({ coordMode: m }),
