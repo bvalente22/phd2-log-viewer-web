@@ -107,6 +107,7 @@ export function GraphToolbar() {
     { key: 'decPulses', label: 'Dec pulses', title: 'Show/hide Dec correction pulse durations as bars on the 0 line' },
     { key: 'mass', label: 'Mass', title: 'Show/hide guide-star mass (yellow), scaled to the bottom half of the chart' },
     { key: 'snr', label: 'SNR', title: 'Show/hide guide-star SNR (white), scaled to the bottom half of the chart' },
+    { key: 'events', label: 'Events', title: 'Show INFO events as inline labels along the bottom of the chart (matches the desktop "events" checkbox)' },
   ];
 
   return (
