@@ -67,9 +67,22 @@ export function useChartGestures(
     ].join(';');
     div.appendChild(overlay);
 
+    // Geometry-based hit-test instead of checking the click target's SVG
+    // ancestor. Annotation labels (when the Events toggle is on) sit in a
+    // higher SVG layer than .nsewdrag, so an ancestor check would refuse
+    // drags that started on a label even though the cursor is inside the
+    // plot area.
     const isInPlotArea = (e: MouseEvent): boolean => {
-      const t = e.target as HTMLElement | null;
-      return !!t?.closest('.nsewdrag, .bglayer, .draglayer');
+      const xa = div._fullLayout?.xaxis;
+      const ya = div._fullLayout?.yaxis;
+      if (!xa || !ya) return false;
+      const rect = div.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      return (
+        px >= xa._offset && px <= xa._offset + xa._length &&
+        py >= ya._offset && py <= ya._offset + ya._length
+      );
     };
 
     let rafId: number | null = null;
@@ -120,11 +133,15 @@ export function useChartGestures(
       }
 
       kind = 'PAN_ZOOM';
-      const py = e.clientY - rect.top - ya._offset;
-      const frac = Math.min(1, Math.max(0, 1 - py / ya._length));
+      // Y zoom is anchored on the data Y=0 line, not the cursor. The 0 line
+      // is the natural reference when reading guiding error charts (it's
+      // where "no error" lives), and locking it keeps the user oriented as
+      // they zoom. yAnchorFrac stores the screen position of Y=0 at drag
+      // start so it stays pinned even if the chart was panned away from a
+      // symmetric range beforehand.
       const [y0, y1] = ya.range;
-      yAnchor = y0 + frac * (y1 - y0);
-      yAnchorFrac = frac;
+      yAnchor = 0;
+      yAnchorFrac = (0 - y0) / (y1 - y0);
       startClientX = e.clientX;
       startClientY = e.clientY;
       startYRange = [y0, y1];
