@@ -4,11 +4,12 @@ import Plot from 'react-plotly.js';
 // the `buffer/` polyfill not available in the browser bundle path).
 // @ts-expect-error -- no types for the dist bundle; we only call relayout.
 import Plotly from 'plotly.js/dist/plotly';
-import type { Data, Layout, Shape } from 'plotly.js';
+import type { Data, Layout, Shape, Annotations } from 'plotly.js';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import type { GuideSession } from '../parser';
 import { useChartGestures } from './useChartGestures';
+import { layoutInlineEvents } from './eventLayout';
 
 const RA_COLOR = '#60a5fa';
 const DEC_COLOR = '#f87171';
@@ -235,6 +236,40 @@ function buildTraces(
   return out;
 }
 
+const DITHER_BORDER = 'rgba(168, 85, 247, 0.7)';
+const INFO_BORDER = 'rgba(250, 204, 21, 0.55)';
+
+/**
+ * Convert laid-out events into Plotly annotation specs. yref:'paper' keeps
+ * the labels glued to the bottom of the plot regardless of Y zoom; yshift
+ * stacks higher rows upward (row=0 is the bottom row). Border color matches
+ * the existing dotted line for that event so the visual link is obvious.
+ *
+ * 14 px row spacing is intentional: the desktop used 16 px against a larger
+ * DC font; the web font is 10 px, so 14 px keeps rows compact with ~4 px of
+ * breathing room.
+ */
+function buildEventAnnotations(
+  laidOut: ReturnType<typeof layoutInlineEvents>,
+): Partial<Annotations>[] {
+  return laidOut.map((ev) => ({
+    x: ev.timeSec,
+    xref: 'x',
+    y: 0,
+    yref: 'paper',
+    yanchor: 'bottom',
+    xanchor: 'left',
+    yshift: ev.row * 14,
+    text: ev.text,
+    showarrow: false,
+    bgcolor: 'rgba(15,23,42,0.85)',
+    bordercolor: ev.isDither ? DITHER_BORDER : INFO_BORDER,
+    borderwidth: 1,
+    borderpad: 2,
+    font: { size: 10, color: 'rgb(226,232,240)' },
+  }));
+}
+
 function buildShapes(s: GuideSession, mask: Uint8Array | undefined): Partial<Shape>[] {
   const shapes: Partial<Shape>[] = [];
 
@@ -295,6 +330,23 @@ export function GuideGraph() {
 
   // Latest values used by the long-lived event handlers.
   const dataRef = useRef<{ session: GuideSession; sessionIdx: number } | null>(null);
+  const measureTextPxRef = useRef<((text: string) => number) | null>(null);
+  if (!measureTextPxRef.current) {
+    const cache = new Map<string, number>();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.font = '10px sans-serif';
+    measureTextPxRef.current = (text: string) => {
+      const cached = cache.get(text);
+      if (cached !== undefined) return cached;
+      const w = ctx ? ctx.measureText(text).width : text.length * 6;
+      cache.set(text, w);
+      return w;
+    };
+  }
+
+  const refreshAnnotationsRef = useRef<() => void>(() => {});
+
   const includeRangeRef = useRef(includeRange);
   const excludeRangeRef = useRef(excludeRange);
   useEffect(() => { includeRangeRef.current = includeRange; }, [includeRange]);
@@ -388,6 +440,20 @@ export function GuideGraph() {
       yMax = maxErr > 0 ? maxErr * 1.1 : 1;
     }
 
+    const eventInputs: { timeSec: number; text: string; isDither: boolean }[] = [];
+    if (traces.events) {
+      for (const info of session.infos) {
+        const entry = session.entries[info.idx];
+        if (!entry) continue;
+        const text = info.repeats > 1 ? `${info.info} ×${info.repeats}` : info.info;
+        eventInputs.push({
+          timeSec: entry.dt,
+          text,
+          isDither: info.info.startsWith('DITHER'),
+        });
+      }
+    }
+
     return {
       session,
       sessionIdx: sec.idx,
@@ -396,12 +462,47 @@ export function GuideGraph() {
       xExtent,
       traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo),
       shapes: buildShapes(session, mask),
+      eventInputs,
     };
   }, [log, sectionIdx, exclusions, scaleMode, traces, coordMode, device, autoScaleY]);
 
   useEffect(() => {
     dataRef.current = data ? { session: data.session, sessionIdx: data.sessionIdx } : null;
   }, [data]);
+
+  const initialAnnotations = useMemo<Partial<Annotations>[]>(() => {
+    if (!data || data.eventInputs.length === 0) return [];
+    const measure = measureTextPxRef.current!;
+    // Use the natural span of the data for first paint. The relayout
+    // handler below recomputes once the chart actually has a real width.
+    const span = Math.max(1e-6, data.xExtent[1] - data.xExtent[0]);
+    // Assume a ~1000 px chart for first paint; relayout will correct it.
+    const pxPerSecond = 1000 / span;
+    const laid = layoutInlineEvents(data.eventInputs, pxPerSecond, measure);
+    return buildEventAnnotations(laid);
+  }, [data]);
+
+  useEffect(() => {
+    refreshAnnotationsRef.current = () => {
+      const ctx = dataRef.current;
+      if (!ctx) return;
+      // Plotly attaches `_fullLayout` to the div once it has finished its
+      // initial render. Calling relayout before that crashes (the div has
+      // no plot to update). The `annotations` already passed via the React
+      // layout prop covers the pre-init case, so we just skip until ready.
+      const div = document.getElementById(plotId) as PlotDiv | null;
+      if (!div?._fullLayout) return;
+      if (!data || data.eventInputs.length === 0) return;
+      const xa = div._fullLayout.xaxis;
+      const widthPx = xa?._length ?? div.clientWidth ?? 1000;
+      const range = xa?.range ?? data.xExtent;
+      const span = Math.max(1e-6, range[1] - range[0]);
+      const pxPerSecond = widthPx / span;
+      const measure = measureTextPxRef.current!;
+      const laid = layoutInlineEvents(data.eventInputs, pxPerSecond, measure);
+      void Plotly.relayout(plotId, { annotations: buildEventAnnotations(laid) });
+    };
+  }, [data, plotId]);
 
   // Mouse-wheel X zoom is handled by Plotly's built-in scrollZoom (config),
   // constrained to the X axis by setting yaxis.fixedrange:true on the layout.
@@ -549,7 +650,25 @@ export function GuideGraph() {
       if (scaleLocked) lockedYView = null;
     }
     sectionViews.set(idx, next);
+
+    // Inline-event labels stack by screen pixels, so the row layout depends
+    // on the current x-zoom. Re-derive annotations only when an x-axis range
+    // actually changed — never on an annotations-only relayout, which we
+    // ourselves trigger and would cause an infinite recursion.
+    const xRangeChanged =
+      typeof ev['xaxis.range[0]'] === 'number' ||
+      typeof ev['xaxis.range[1]'] === 'number' ||
+      ev['xaxis.autorange'] === true;
+    if (xRangeChanged) refreshAnnotationsRef.current?.();
   }, [scaleLocked]);
+
+  // After the chart mounts and its real pixel width is available, redo the
+  // annotation layout so the row spacing reflects the actual chart size
+  // (initialAnnotations used a 1000 px guess to avoid a flash of empty).
+  useEffect(() => {
+    const id = requestAnimationFrame(() => refreshAnnotationsRef.current?.());
+    return () => cancelAnimationFrame(id);
+  }, [data, traces.events]);
 
   if (!data) {
     return <div className="flex h-full items-center justify-center text-slate-500">Select a guiding section.</div>;
@@ -598,6 +717,7 @@ export function GuideGraph() {
         : sectionViews.get(data.sessionIdx)?.y ?? [-data.yMax, data.yMax],
     },
     shapes: data.shapes,
+    annotations: initialAnnotations,
     showlegend: true,
     legend: { orientation: 'h', y: 1.1 },
     dragmode: false,
