@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 // @ts-expect-error -- no types for the dist bundle; we only call relayout.
 import Plotly from 'plotly.js/dist/plotly';
 
@@ -49,6 +49,17 @@ export function useChartGestures(
   const enableModifierSelect = opts.enableModifierSelect ?? true;
   const hideSlider = opts.hideRangeSliderDuringDrag ?? false;
 
+  // Keep callbacks in a ref so the effect below isn't torn down and rebuilt
+  // on every parent render (callbacks is typically a fresh object literal in
+  // JSX). If the effect re-ran mid-drag, the listener closure would be
+  // replaced — and the new closure starts with kind=null, which made
+  // pointermove silently early-return after a successful pointerdown,
+  // causing the drag to "stop after a short distance". This ref keeps a
+  // single, stable listener installation across renders while still
+  // letting callers update their callback bodies freely.
+  const cbRef = useRef(callbacks);
+  cbRef.current = callbacks;
+
   useEffect(() => {
     const div = document.getElementById(plotId) as PlotDiv | null;
     if (!div) return;
@@ -91,7 +102,7 @@ export function useChartGestures(
       pendingPatch = pendingPatch ? { ...pendingPatch, ...patch } : { ...patch };
       if (rafId == null) {
         rafId = requestAnimationFrame(() => {
-          if (pendingPatch) void Plotly.relayout(plotId, pendingPatch);
+          if (pendingPatch) void Plotly.relayout(div, pendingPatch);
           pendingPatch = null;
           rafId = null;
         });
@@ -100,22 +111,39 @@ export function useChartGestures(
 
     type DragKind = 'PAN_ZOOM' | 'X_INCLUDE' | 'X_EXCLUDE' | null;
     let kind: DragKind = null;
+    let activePointerId: number | null = null;
+    let captureTarget: Element | null = null;
     let startClientX = 0;
     let startClientY = 0;
     let startYRange: [number, number] = [0, 0];
     let startXRange: [number, number] = [0, 0];
-    let yAnchor = 0;
-    let yAnchorFrac = 0.5;
     let xStartFrac = 0;
     let sliderHidden = false;
 
-    const onDown = (e: MouseEvent) => {
+    const onDown = (e: PointerEvent) => {
       if (e.button !== 0) return;
       if (!isInPlotArea(e)) return;
       const xa = div._fullLayout?.xaxis;
       const ya = div._fullLayout?.yaxis;
       if (!xa || !ya) return;
       const rect = div.getBoundingClientRect();
+
+      // setPointerCapture on the chart container guarantees every
+      // subsequent pointermove/pointerup is delivered here regardless of
+      // what's under the cursor — including Plotly's hover/scattergl
+      // layers, which would otherwise hijack mouse events partway through
+      // a drag and "freeze" our pan/zoom.
+      //
+      // Important: capture on `div` (the stable plot container), NOT on
+      // e.target. The target may be an SVG path or canvas inside Plotly
+      // that gets re-rendered (and detached from the DOM) on every
+      // relayout we issue mid-drag — the browser implicitly releases
+      // capture when the captured element leaves the DOM, which would
+      // make this useless after the first frame.
+      try { div.setPointerCapture(e.pointerId); }
+      catch { /* ignore — capture is best-effort */ }
+      captureTarget = div;
+      activePointerId = e.pointerId;
 
       if (enableModifierSelect && (e.shiftKey || e.ctrlKey || e.metaKey)) {
         kind = e.shiftKey ? 'X_INCLUDE' : 'X_EXCLUDE';
@@ -133,37 +161,43 @@ export function useChartGestures(
       }
 
       kind = 'PAN_ZOOM';
-      // Y zoom is anchored on the data Y=0 line, not the cursor. The 0 line
-      // is the natural reference when reading guiding error charts (it's
-      // where "no error" lives), and locking it keeps the user oriented as
-      // they zoom. yAnchorFrac stores the screen position of Y=0 at drag
-      // start so it stays pinned even if the chart was panned away from a
-      // symmetric range beforehand.
+      // Y zoom uses multiplicative scaling around the *center* of the
+      // current Y range (not data Y=0). Mirrors LogViewFrame.cpp:1192-1199:
+      // the desktop just does `vscale *= 1.05` per upward move event,
+      // implicitly centered (its y range is symmetric around 0). Anchoring
+      // on the chart center makes the zoom feel identical regardless of
+      // where on the chart the user clicked or whether Y has been panned.
       const [y0, y1] = ya.range;
-      yAnchor = 0;
-      yAnchorFrac = (0 - y0) / (y1 - y0);
       startClientX = e.clientX;
       startClientY = e.clientY;
       startYRange = [y0, y1];
       startXRange = [...xa.range] as [number, number];
       if (hideSlider) {
-        void Plotly.relayout(plotId, { 'xaxis.rangeslider.visible': false });
+        void Plotly.relayout(div, { 'xaxis.rangeslider.visible': false });
         sliderHidden = true;
       }
+      // Stop propagation so Plotly's own mousedown handlers (hover, point
+      // selection on scattergl traces) don't fight our drag.
       e.preventDefault();
+      e.stopPropagation();
     };
 
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: PointerEvent) => {
       if (!kind) return;
+      if (activePointerId !== null && e.pointerId !== activePointerId) return;
       const xa = div._fullLayout?.xaxis;
       if (!xa) return;
       if (kind === 'PAN_ZOOM') {
+        // Continuous form of the desktop's per-event ×1.05 scaling. Drag
+        // up (dy<0) → zoom in (smaller span), drag down → zoom out. The
+        // /200 divisor controls sensitivity; a 200 px drag doubles/halves.
         const dy = e.clientY - startClientY;
         const factor = Math.exp(dy / 200);
         const oldYSpan = startYRange[1] - startYRange[0];
         const newYSpan = oldYSpan * factor;
-        const newY0 = yAnchor - yAnchorFrac * newYSpan;
-        const newY1 = newY0 + newYSpan;
+        const yCenter = (startYRange[0] + startYRange[1]) / 2;
+        const newY0 = yCenter - newYSpan / 2;
+        const newY1 = yCenter + newYSpan / 2;
         const dx = e.clientX - startClientX;
         const xSpan = startXRange[1] - startXRange[0];
         const dxData = (dx / xa._length) * xSpan;
@@ -173,8 +207,8 @@ export function useChartGestures(
           'yaxis.range': [newY0, newY1],
           'xaxis.range': [newX0, newX1],
         });
-        callbacks.onRangeChange?.('x', [newX0, newX1]);
-        callbacks.onRangeChange?.('y', [newY0, newY1]);
+        cbRef.current.onRangeChange?.('x', [newX0, newX1]);
+        cbRef.current.onRangeChange?.('y', [newY0, newY1]);
         return;
       }
       const rect = div.getBoundingClientRect();
@@ -186,11 +220,23 @@ export function useChartGestures(
       overlay.style.width = ((b - a) * xa._length) + 'px';
     };
 
-    const onUp = (e: MouseEvent) => {
+    const releaseCapture = () => {
+      if (captureTarget && activePointerId !== null) {
+        try {
+          (captureTarget as Element & { releasePointerCapture?: (id: number) => void })
+            .releasePointerCapture?.(activePointerId);
+        } catch { /* ignore */ }
+      }
+      captureTarget = null;
+      activePointerId = null;
+    };
+
+    const onUp = (e: PointerEvent) => {
       if (!kind) return;
+      if (activePointerId !== null && e.pointerId !== activePointerId) return;
       const xa = div._fullLayout?.xaxis;
 
-      if (kind !== 'PAN_ZOOM' && xa && callbacks.rangeContext) {
+      if (kind !== 'PAN_ZOOM' && xa && cbRef.current.rangeContext) {
         overlay.style.display = 'none';
         const rect = div.getBoundingClientRect();
         const endPx = e.clientX - rect.left - xa._offset;
@@ -201,7 +247,7 @@ export function useChartGestures(
           const [x0, x1] = xa.range;
           const tA = x0 + a * (x1 - x0);
           const tB = x0 + b * (x1 - x0);
-          const ctx = callbacks.rangeContext();
+          const ctx = cbRef.current.rangeContext();
           if (ctx) {
             let firstFrame = -1, lastFrame = -1;
             for (let i = 0; i < ctx.dts.length; i++) {
@@ -211,8 +257,8 @@ export function useChartGestures(
               }
             }
             if (firstFrame >= 0) {
-              if (kind === 'X_INCLUDE') callbacks.onIncludeRange?.(firstFrame, lastFrame);
-              else callbacks.onExcludeRange?.(firstFrame, lastFrame);
+              if (kind === 'X_INCLUDE') cbRef.current.onIncludeRange?.(firstFrame, lastFrame);
+              else cbRef.current.onExcludeRange?.(firstFrame, lastFrame);
             }
           }
         }
@@ -229,21 +275,45 @@ export function useChartGestures(
         sliderHidden = false;
       }
       if (Object.keys(finalPatch).length > 0) {
-        void Plotly.relayout(plotId, finalPatch);
+        void Plotly.relayout(div, finalPatch);
       }
 
+      releaseCapture();
       kind = null;
     };
 
-    div.addEventListener('mousedown', onDown, true);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp, true);
+    const onCancel = (e: PointerEvent) => {
+      if (!kind) return;
+      if (activePointerId !== null && e.pointerId !== activePointerId) return;
+      overlay.style.display = 'none';
+      if (rafId != null) { cancelAnimationFrame(rafId); rafId = null; }
+      pendingPatch = null;
+      if (sliderHidden) {
+        void Plotly.relayout(div, { 'xaxis.rangeslider.visible': true });
+        sliderHidden = false;
+      }
+      releaseCapture();
+      kind = null;
+    };
+
+    // Capture-phase pointerdown so we beat any Plotly handlers attached on
+    // bubble. Move/up/cancel listen on `div` rather than window because
+    // setPointerCapture redirects all events to the captured element (which
+    // is inside the div), so a window-level listener wouldn't see them.
+    div.addEventListener('pointerdown', onDown, true);
+    div.addEventListener('pointermove', onMove, true);
+    div.addEventListener('pointerup', onUp, true);
+    div.addEventListener('pointercancel', onCancel, true);
     return () => {
-      div.removeEventListener('mousedown', onDown, true);
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp, true);
+      div.removeEventListener('pointerdown', onDown, true);
+      div.removeEventListener('pointermove', onMove, true);
+      div.removeEventListener('pointerup', onUp, true);
+      div.removeEventListener('pointercancel', onCancel, true);
       overlay.remove();
       if (rafId != null) cancelAnimationFrame(rafId);
     };
-  }, [plotId, enableModifierSelect, hideSlider, callbacks]);
+    // Intentionally exclude `callbacks` from deps — they're routed through
+    // cbRef so the listener install survives parent re-renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plotId, enableModifierSelect, hideSlider]);
 }

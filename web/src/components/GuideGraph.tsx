@@ -10,6 +10,7 @@ import { useViewStore } from '../state/viewStore';
 import type { GuideSession } from '../parser';
 import { useChartGestures } from './useChartGestures';
 import { layoutInlineEvents } from './eventLayout';
+import { computeSettlingMask } from '../parser/settling';
 
 const RA_COLOR = '#60a5fa';
 const DEC_COLOR = '#f87171';
@@ -313,6 +314,7 @@ export function GuideGraph() {
   const log = useLogStore((s) => s.log);
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const exclusions = useViewStore((s) => s.exclusions);
+  const setMask = useViewStore((s) => s.setMask);
   const scaleMode = useViewStore((s) => s.scaleMode);
   const traces = useViewStore((s) => s.traces);
   const coordMode = useViewStore((s) => s.coordMode);
@@ -470,6 +472,20 @@ export function GuideGraph() {
     dataRef.current = data ? { session: data.session, sessionIdx: data.sessionIdx } : null;
   }, [data]);
 
+  // First-time-viewing default: auto-exclude dithers and settling windows so
+  // routine guiding stats aren't dominated by post-dither recovery frames.
+  // Only applies when no mask exists yet for this section — once the user
+  // touches the exclusions (Include all, manual ranges, etc.) an entry is
+  // recorded and we leave it alone.
+  useEffect(() => {
+    if (!data) return;
+    if (exclusions.has(data.sessionIdx)) return;
+    const mask = computeSettlingMask(data.session);
+    let any = false;
+    for (let i = 0; i < mask.length; i++) if (mask[i]) { any = true; break; }
+    setMask(data.sessionIdx, any ? mask : new Uint8Array(data.session.entries.length));
+  }, [data, exclusions, setMask]);
+
   const initialAnnotations = useMemo<Partial<Annotations>[]>(() => {
     if (!data || data.eventInputs.length === 0) return [];
     const measure = measureTextPxRef.current!;
@@ -608,7 +624,10 @@ export function GuideGraph() {
         };
       },
     },
-    { enableModifierSelect: true, hideRangeSliderDuringDrag: true },
+    // Don't hide the rangeslider during drag — toggling its visibility
+    // changes the plot area's pixel height, which makes the chart "jump"
+    // taller mid-drag and snap back on release. Better to keep it pinned.
+    { enableModifierSelect: true, hideRangeSliderDuringDrag: false },
   );
 
   // Plotly's plotly_hover event fires with the nearest point on the topmost

@@ -2,8 +2,8 @@ import * as RCM from '@radix-ui/react-context-menu';
 import { ReactNode, useRef } from 'react';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
-import type { GuideSession } from '../parser';
 import { canAnalyze, analyze, findUnguidedWindow, findUnguidedWindowAtTime } from '../parser/analyze';
+import { computeSettlingMask } from '../parser/settling';
 import type { AnalysisKind } from '../state/analysisStore';
 import { useAnalysisStore } from '../state/analysisStore';
 
@@ -30,50 +30,6 @@ const clientXToChartTime = (clientX: number, target: HTMLElement | null): number
   if (px < 0 || px > xa._length) return null;
   const frac = px / xa._length;
   return xa.range[0] + frac * (xa.range[1] - xa.range[0]);
-};
-
-const DITHER_SETTLE_FRAMES = 5;
-
-/**
- * Build an exclusion mask covering frames during settling and post-dither
- * settle. Two paths:
- *   - If the log emits SETTLING STATE CHANGE state=1/0 events, exclude the
- *     entry range bounded by those events (matches desktop "Exclude frames
- *     settling").
- *   - As a fallback (newer logs may only emit DITHER), also exclude the
- *     N entries immediately following any DITHER event.
- *
- * The result is always OR-merged with the caller's existing mask so picking
- * this menu item adds to whatever the user has already excluded by hand.
- */
-const computeSettlingMask = (s: GuideSession, base?: Uint8Array): Uint8Array => {
-  const m = base && base.length === s.entries.length
-    ? new Uint8Array(base)
-    : new Uint8Array(s.entries.length);
-
-  let inSettle = false;
-  let startEntryIdx = 0;
-  for (const info of s.infos) {
-    if (info.info === 'state=1' && !inSettle) {
-      inSettle = true;
-      startEntryIdx = info.idx;
-    } else if (info.info === 'state=0' && inSettle) {
-      for (let i = startEntryIdx; i < info.idx && i < s.entries.length; i++) m[i] = 1;
-      inSettle = false;
-    }
-  }
-  if (inSettle) {
-    for (let i = startEntryIdx; i < s.entries.length; i++) m[i] = 1;
-  }
-
-  for (const info of s.infos) {
-    if (info.info.startsWith('DITHER')) {
-      const stop = Math.min(s.entries.length, info.idx + DITHER_SETTLE_FRAMES);
-      for (let i = info.idx; i < stop; i++) m[i] = 1;
-    }
-  }
-
-  return m;
 };
 
 export function GraphContextMenu({ children }: { children: ReactNode }) {
