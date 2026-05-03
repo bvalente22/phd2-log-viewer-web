@@ -10,6 +10,7 @@ import { GraphToolbar } from '../components/GraphToolbar';
 import { GraphContextMenu } from '../components/ContextMenu';
 import { RecentsPanel } from '../components/RecentsPanel';
 import { RecentsDropdown } from '../components/RecentsDropdown';
+import { LogsFolderPane } from '../components/LogsFolderPane';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { useKeyboardShortcuts } from '../state/useKeyboard';
@@ -68,6 +69,7 @@ export function ViewerPage() {
       {/* Sidebar spans the full content height so its scrollable section list
           extends to the bottom of the page, independent of the stats footer. */}
       <aside className="flex flex-col overflow-hidden border-r border-slate-800">
+        <LogsFolderPane />
         <RecentsDropdown />
         <div className="flex-1 overflow-y-auto">
           <SectionList />
