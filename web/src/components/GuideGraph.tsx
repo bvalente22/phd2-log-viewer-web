@@ -388,6 +388,20 @@ export function GuideGraph() {
       yMax = maxErr > 0 ? maxErr * 1.1 : 1;
     }
 
+    const eventInputs: { timeSec: number; text: string; isDither: boolean }[] = [];
+    if (traces.events) {
+      for (const info of session.infos) {
+        const entry = session.entries[info.idx];
+        if (!entry) continue;
+        const text = info.repeats > 1 ? `${info.info} ×${info.repeats}` : info.info;
+        eventInputs.push({
+          timeSec: entry.dt,
+          text,
+          isDither: info.info.startsWith('DITHER'),
+        });
+      }
+    }
+
     return {
       session,
       sessionIdx: sec.idx,
@@ -396,6 +410,7 @@ export function GuideGraph() {
       xExtent,
       traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo),
       shapes: buildShapes(session, mask),
+      eventInputs,
     };
   }, [log, sectionIdx, exclusions, scaleMode, traces, coordMode, device, autoScaleY]);
 
