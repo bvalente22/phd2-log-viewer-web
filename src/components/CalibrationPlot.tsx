@@ -162,7 +162,7 @@ export function CalibrationPlot() {
         <Plot
           data={data.traces}
           layout={layout}
-          config={{ displaylogo: false, responsive: true }}
+          config={{ displaylogo: false, responsive: true, scrollZoom: true }}
           style={{ width: '100%', height: '100%' }}
           useResizeHandler
         />
