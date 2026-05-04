@@ -1,0 +1,55 @@
+{
+  "list": {
+    "noSections": "Aucune section.",
+    "guideLabel": "Guide · {{date}}",
+    "calLabel": "Cal · {{date}}",
+    "framesSummary": "{{frames}} frames · {{seconds}}s",
+    "stepsSummary": "{{count}} pas",
+    "guideSessionTooltip": "Session de guidage · {{date}} · {{frames}} frames · {{seconds}}s",
+    "calibrationTooltip": "Calibration · {{date}} · {{count}} pas",
+    "guideIconTooltip": "Session de guidage",
+    "calibrationIconTooltip": "Section de calibration",
+    "selectGuiding": "Sélectionnez une section de guidage."
+  },
+  "header": {
+    "guiding": "Header de guidage",
+    "calibration": "Header de calibration",
+    "tooltip": "Cliquer pour déplier le header complet capturé par PHD2 pour cette section (équipement, monture, algorithmes, coordonnées de cible)",
+    "linesCount": "{{count}} lignes"
+  },
+  "recents": {
+    "title": "Récents",
+    "remove": "Supprimer",
+    "dropdownLabel": "Logs récents ({{count}})",
+    "showTooltip": "Afficher les logs ouverts récemment (stockés localement dans ton navigateur)",
+    "hideTooltip": "Masquer la liste des logs récents",
+    "empty": "Aucun log récent.",
+    "current": "(actuel)",
+    "reopenTooltip": "Rouvrir {{name}}",
+    "removeTooltip": "Retirer {{name}} de la liste des récents",
+    "clearAll": "Vider les récents",
+    "clearAllTooltip": "Supprimer définitivement tous les logs récemment ouverts du stockage local du navigateur"
+  },
+  "folder": {
+    "title": "Dossier de logs",
+    "logsCount": "{{count}} logs",
+    "show": "Afficher le panneau dossier de logs",
+    "hide": "Masquer le panneau dossier de logs",
+    "refresh": "Actualiser la liste",
+    "menu": "Menu du dossier",
+    "change": "Changer de dossier…",
+    "changeTooltip": "Choisir un autre dossier ; remplace le courant",
+    "forget": "Oublier le dossier",
+    "forgetTooltip": "Effacer le handle de dossier enregistré dans ce navigateur",
+    "unsupported": "Le parcours de dossier nécessite un navigateur basé sur Chromium (Chrome ou Edge). Glisse un log sur la zone de dépôt pour le charger.",
+    "choose": "Choisir un dossier…",
+    "chooseTooltip": "Ouvrir le sélecteur de dossier de l'OS ; le navigateur demandera l'accès en lecture",
+    "pickHint": "Choisis ton dossier de logs PHD2 (généralement <1>{{path}}</1>).",
+    "reconnect": "Reconnecter",
+    "reconnectTooltip": "Re-accorder l'accès en lecture pour cette session",
+    "reconnectHint": "Re-accorde l'accès en lecture pour restaurer la liste du dossier.",
+    "noLogs": "Aucun guide log trouvé dans ce dossier. Ajoute un fichier `*GuideLog*` ou choisis un autre dossier.",
+    "openTooltip": "Ouvrir {{name}}",
+    "current": "(actuel)"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "axes": {
+    "time": "tiempo (s)",
+    "arcsec": "arc-sec",
+    "pixels": "píxeles",
+    "period": "periodo (s)",
+    "amplitudeArcsec": "amplitud (″)",
+    "amplitudePixels": "amplitud (px)"
+  },
+  "traces": {
+    "raPulse": "RA pulse",
+    "decPulse": "Dec pulse",
+    "amplitude": "amplitud"
+  }
+}

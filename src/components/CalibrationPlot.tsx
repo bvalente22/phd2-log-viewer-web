@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import Plot from 'react-plotly.js';
 import type { Data, Layout, Shape } from 'plotly.js';
 import { useLogStore } from '../state/logStore';
+import { fmtInteger } from '../i18n/format';
 import type { Calibration, CalibrationEntry, CalDirection } from '../parser';
 
 const RA_COLOR = '#60a5fa';
@@ -101,6 +103,7 @@ function buildAxisShapes(cal: Calibration): Partial<Shape>[] {
 }
 
 export function CalibrationPlot() {
+  const { t } = useTranslation('stats');
   const log = useLogStore((s) => s.log);
   const sectionIdx = useLogStore((s) => s.selectedSection);
 
@@ -154,9 +157,9 @@ export function CalibrationPlot() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-slate-800 px-3 py-1 text-xs text-slate-400">
-        <span title="Whether this calibration was performed for the Mount or an AO unit">Calibration · {data.cal.device}</span>
-        <span title="Total calibration steps recorded">{data.cal.entries.length} steps</span>
-        <span className="text-slate-500" title="Calibration start time as recorded in the log">{data.cal.date}</span>
+        <span title={t('calibration.headerTooltip')}>{t('calibration.header', { device: data.cal.device })}</span>
+        <span title={t('calibration.headerStepsTooltip')}>{t('calibration.headerSteps', { count: fmtInteger(data.cal.entries.length) })}</span>
+        <span className="text-slate-500" title={t('calibration.headerDateTooltip')}>{data.cal.date}</span>
       </div>
       <div className="flex-1">
         <Plot

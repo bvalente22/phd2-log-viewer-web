@@ -1,4 +1,5 @@
 import { useId, useMemo, useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import Plot from 'react-plotly.js';
 // @ts-expect-error -- no types for the dist bundle; we only call relayout.
 import Plotly from 'plotly.js/dist/plotly';
@@ -38,6 +39,7 @@ const formatClock = (startsMs: number | null, dt: number): string => {
  * track of where they're pointing.
  */
 export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProps) {
+  const { t: tChart } = useTranslation('chart');
   const plotId = useId().replace(/:/g, '_');
   const [hover, setHover] = useState<string | null>(null);
 
@@ -126,7 +128,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
     plot_bgcolor: '#0f172a',
     font: { color: '#cbd5e1', size: 11 },
     xaxis: {
-      title: { text: 'time (s)' }, gridcolor: '#1e293b', zerolinecolor: '#334155',
+      title: { text: tChart('axes.time') }, gridcolor: '#1e293b', zerolinecolor: '#334155',
       fixedrange: false, range: xExtent,
     },
     yaxis: { title: { text: unit }, gridcolor: '#1e293b', zerolinecolor: '#64748b', zerolinewidth: 1, fixedrange: true, range: yRange },
