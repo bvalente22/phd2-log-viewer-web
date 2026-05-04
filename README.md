@@ -5,6 +5,11 @@ RA/Dec error traces, guide pulses, mass/SNR, and a scatter view with the error
 ellipse. Calibration sections render a 2D scatter of step positions. Everything
 runs client-side; logs never leave the browser.
 
+The interface is available in **English, Español, Deutsch, Français, Italiano,
+and 简体中文** — switch languages from the 🌐 picker in the header.
+PHD2 jargon (RA, Dec, RMS, SNR, etc.) intentionally stays in English across
+every locale; see [Translations](#translations) below.
+
 This is a TypeScript port of [agalasso/phdlogview](https://github.com/agalasso/phdlogview)
 (C++ / wxWidgets desktop app). The parser and stats math are direct ports from
 `logparser.cpp` and `LogViewFrame.cpp`; UI was rewritten using React / Plotly.
@@ -14,9 +19,10 @@ This is a TypeScript port of [agalasso/phdlogview](https://github.com/agalasso/p
 - React 18 + TypeScript + Vite
 - Plotly.js for charts (uses scattergl on the time-series view)
 - Zustand for state
-- Tailwind CSS for styling
+- Tailwind CSS for styling (logical properties throughout — RTL-ready)
 - Radix UI for the right-click menu
 - IndexedDB (via `idb-keyval`) for the recents list
+- `react-i18next` for translations + `Intl.NumberFormat` for locale-aware decimals
 - Vitest + Playwright for tests
 
 ## Getting started
@@ -68,11 +74,49 @@ src/
   storage/         # IndexedDB recents
   state/           # zustand stores: log + view
   components/      # DropZone, SectionList, GuideGraph, ScatterView,
-                   # CalibrationPlot, GraphToolbar, ContextMenu, etc.
+                   # CalibrationPlot, GraphToolbar, ContextMenu,
+                   # LanguagePicker, etc.
+  i18n/            # react-i18next init, format helpers, and per-language
+    locales/       # JSON catalogs (one folder per language)
   pages/           # ViewerPage (the shell)
 e2e/               # Playwright smoke spec
 samples/           # README only — drop real logs here for golden testing
 ```
+
+## Translations
+
+Six languages ship today: `en`, `es`, `de`, `fr`, `it`, `zh` (Simplified
+Chinese). The picker in the header switches in real time and persists your
+choice to `localStorage`.
+
+Each language lives in its own folder under
+[`src/i18n/locales/`](src/i18n/locales/), with the same set of seven JSON
+namespaces (`common`, `toolbar`, `analysis`, `stats`, `sections`, `chart`,
+`errors`). To improve a translation, just edit the JSON.
+
+**Conventions** (see [`src/i18n/locales/README.md`](src/i18n/locales/README.md)
+for the full guide):
+
+- **PHD2 jargon stays in English** — `RA`, `Dec`, `RMS`, `SNR`, `Mass`, `AO`,
+  `dither`, `drift`, `xRate`, `xAngle`, `PAE`, `pixel scale`, `mount`, `frame`,
+  `guide star`, `periodogram`, etc. This matches what international
+  astrophotography communities actually say. The prose around those terms is
+  translated normally.
+- **Numbers and dates** are not translated in JSON — `Intl.NumberFormat` and
+  `Intl.DateTimeFormat` handle them at runtime, so `0.123` renders as `0,123`
+  in French/German automatically.
+- **Placeholders** like `{{name}}` must stay verbatim; reposition them inside
+  the sentence as your language requires.
+
+**Adding a new language:**
+
+1. Copy `src/i18n/locales/en/` → `src/i18n/locales/<lng>/` and translate.
+2. Add the imports + entries in `src/i18n/index.ts` (`SUPPORTED_LANGUAGES` +
+   `resources`).
+
+The Tailwind layout already uses logical properties (`ms`/`me`/`text-start`/…)
+so adding RTL languages later (Hebrew, Arabic) would be a translation task,
+not a refactor.
 
 ## Comments policy
 
