@@ -6,6 +6,7 @@ import { GuideGraph } from '../components/GuideGraph';
 import { ScatterView } from '../components/ScatterView';
 import { CalibrationPlot } from '../components/CalibrationPlot';
 import { CalibrationStats } from '../components/CalibrationStats';
+import { SectionHeader } from '../components/SectionHeader';
 import { GraphToolbar } from '../components/GraphToolbar';
 import { GraphContextMenu } from '../components/ContextMenu';
 import { RecentsPanel } from '../components/RecentsPanel';
@@ -44,6 +45,11 @@ export function ViewerPage() {
   const sec = sectionIdx >= 0 ? log.sections[sectionIdx] : null;
   const isGuiding = sec?.type === 'GUIDING';
   const isCalibration = sec?.type === 'CALIBRATION';
+  const sectionHdr = sec
+    ? sec.type === 'GUIDING'
+      ? log.sessions[sec.idx]?.hdr
+      : log.calibrations[sec.idx]?.hdr
+    : null;
 
   return (
     <>
@@ -81,6 +87,7 @@ export function ViewerPage() {
         {isGuiding && (
           <>
             <GraphToolbar />
+            {sectionHdr && <SectionHeader hdr={sectionHdr} kind="GUIDING" />}
             <GraphContextMenu>
               <div className="flex-1 overflow-hidden">
                 {graphMode === 'TIME' ? <GuideGraph /> : <ScatterView />}
@@ -93,6 +100,7 @@ export function ViewerPage() {
         )}
         {isCalibration && (
           <>
+            {sectionHdr && <SectionHeader hdr={sectionHdr} kind="CALIBRATION" />}
             <div className="flex-1 overflow-hidden">
               <CalibrationPlot />
             </div>
