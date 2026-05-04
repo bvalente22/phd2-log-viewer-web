@@ -1,0 +1,33 @@
+{
+  "label": "分析",
+  "labelTooltip": "你正处于分析模态框中 — 点击\"关闭\"或按 Esc 返回",
+  "close": "关闭",
+  "closeTooltip": "关闭分析视图 (Esc)",
+  "esc": "Esc",
+  "titleTooltip": "本次运行的源范围与分析模式",
+  "title": {
+    "unguided": "未导星区段 · frame {{begin}}-{{end}}",
+    "rawRa": "已移除 RA 修正 · {{frames}} frame · {{start}} — {{end}}",
+    "default": "{{frames}} frame · {{start}} — {{end}}"
+  },
+  "show": "显示",
+  "showTooltip": "切换各条 drift 轨迹的显示",
+  "raDriftTooltip": "显示/隐藏经 drift 修正的 RA 轨迹",
+  "decDriftTooltip": "显示/隐藏经 drift 修正的 Dec 轨迹",
+  "scale": "刻度",
+  "scaleTooltip": "Y 轴单位",
+  "arcsecTooltip": "以角秒显示 Y",
+  "pixelsTooltip": "以像素显示 Y",
+  "gestureHint": "滚轮 = X 缩放 · 拖动 = X 平移 + Y 缩放 · 悬停 = 垂直光标 + 读数",
+  "topPeaks": "前 3 个峰",
+  "maxPeriod": "最大周期",
+  "maxPeriodSuffix": "s",
+  "maxPeriodTooltip": "排除任何周期超过此秒数的峰;默认 600s (10 分钟),因为 PE 蜗杆周期通常远低于该值。",
+  "noPeaks": "在 {{seconds}}s 以下未检测到 periodogram 峰。请提高最大周期上限或检查信号。",
+  "peakTitle": "Peak {{index}}:周期为 {{period}}s 的周期误差分量",
+  "peakIndex": "#{{index}}",
+  "period": "周期",
+  "amplitude": "振幅",
+  "pp": "P-P",
+  "rms": "RMS"
+}

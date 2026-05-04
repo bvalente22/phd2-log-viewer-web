@@ -1,4 +1,5 @@
 import { useMemo, useCallback, useRef, useEffect, useId, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Plot from 'react-plotly.js';
 // Use the prebuilt dist to avoid pulling plotly's source modules (which require
 // the `buffer/` polyfill not available in the browser bundle path).
@@ -311,6 +312,8 @@ function buildShapes(s: GuideSession, mask: Uint8Array | undefined): Partial<Sha
 }
 
 export function GuideGraph() {
+  const { t: tSections } = useTranslation('sections');
+  const { t: tChart } = useTranslation('chart');
   const log = useLogStore((s) => s.log);
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const exclusions = useViewStore((s) => s.exclusions);
@@ -690,10 +693,10 @@ export function GuideGraph() {
   }, [data, traces.events]);
 
   if (!data) {
-    return <div className="flex h-full items-center justify-center text-slate-500">Select a guiding section.</div>;
+    return <div className="flex h-full items-center justify-center text-slate-500">{tSections('list.selectGuiding')}</div>;
   }
 
-  const yTitle = scaleMode === 'ARCSEC' ? 'arc-sec' : 'pixels';
+  const yTitle = scaleMode === 'ARCSEC' ? tChart('axes.arcsec') : tChart('axes.pixels');
 
   const layout: Partial<Layout> = {
     autosize: true,
@@ -702,7 +705,7 @@ export function GuideGraph() {
     plot_bgcolor: '#0f172a',
     font: { color: '#cbd5e1', size: 11 },
     xaxis: {
-      title: { text: 'time (s)' }, gridcolor: '#1e293b', zerolinecolor: '#334155',
+      title: { text: tChart('axes.time') }, gridcolor: '#1e293b', zerolinecolor: '#334155',
       // X is unfixed so Plotly's built-in scrollZoom (config below) can zoom
       // it via the wheel; Plotly handles cursor-anchored zoom correctly. Drag
       // gestures are owned by our custom handlers (Plotly dragmode:false),
@@ -758,7 +761,7 @@ export function GuideGraph() {
       />
       {hoverInfo && (
         <div
-          className="pointer-events-none absolute bottom-1 left-2 right-2 truncate rounded border border-slate-700/70 bg-slate-900/85 px-2 py-1 font-mono text-[11px] text-slate-200 shadow"
+          className="pointer-events-none absolute bottom-1 start-2 end-2 truncate rounded border border-slate-700/70 bg-slate-900/85 px-2 py-1 font-mono text-[11px] text-slate-200 shadow"
           title="Frame info under the cursor (matches the desktop's status bar). Press Esc / move the mouse off the chart to clear."
         >
           {hoverInfo}

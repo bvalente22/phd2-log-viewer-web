@@ -1,0 +1,33 @@
+{
+  "label": "Análisis",
+  "labelTooltip": "Estás en el modal de análisis — pulsa 'Cerrar' o Esc para volver",
+  "close": "Cerrar",
+  "closeTooltip": "Cerrar la vista de análisis (Esc)",
+  "esc": "Esc",
+  "titleTooltip": "Rango de origen y modo de análisis para esta ejecución",
+  "title": {
+    "unguided": "sección sin guiado · frames {{begin}}-{{end}}",
+    "rawRa": "correcciones de RA eliminadas · {{frames}} frames · {{start}} — {{end}}",
+    "default": "{{frames}} frames · {{start}} — {{end}}"
+  },
+  "show": "mostrar",
+  "showTooltip": "Activa o desactiva las trazas de drift individuales",
+  "raDriftTooltip": "Mostrar/ocultar la traza de RA corregida por drift",
+  "decDriftTooltip": "Mostrar/ocultar la traza de Dec corregida por drift",
+  "scale": "escala",
+  "scaleTooltip": "Unidades del eje Y",
+  "arcsecTooltip": "Mostrar Y en segundos de arco",
+  "pixelsTooltip": "Mostrar Y en píxeles",
+  "gestureHint": "rueda = zoom X · arrastrar = pan X + zoom Y · pasar = cursor vertical + lectura",
+  "topPeaks": "Top 3 picos",
+  "maxPeriod": "periodo máx",
+  "maxPeriodSuffix": "s",
+  "maxPeriodTooltip": "Excluye cualquier pico cuyo periodo supere este número de segundos; 600s (10 min) es el valor por defecto, ya que los ciclos de PE del sinfín suelen estar bien por debajo.",
+  "noPeaks": "No se han detectado picos del periodograma por debajo de {{seconds}}s. Prueba a subir el filtro de periodo máximo o revisa la señal.",
+  "peakTitle": "Pico {{index}}: una componente de error periódico con periodo de {{period}}s",
+  "peakIndex": "#{{index}}",
+  "period": "Periodo",
+  "amplitude": "Amplitud",
+  "pp": "P-P",
+  "rms": "RMS"
+}

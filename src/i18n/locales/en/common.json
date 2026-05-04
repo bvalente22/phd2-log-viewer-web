@@ -1,0 +1,20 @@
+{
+  "appName": "PHD2 Log Viewer",
+  "buildTooltip": "build {{hash}}",
+  "phdVersion": "PHD2 v{{version}}",
+  "openAnother": "Open another",
+  "openAnotherTooltip": "Close the current log and return to the drop zone to open a different one",
+  "selectSection": "Select a section.",
+  "language": "Language",
+  "languageTooltip": "Switch the interface language. Astrophotography terms (RA, Dec, RMS, etc.) stay in English.",
+  "dropZone": {
+    "title": "Drop a PHD2 guide log here",
+    "tooltip": "Drop a PHD2 guide log file here. The log is parsed locally; nothing is uploaded.",
+    "pickFile": "or pick a file",
+    "pickFileTooltip": "Open the file picker to choose a PHD2 guide log",
+    "parsing": "Parsing…",
+    "chooseLogsFolder": "Choose logs folder…",
+    "chooseLogsFolderTooltip": "Pick your PHD2 logs folder; afterwards every guide log will be browsable from the sidebar",
+    "browseAllByDate": "Browse all your guide logs by date."
+  }
+}

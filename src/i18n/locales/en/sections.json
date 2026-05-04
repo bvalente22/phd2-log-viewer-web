@@ -1,0 +1,55 @@
+{
+  "list": {
+    "noSections": "No sections.",
+    "guideLabel": "Guide · {{date}}",
+    "calLabel": "Cal · {{date}}",
+    "framesSummary": "{{frames}} frames · {{seconds}}s",
+    "stepsSummary": "{{count}} steps",
+    "guideSessionTooltip": "Guide session · {{date}} · {{frames}} frames · {{seconds}}s",
+    "calibrationTooltip": "Calibration · {{date}} · {{count}} steps",
+    "guideIconTooltip": "Guide session",
+    "calibrationIconTooltip": "Calibration section",
+    "selectGuiding": "Select a guiding section."
+  },
+  "header": {
+    "guiding": "Guiding header",
+    "calibration": "Calibration header",
+    "tooltip": "Click to expand the full header captured by PHD2 for this section (equipment, mount, algorithms, target coords)",
+    "linesCount": "{{count}} lines"
+  },
+  "recents": {
+    "title": "Recent",
+    "remove": "Remove",
+    "dropdownLabel": "Recent logs ({{count}})",
+    "showTooltip": "Show recently-opened logs (stored locally in your browser)",
+    "hideTooltip": "Hide the recent logs list",
+    "empty": "No recent logs.",
+    "current": "(current)",
+    "reopenTooltip": "Reopen {{name}}",
+    "removeTooltip": "Remove {{name}} from the recents list",
+    "clearAll": "Clear all recents",
+    "clearAllTooltip": "Permanently delete all recently-opened logs from your browser's local storage"
+  },
+  "folder": {
+    "title": "Logs folder",
+    "logsCount": "{{count}} logs",
+    "show": "Show the logs-folder pane",
+    "hide": "Hide the logs-folder pane",
+    "refresh": "Refresh the listing",
+    "menu": "Folder menu",
+    "change": "Change folder…",
+    "changeTooltip": "Pick a different folder; replaces the current one",
+    "forget": "Forget folder",
+    "forgetTooltip": "Clear the saved folder handle from this browser",
+    "unsupported": "Folder browsing requires a Chromium-based browser (Chrome or Edge). Drag a log onto the drop zone to load one.",
+    "choose": "Choose folder…",
+    "chooseTooltip": "Open the OS folder picker; the browser will ask for read access",
+    "pickHint": "Pick your PHD2 logs folder (typically <1>{{path}}</1>).",
+    "reconnect": "Reconnect",
+    "reconnectTooltip": "Re-grant read access for this session",
+    "reconnectHint": "Re-grant read access to restore the folder listing.",
+    "noLogs": "No guide logs found in this folder. Add a `*GuideLog*` file or pick a different folder.",
+    "openTooltip": "Open {{name}}",
+    "current": "(current)"
+  }
+}

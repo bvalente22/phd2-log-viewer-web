@@ -1,0 +1,20 @@
+{
+  "appName": "PHD2 Log Viewer",
+  "buildTooltip": "构建 {{hash}}",
+  "phdVersion": "PHD2 v{{version}}",
+  "openAnother": "打开另一个",
+  "openAnotherTooltip": "关闭当前日志,返回拖放区以打开其他日志",
+  "selectSection": "请选择一个区段。",
+  "language": "语言",
+  "languageTooltip": "切换界面语言。天文摄影术语 (RA、Dec、RMS 等) 保持英文。",
+  "dropZone": {
+    "title": "将 PHD2 guide log 拖到此处",
+    "tooltip": "将 PHD2 guide log 文件拖到此处。日志在本地解析,不会上传任何内容。",
+    "pickFile": "或选择文件",
+    "pickFileTooltip": "打开文件选择器以选择 PHD2 guide log",
+    "parsing": "解析中…",
+    "chooseLogsFolder": "选择日志文件夹…",
+    "chooseLogsFolderTooltip": "选择你的 PHD2 日志文件夹;之后所有 guide log 都可在侧边栏浏览",
+    "browseAllByDate": "按日期浏览全部 guide log。"
+  }
+}

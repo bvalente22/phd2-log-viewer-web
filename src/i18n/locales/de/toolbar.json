@@ -1,0 +1,91 @@
+{
+  "groups": {
+    "view": "Ansicht",
+    "viewTooltip": "Diagrammlayout wählen",
+    "show": "anzeigen",
+    "showTooltip": "Einzelne Spuren in der Zeitansicht ein-/ausblenden",
+    "coord": "Koord.",
+    "coordTooltip": "Koordinatensystem für die Fehlerspur",
+    "device": "Gerät",
+    "deviceTooltip": "Einträge nach dem Gerät filtern, das die Korrektur ausgeführt hat",
+    "scale": "Skala",
+    "scaleTooltip": "Y-Achsen-Einheit"
+  },
+  "view": {
+    "time": "Zeit",
+    "timeTooltip": "Zeitreihen-Ansicht: Fehlerspuren und Pulse über der Zeit",
+    "scatter": "Streuung",
+    "scatterTooltip": "Streuansicht: jeder Frame als Punkt im (RA, Dec)-Raum, mit Fehlerellipse"
+  },
+  "traces": {
+    "raPulses": "RA pulses",
+    "decPulses": "Dec pulses",
+    "events": "Ereignisse",
+    "raTooltip": "RA-Fehlerspur ein-/ausblenden",
+    "decTooltip": "Dec-Fehlerspur ein-/ausblenden",
+    "raPulsesTooltip": "Dauer der RA-Korrekturpulse als Balken auf der 0-Linie ein-/ausblenden",
+    "decPulsesTooltip": "Dauer der Dec-Korrekturpulse als Balken auf der 0-Linie ein-/ausblenden",
+    "massTooltip": "Mass des Leitsterns (gelb) ein-/ausblenden, skaliert auf die untere Diagrammhälfte",
+    "snrTooltip": "SNR des Leitsterns (weiß) ein-/ausblenden, skaliert auf die untere Diagrammhälfte",
+    "eventsTooltip": "INFO-Ereignisse als Inline-Beschriftungen unten am Diagramm anzeigen (entspricht der Desktop-Checkbox „events“)",
+    "togglesScatterDisabled": "Spur-Schalter wirken nur in der Zeitansicht"
+  },
+  "coord": {
+    "raDecTooltip": "RA- und Dec-Fehler im Mount-Frame plotten (Dec wird invertiert, sodass Norden oben liegt)",
+    "dxDyTooltip": "Rohe dx/dy im Kamera-Frame plotten (nützlich, wenn die Kalibrierung fragwürdig ist)"
+  },
+  "device": {
+    "mountTooltip": "Nur Frames anzeigen, in denen die Montierung korrigiert hat",
+    "aoTooltip": "Nur Frames anzeigen, in denen das AO-Gerät korrigiert hat",
+    "noAo": "Keine AO-Daten in dieser Sitzung — alle Frames stammen von der Montierung",
+    "noAoShort": "Keine AO-Daten in dieser Sitzung"
+  },
+  "scale": {
+    "arcsec": "arc-sec",
+    "pixels": "Pixel",
+    "arcsecTooltip": "Y-Werte in Bogensekunden anzeigen (multipliziert mit der Pixelskala der Sitzung)",
+    "pixelsTooltip": "Y-Werte in rohen Pixeln anzeigen",
+    "autoY": "auto Y",
+    "autoYTooltip": "Y automatisch an den typischen Guiding-Bereich anpassen (99. Perzentil von |Fehler|), damit Dithers und Lost-Star-Spitzen das Routinesignal nicht zerquetschen. Aus = rohe Min/Max.",
+    "yLocked": "🔒 Y gesperrt",
+    "y": "🔓 Y",
+    "yLockedTooltip": "Y-Bereich über Abschnittwechsel hinweg fixieren, sodass verschiedene Nächte mit gleicher Skala vergleichbar sind",
+    "recenterY": "Y neu zentrieren",
+    "recenterYTooltip": "Y-Achse um 0 neu zentrieren, ohne die aktuelle Zoomstufe zu ändern"
+  },
+  "export": {
+    "pngTooltip": "Hochauflösenden PNG-Schnappschuss des aktuellen Diagramms herunterladen",
+    "csvTooltip": "Einträge des aktuellen Abschnitts als CSV herunterladen (enthält eine Excluded-Spalte für aus der Analyse entfernte Frames)"
+  },
+  "legend": {
+    "tooltip": "Stile der gestrichelten Vertikallinien, die du im Diagramm überlagert siehst. Mit der Maus über eine Linie fahren, um den Ereignistext zu sehen.",
+    "dither": "dither",
+    "info": "info",
+    "excluded": "ausgeschlossen"
+  },
+  "exclusions": {
+    "tooltip": "Aus der Statistik ausgeschlossene Frames / Gesamtanzahl Frames in diesem Abschnitt",
+    "label": "{{excluded}} / {{total}} ausgeschlossen",
+    "labelExcluded": "{{excluded}}",
+    "labelTotal": " / {{total}} ausgeschlossen"
+  },
+  "gestureHint": "Scrollen = X-Zoom · Ziehen = X-Pan + Y-Zoom · Shift+Ziehen = einschließen · Strg+Ziehen = ausschließen",
+  "contextMenu": {
+    "includeAll": "Alle Frames einschließen",
+    "includeAllTooltip": "Alle Frames wieder einschließen; entfernt alle Ausschlüsse in diesem Abschnitt",
+    "excludeAll": "Alle Frames ausschließen",
+    "excludeAllTooltip": "Jeden Frame als aus der Analyse ausgeschlossen markieren",
+    "excludeDithers": "Dithers / Settling ausschließen",
+    "excludeDithersTooltip": "Settling-Fenster (und Frames direkt nach jedem DITHER-Ereignis) zu den bestehenden Ausschlüssen hinzufügen",
+    "resetSection": "Abschnitt zurücksetzen",
+    "resetSectionTooltip": "Ausschlüsse dieses Abschnitts auf den geladenen Zustand zurücksetzen",
+    "resetZoom": "Zoom zurücksetzen",
+    "resetZoomTooltip": "X- und Y-Achse automatisch an den vollen Datenbereich anpassen",
+    "analyzeSelected": "Ausgewählte Frames analysieren",
+    "analyzeSelectedTooltip": "Jeden eingeschlossenen, nicht ausgeschlossenen Frame analysieren: drift-korrigierte Zeitachse + FFT-Periodogramm",
+    "analyzeRawRa": "Auswahl analysieren, RA roh",
+    "analyzeRawRaTooltip": "Gleicher Bereich, aber mit wieder hinzugefügten RA-Korrekturen — zeigt, wie das Tracking ungeguided ausgesehen hätte",
+    "analyzeUnguided": "Ungeguideten Abschnitt analysieren",
+    "analyzeUnguidedTooltip": "Das ungeguidete Fenster unter dem Cursor analysieren (oder das erste in der Sitzung, falls woanders rechts geklickt wurde)"
+  }
+}

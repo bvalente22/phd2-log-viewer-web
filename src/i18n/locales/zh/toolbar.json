@@ -1,0 +1,91 @@
+{
+  "groups": {
+    "view": "视图",
+    "viewTooltip": "选择图表布局",
+    "show": "显示",
+    "showTooltip": "在时间视图中切换各条轨迹的显示",
+    "coord": "坐标",
+    "coordTooltip": "误差轨迹所用的坐标系",
+    "device": "设备",
+    "deviceTooltip": "按执行修正的设备过滤条目",
+    "scale": "刻度",
+    "scaleTooltip": "Y 轴单位"
+  },
+  "view": {
+    "time": "时间",
+    "timeTooltip": "时间序列视图:误差轨迹与脉冲随时间变化",
+    "scatter": "散点",
+    "scatterTooltip": "散点视图:每个 frame 在 (RA, Dec) 空间中作为一个点,并显示误差椭圆"
+  },
+  "traces": {
+    "raPulses": "RA pulses",
+    "decPulses": "Dec pulses",
+    "events": "事件",
+    "raTooltip": "显示/隐藏 RA 误差轨迹",
+    "decTooltip": "显示/隐藏 Dec 误差轨迹",
+    "raPulsesTooltip": "在 0 线上以柱状显示/隐藏 RA 修正脉冲时长",
+    "decPulsesTooltip": "在 0 线上以柱状显示/隐藏 Dec 修正脉冲时长",
+    "massTooltip": "显示/隐藏 guide star 的 Mass (黄色),缩放至图表下半部分",
+    "snrTooltip": "显示/隐藏 guide star 的 SNR (白色),缩放至图表下半部分",
+    "eventsTooltip": "在图表底部以内联标签显示 INFO 事件 (与桌面端 \"events\" 复选框一致)",
+    "togglesScatterDisabled": "轨迹开关仅在时间视图中生效"
+  },
+  "coord": {
+    "raDecTooltip": "在 mount 坐标系中绘制 RA 与 Dec 误差 (Dec 取负使北朝上)",
+    "dxDyTooltip": "绘制 camera 坐标系下的原始 dx/dy (calibration 可疑时有用)"
+  },
+  "device": {
+    "mountTooltip": "仅显示由 mount 执行修正的 frame",
+    "aoTooltip": "仅显示由 AO 单元执行修正的 frame",
+    "noAo": "本次会话无 AO 数据 — 全部 frame 均来自 mount",
+    "noAoShort": "本次会话无 AO 数据"
+  },
+  "scale": {
+    "arcsec": "arc-sec",
+    "pixels": "像素",
+    "arcsecTooltip": "以角秒显示 Y 值 (乘以本会话的 pixel scale)",
+    "pixelsTooltip": "以原始像素显示 Y 值",
+    "autoY": "自动 Y",
+    "autoYTooltip": "将 Y 自动适配到典型 guiding 范围 (|误差| 的 99 百分位),避免 dither 与丢星尖峰把日常信号压扁。关闭 = 使用原始最小/最大值。",
+    "yLocked": "🔒 Y 已锁定",
+    "y": "🔓 Y",
+    "yLockedTooltip": "在切换区段时锁定 Y 范围,以相同刻度比较不同晚上的数据",
+    "recenterY": "Y 居中",
+    "recenterYTooltip": "在不改变当前缩放级别的情况下,将 Y 轴重新居中到 0"
+  },
+  "export": {
+    "pngTooltip": "下载当前图表的高分辨率 PNG 截图",
+    "csvTooltip": "将当前区段的条目下载为 CSV (包含 Excluded 列,标记你从分析中移除的 frame)"
+  },
+  "legend": {
+    "tooltip": "你将在图表上看到的垂直虚线样式。悬停任意线条以查看事件文本。",
+    "dither": "dither",
+    "info": "info",
+    "excluded": "已排除"
+  },
+  "exclusions": {
+    "tooltip": "从统计中排除的 frame / 本区段总 frame",
+    "label": "{{excluded}} / {{total}} 已排除",
+    "labelExcluded": "{{excluded}}",
+    "labelTotal": " / {{total}} 已排除"
+  },
+  "gestureHint": "滚轮 = X 缩放 · 拖动 = X 平移 + Y 缩放 · Shift+拖动 = 包含 · Ctrl+拖动 = 排除",
+  "contextMenu": {
+    "includeAll": "包含全部 frame",
+    "includeAllTooltip": "重新包含所有 frame;清除本区段的全部排除",
+    "excludeAll": "排除全部 frame",
+    "excludeAllTooltip": "将每个 frame 标记为从分析中排除",
+    "excludeDithers": "排除 dither / settling",
+    "excludeDithersTooltip": "在现有排除上,加入 settling 窗口 (以及每个 DITHER 事件后的若干 frame)",
+    "resetSection": "重置区段",
+    "resetSectionTooltip": "将本区段的排除恢复到加载时的状态",
+    "resetZoom": "重置缩放",
+    "resetZoomTooltip": "将 X 与 Y 轴自动适配到完整数据范围",
+    "analyzeSelected": "分析选中的 frame",
+    "analyzeSelectedTooltip": "分析所有已包含且未被排除的 frame:经 drift 修正的时间线 + FFT periodogram",
+    "analyzeRawRa": "分析选区,RA 原始",
+    "analyzeRawRaTooltip": "同一范围,但将 RA 修正重新加回 — 展示无导星追踪本会是怎样",
+    "analyzeUnguided": "分析未导星区段",
+    "analyzeUnguidedTooltip": "分析光标所在的未导星窗口 (若你在别处右键,则使用本会话的第一个窗口)"
+  }
+}
