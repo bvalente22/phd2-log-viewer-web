@@ -1,7 +1,9 @@
 import { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAnalysisStore } from '../state/analysisStore';
 import { DriftChart } from './DriftChart';
 import { PeriodogramChart } from './PeriodogramChart';
+import { fmtNumber } from '../i18n/format';
 import type { GARun } from '../parser/analyze';
 
 const formatClockUTC = (ms: number | null, dt: number): string => {
@@ -42,6 +44,7 @@ function topPeaks(garun: GARun, n: number, maxPeriodSec: number): { period: numb
  * the main viewer.
  */
 export function AnalysisModal() {
+  const { t } = useTranslation('analysis');
   const s = useAnalysisStore();
   useEffect(() => {
     if (s.state !== 'open') return;
@@ -64,11 +67,11 @@ export function AnalysisModal() {
   const endClock = formatClockUTC(garun.starts, garun.t[garun.t.length - 1] ?? 0);
   let title: string;
   if (kind === 'unguided') {
-    title = `unguided section · frames ${garun.range.begin}-${garun.range.end}`;
+    title = t('title.unguided', { begin: garun.range.begin, end: garun.range.end });
   } else if (kind === 'all-raw-ra') {
-    title = `RA corrections removed · ${garun.t.length} frames · ${startClock} — ${endClock}`;
+    title = t('title.rawRa', { frames: garun.t.length, start: startClock, end: endClock });
   } else {
-    title = `${garun.t.length} frames · ${startClock} — ${endClock}`;
+    title = t('title.default', { frames: garun.t.length, start: startClock, end: endClock });
   }
 
   const ToggleChip = ({
@@ -97,36 +100,33 @@ export function AnalysisModal() {
         <div className="flex items-center gap-3">
           <span
             className="rounded bg-amber-700 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-amber-50"
-            title="You are in the Analysis modal — click 'Close' or press Esc to return"
+            title={t('labelTooltip')}
           >
-            Analysis
+            {t('label')}
           </span>
-          <h2 className="text-sm font-medium" title="Source range and analysis mode for this run">
+          <h2 className="text-sm font-medium" title={t('titleTooltip')}>
             {title}
           </h2>
         </div>
         <button
           className="flex items-center gap-1 rounded bg-amber-50 px-3 py-1 text-sm text-amber-950 ring-1 ring-amber-700 hover:bg-rose-700 hover:text-white hover:ring-rose-600"
           onClick={s.close}
-          title="Close the analysis view (Esc)"
+          title={t('closeTooltip')}
         >
           <span className="text-base leading-none">✕</span>
-          <span>Close</span>
-          <span className="ml-1 text-xs opacity-70">Esc</span>
+          <span>{t('close')}</span>
+          <span className="ms-1 text-xs opacity-70">{t('esc')}</span>
         </button>
       </header>
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-1 text-xs">
-        <span className="mr-1 text-slate-500" title="Toggle individual drift traces">show:</span>
-        <ToggleChip label="RA" active={showRa} onClick={() => s.setShowRa(!showRa)} title="Show/hide drift-corrected RA trace" />
-        <ToggleChip label="Dec" active={showDec} onClick={() => s.setShowDec(!showDec)} title="Show/hide drift-corrected Dec trace" />
-        <span className="ml-3 mr-1 text-slate-500" title="Y-axis units">scale:</span>
-        <ToggleChip label="arc-sec" active={scaleMode === 'ARCSEC'} onClick={() => s.setScaleMode('ARCSEC')} title="Display Y in arc-seconds" />
-        <ToggleChip label="pixels" active={scaleMode === 'PIXELS'} onClick={() => s.setScaleMode('PIXELS')} title="Display Y in pixels" />
-        <span
-          className="ml-auto text-slate-600"
-          title="Mouse wheel zooms X around the cursor. Plain drag pans X and zooms Y. Hover the periodogram to snap the cursor to the nearest peak."
-        >
-          scroll = X zoom · drag = X pan + Y zoom · hover = vertical cursor + readout
+        <span className="me-1 text-slate-500" title={t('showTooltip')}>{t('show')}:</span>
+        <ToggleChip label="RA" active={showRa} onClick={() => s.setShowRa(!showRa)} title={t('raDriftTooltip')} />
+        <ToggleChip label="Dec" active={showDec} onClick={() => s.setShowDec(!showDec)} title={t('decDriftTooltip')} />
+        <span className="ms-3 me-1 text-slate-500" title={t('scaleTooltip')}>{t('scale')}:</span>
+        <ToggleChip label="arc-sec" active={scaleMode === 'ARCSEC'} onClick={() => s.setScaleMode('ARCSEC')} title={t('arcsecTooltip')} />
+        <ToggleChip label="pixels" active={scaleMode === 'PIXELS'} onClick={() => s.setScaleMode('PIXELS')} title={t('pixelsTooltip')} />
+        <span className="ms-auto text-slate-600">
+          {t('gestureHint')}
         </span>
       </div>
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -145,10 +145,10 @@ export function AnalysisModal() {
       <div className="border-t-2 border-amber-800 bg-slate-900/70 px-4 py-2 text-xs">
         <div className="mb-1 flex items-center gap-3">
           <span className="font-semibold uppercase tracking-wider text-slate-400">
-            Top 3 peaks
+            {t('topPeaks')}
           </span>
-          <label className="flex items-center gap-1 text-slate-400" title="Excludes any peak whose period exceeds this many seconds; 600s (10 min) is the default since PE worm cycles are typically well below that.">
-            <span>max period</span>
+          <label className="flex items-center gap-1 text-slate-400" title={t('maxPeriodTooltip')}>
+            <span>{t('maxPeriod')}</span>
             <input
               type="number"
               min={10}
@@ -160,12 +160,12 @@ export function AnalysisModal() {
               }}
               className="w-20 rounded border border-slate-700 bg-slate-900 px-2 py-0.5 font-mono text-slate-200"
             />
-            <span>s</span>
+            <span>{t('maxPeriodSuffix')}</span>
           </label>
         </div>
         {peaks.length === 0 ? (
           <div className="text-slate-500">
-            No periodogram peaks under {maxPeriodSec}s detected. Try raising the max-period filter or check the signal.
+            {t('noPeaks', { seconds: maxPeriodSec })}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-3">
@@ -180,13 +180,13 @@ export function AnalysisModal() {
                 <div
                   key={i}
                   className="rounded border border-slate-700 bg-slate-900 px-3 py-1 font-mono text-slate-200"
-                  title={`Peak ${i + 1}: a periodic-error component at ${p.period.toFixed(1)} second period`}
+                  title={t('peakTitle', { index: i + 1, period: fmtNumber(p.period, 1) })}
                 >
-                  <div className="text-[10px] uppercase tracking-wider text-sky-400">#{i + 1}</div>
-                  <div>Period: {p.period.toFixed(1)}s</div>
-                  <div>Amplitude: {aArc.toFixed(2)}″ ({aPx.toFixed(2)}px)</div>
-                  <div>P-P: {ppArc.toFixed(2)}″ ({ppPx.toFixed(2)}px)</div>
-                  <div>RMS: {rmsArc.toFixed(2)}″ ({rmsPx.toFixed(2)}px)</div>
+                  <div className="text-[10px] uppercase tracking-wider text-sky-400">{t('peakIndex', { index: i + 1 })}</div>
+                  <div>{t('period')}: {fmtNumber(p.period, 1)}s</div>
+                  <div>{t('amplitude')}: {fmtNumber(aArc, 2)}″ ({fmtNumber(aPx, 2)}px)</div>
+                  <div>{t('pp')}: {fmtNumber(ppArc, 2)}″ ({fmtNumber(ppPx, 2)}px)</div>
+                  <div>{t('rms')}: {fmtNumber(rmsArc, 2)}″ ({fmtNumber(rmsPx, 2)}px)</div>
                 </div>
               );
             })}

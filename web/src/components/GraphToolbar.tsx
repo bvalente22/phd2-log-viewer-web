@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useViewStore } from '../state/viewStore';
 import { useLogStore } from '../state/logStore';
 import type { TraceVisibility } from '../state/viewStore';
@@ -70,6 +71,7 @@ const ToggleChip = ({
 );
 
 export function GraphToolbar() {
+  const { t } = useTranslation('toolbar');
   const log = useLogStore((s) => s.log);
   const meta = useLogStore((s) => s.meta);
   const sectionIdx = useLogStore((s) => s.selectedSection);
@@ -100,32 +102,35 @@ export function GraphToolbar() {
   // Mirrors the desktop UI which disables the AO option for mount-only logs.
   const hasAo = !!session?.entries.some((e) => e.mount === 'AO');
 
+  // RA / Dec / Mount / AO / dx / dy are PHD2 jargon — kept in English across
+  // every locale (see locales/README.md). Trace toggle labels and tooltips
+  // come from the toolbar namespace.
   const items: { key: keyof TraceVisibility; label: string; title: string }[] = [
-    { key: 'ra', label: 'RA', title: 'Show/hide the RA error trace' },
-    { key: 'dec', label: 'Dec', title: 'Show/hide the Dec error trace' },
-    { key: 'raPulses', label: 'RA pulses', title: 'Show/hide RA correction pulse durations as bars on the 0 line' },
-    { key: 'decPulses', label: 'Dec pulses', title: 'Show/hide Dec correction pulse durations as bars on the 0 line' },
-    { key: 'mass', label: 'Mass', title: 'Show/hide guide-star mass (yellow), scaled to the bottom half of the chart' },
-    { key: 'snr', label: 'SNR', title: 'Show/hide guide-star SNR (white), scaled to the bottom half of the chart' },
-    { key: 'events', label: 'Events', title: 'Show INFO events as inline labels along the bottom of the chart (matches the desktop "events" checkbox)' },
+    { key: 'ra', label: 'RA', title: t('traces.raTooltip') },
+    { key: 'dec', label: 'Dec', title: t('traces.decTooltip') },
+    { key: 'raPulses', label: t('traces.raPulses'), title: t('traces.raPulsesTooltip') },
+    { key: 'decPulses', label: t('traces.decPulses'), title: t('traces.decPulsesTooltip') },
+    { key: 'mass', label: 'Mass', title: t('traces.massTooltip') },
+    { key: 'snr', label: 'SNR', title: t('traces.snrTooltip') },
+    { key: 'events', label: t('traces.events'), title: t('traces.eventsTooltip') },
   ];
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-1 text-xs">
-      <span className="mr-1 text-slate-500" title="Choose the chart layout">view:</span>
+      <span className="me-1 text-slate-500" title={t('groups.viewTooltip')}>{t('groups.view')}:</span>
       <ToggleChip
-        label="time"
+        label={t('view.time')}
         active={graphMode === 'TIME'}
         onClick={() => setGraphMode('TIME')}
-        title="Time-series view: error traces and pulses vs. time"
+        title={t('view.timeTooltip')}
       />
       <ToggleChip
-        label="scatter"
+        label={t('view.scatter')}
         active={graphMode === 'SCATTER'}
         onClick={() => setGraphMode('SCATTER')}
-        title="Scatter view: each frame as a point in (RA, Dec) space, with the error ellipse"
+        title={t('view.scatterTooltip')}
       />
-      <span className="ml-3 mr-1 text-slate-500" title="Toggle individual traces in the time view">show:</span>
+      <span className="ms-3 me-1 text-slate-500" title={t('groups.showTooltip')}>{t('groups.show')}:</span>
       {items.map((it) => (
         <ToggleChip
           key={it.key}
@@ -133,85 +138,85 @@ export function GraphToolbar() {
           active={traces[it.key]}
           onClick={() => toggleTrace(it.key)}
           disabled={graphMode === 'SCATTER'}
-          title={graphMode === 'SCATTER' ? 'Trace toggles only apply in time view' : it.title}
+          title={graphMode === 'SCATTER' ? t('traces.togglesScatterDisabled') : it.title}
         />
       ))}
-      <span className="ml-3 mr-1 text-slate-500" title="Coordinate frame for the error trace">coord:</span>
+      <span className="ms-3 me-1 text-slate-500" title={t('groups.coordTooltip')}>{t('groups.coord')}:</span>
       <ToggleChip
         label="RA/Dec"
         active={coordMode === 'RA_DEC'}
         onClick={() => setCoordMode('RA_DEC')}
         disabled={graphMode === 'SCATTER'}
-        title="Plot mount-frame RA and Dec error (Dec is negated so north points up)"
+        title={t('coord.raDecTooltip')}
       />
       <ToggleChip
         label="dx/dy"
         active={coordMode === 'DX_DY'}
         onClick={() => setCoordMode('DX_DY')}
         disabled={graphMode === 'SCATTER'}
-        title="Plot raw camera-frame dx and dy (useful when calibration is suspect)"
+        title={t('coord.dxDyTooltip')}
       />
-      <span className="ml-3 mr-1 text-slate-500" title="Filter entries by which device made the correction">device:</span>
+      <span className="ms-3 me-1 text-slate-500" title={t('groups.deviceTooltip')}>{t('groups.device')}:</span>
       <ToggleChip
         label="Mount"
         active={device === 'MOUNT'}
         onClick={() => setDevice('MOUNT')}
         disabled={!hasAo}
-        title={hasAo ? 'Show only frames where the mount made the correction' : 'No AO data in this session — all frames are mount frames'}
+        title={hasAo ? t('device.mountTooltip') : t('device.noAo')}
       />
       <ToggleChip
         label="AO"
         active={device === 'AO'}
         onClick={() => setDevice('AO')}
         disabled={!hasAo}
-        title={hasAo ? 'Show only frames where the AO unit made the correction' : 'No AO data in this session'}
+        title={hasAo ? t('device.aoTooltip') : t('device.noAoShort')}
       />
-      <span className="ml-3 mr-1 text-slate-500" title="Y-axis units">scale:</span>
+      <span className="ms-3 me-1 text-slate-500" title={t('groups.scaleTooltip')}>{t('groups.scale')}:</span>
       <ToggleChip
-        label="arc-sec"
+        label={t('scale.arcsec')}
         active={scaleMode === 'ARCSEC'}
         onClick={() => setScaleMode('ARCSEC')}
-        title="Display Y values in arc-seconds (multiplied by the session pixel scale)"
+        title={t('scale.arcsecTooltip')}
       />
       <ToggleChip
-        label="pixels"
+        label={t('scale.pixels')}
         active={scaleMode === 'PIXELS'}
         onClick={() => setScaleMode('PIXELS')}
-        title="Display Y values in raw pixels"
+        title={t('scale.pixelsTooltip')}
       />
       <ToggleChip
-        label="auto Y"
+        label={t('scale.autoY')}
         active={autoScaleY}
         onClick={() => setAutoScaleY(!autoScaleY)}
-        title="Auto-fit Y to the typical guiding range (99th percentile of |error|), so dithers and lost-star spikes don't squash the routine signal. Off = use raw min/max."
+        title={t('scale.autoYTooltip')}
       />
       <ToggleChip
-        label={scaleLocked ? '🔒 Y locked' : '🔓 Y'}
+        label={scaleLocked ? t('scale.yLocked') : t('scale.y')}
         active={scaleLocked}
         onClick={() => setScaleLocked(!scaleLocked)}
-        title="Lock Y range across section changes so different nights can be compared at the same scale"
+        title={t('scale.yLockedTooltip')}
       />
       <button
-        className="ml-1 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700"
+        className="ms-1 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700"
         onClick={() => window.dispatchEvent(new CustomEvent('phd-recenter-y'))}
-        title="Recenter Y axis around 0 without changing the current zoom level"
+        title={t('scale.recenterYTooltip')}
       >
-        recenter Y
+        {t('scale.recenterY')}
       </button>
       <button
-        className="ml-1 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-40"
+        className="ms-1 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-40"
         disabled={!session}
         onClick={() => {
           const stem = meta?.name?.replace(/\.[^.]+$/, '') ?? 'log';
           const fname = `phd2-${stem}-${session?.date ?? ''}`.replace(/[^a-zA-Z0-9-_]+/g, '-');
           window.dispatchEvent(new CustomEvent('phd-export-png', { detail: { filename: fname } }));
         }}
-        title="Download a high-resolution PNG snapshot of the current chart"
+        title={t('export.pngTooltip')}
       >
         PNG
       </button>
       <button
-        className="ml-1 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-40"
+        className="ms-1 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-40"
         disabled={!session}
         onClick={() => {
           if (!session) return;
@@ -220,34 +225,31 @@ export function GraphToolbar() {
           const dateTag = session.date.replace(/[^a-zA-Z0-9]+/g, '-');
           triggerDownload(`${stem}-${dateTag}.csv`, csv, 'text/csv;charset=utf-8');
         }}
-        title="Download the entries of the current section as a CSV (includes an Excluded column for frames you've removed from the analysis)"
+        title={t('export.csvTooltip')}
       >
         CSV
       </button>
-      <div className="ml-auto flex items-center gap-3 text-slate-400">
+      <div className="ms-auto flex items-center gap-3 text-slate-400">
         <span
           className="flex items-center gap-1 text-slate-500"
-          title="Vertical dotted line styles you'll see overlaid on the chart. Hover any line for the event text."
+          title={t('legend.tooltip')}
         >
-          <span className="inline-block h-3 w-[2px] bg-purple-400/70" /> dither
-          <span className="ml-2 inline-block h-3 w-[2px] bg-yellow-400/70" /> info
-          <span className="ml-2 inline-block h-2 w-3 border border-orange-400/70 bg-orange-400/20" /> excluded
+          <span className="inline-block h-3 w-[2px] bg-purple-400/70" /> {t('legend.dither')}
+          <span className="ms-2 inline-block h-3 w-[2px] bg-yellow-400/70" /> {t('legend.info')}
+          <span className="ms-2 inline-block h-2 w-3 border border-orange-400/70 bg-orange-400/20" /> {t('legend.excluded')}
         </span>
-        <span title="Frames excluded from stats / total frames in this section">
+        <span title={t('exclusions.tooltip')}>
           {totalCount > 0 ? (
             <>
               <span className={excludedCount > 0 ? 'text-amber-400' : ''}>
                 {excludedCount}
               </span>
-              <span className="text-slate-600"> / {totalCount} excluded</span>
+              <span className="text-slate-600">{t('exclusions.labelTotal', { total: totalCount })}</span>
             </>
           ) : null}
         </span>
-        <span
-          className="text-slate-600"
-          title="Mouse wheel zooms X around the cursor. Plain drag pans X and zooms Y at the same time. Shift+drag adds the time range to analysis. Ctrl+drag removes the time range from analysis."
-        >
-          scroll = X zoom · drag = X pan + Y zoom · shift+drag = include · ctrl+drag = exclude
+        <span className="text-slate-600">
+          {t('gestureHint')}
         </span>
       </div>
     </div>

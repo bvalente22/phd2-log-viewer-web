@@ -1,5 +1,6 @@
 import * as RCM from '@radix-ui/react-context-menu';
 import { ReactNode, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { canAnalyze, analyze, findUnguidedWindow, findUnguidedWindowAtTime } from '../parser/analyze';
@@ -33,6 +34,7 @@ const clientXToChartTime = (clientX: number, target: HTMLElement | null): number
 };
 
 export function GraphContextMenu({ children }: { children: ReactNode }) {
+  const { t } = useTranslation('toolbar');
   const log = useLogStore((s) => s.log);
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const includeAll = useViewStore((s) => s.includeAll);
@@ -118,16 +120,16 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
           <Item
             disabled={!session}
             onSelect={() => session && includeAll(sessionIdx, session.entries.length)}
-            title="Re-include every frame; clears all exclusions in this section"
+            title={t('contextMenu.includeAllTooltip')}
           >
-            Include all frames
+            {t('contextMenu.includeAll')}
           </Item>
           <Item
             disabled={!session}
             onSelect={() => session && excludeAll(sessionIdx, session.entries.length)}
-            title="Mark every frame as excluded from the analysis"
+            title={t('contextMenu.excludeAllTooltip')}
           >
-            Exclude all frames
+            {t('contextMenu.excludeAll')}
           </Item>
           <Item
             disabled={!session}
@@ -137,38 +139,38 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
               const current = exclusions.get(sessionIdx);
               setMask(sessionIdx, computeSettlingMask(session, current));
             }}
-            title="Add settling windows (and frames just after each DITHER event) to the existing exclusions"
+            title={t('contextMenu.excludeDithersTooltip')}
           >
-            Exclude dithers / settling
+            {t('contextMenu.excludeDithers')}
           </Item>
           <RCM.Separator className="my-1 h-px bg-slate-700" />
           <Item
             disabled={!session}
             onSelect={() => session && includeAll(sessionIdx, session.entries.length)}
-            title="Reset this section's exclusions to its loaded state"
+            title={t('contextMenu.resetSectionTooltip')}
           >
-            Reset section
+            {t('contextMenu.resetSection')}
           </Item>
           <Item
             onSelect={() => window.dispatchEvent(new CustomEvent('phd-reset-zoom'))}
-            title="Auto-fit the X and Y axes to the full data range"
+            title={t('contextMenu.resetZoomTooltip')}
           >
-            Reset zoom
+            {t('contextMenu.resetZoom')}
           </Item>
           <RCM.Separator className="my-1 h-px bg-slate-700" />
           <Item
             disabled={!session || !canAnalyzeSession}
             onSelect={() => session && runAnalysis('all', false)}
-            title="Analyze every included, non-excluded frame: drift-corrected timeline + FFT periodogram"
+            title={t('contextMenu.analyzeSelectedTooltip')}
           >
-            Analyze selected frames
+            {t('contextMenu.analyzeSelected')}
           </Item>
           <Item
             disabled={!session || !canAnalyzeSession}
             onSelect={() => session && runAnalysis('all-raw-ra', true)}
-            title="Same range, but with RA corrections re-added — shows what tracking would have looked like unguided"
+            title={t('contextMenu.analyzeRawRaTooltip')}
           >
-            Analyze selected, raw RA
+            {t('contextMenu.analyzeRawRa')}
           </Item>
           {isUnguided && (
             <Item
@@ -178,9 +180,9 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
                 const range = pickUnguidedRange();
                 if (range) runAnalysis('unguided', false, range);
               }}
-              title="Analyze the unguided window under the cursor (or the first one in the session if you right-clicked elsewhere)"
+              title={t('contextMenu.analyzeUnguidedTooltip')}
             >
-              Analyze unguided section
+              {t('contextMenu.analyzeUnguided')}
             </Item>
           )}
         </RCM.Content>
@@ -202,7 +204,7 @@ function Item({ children, onSelect, disabled, hint, title }: {
       }`}
     >
       <span>{children}</span>
-      {hint && <span className="ml-3 text-xs text-slate-500">{hint}</span>}
+      {hint && <span className="ms-3 text-xs text-slate-500">{hint}</span>}
     </RCM.Item>
   );
 }

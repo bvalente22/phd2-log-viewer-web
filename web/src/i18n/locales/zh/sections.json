@@ -1,0 +1,55 @@
+{
+  "list": {
+    "noSections": "无区段。",
+    "guideLabel": "Guide · {{date}}",
+    "calLabel": "Cal · {{date}}",
+    "framesSummary": "{{frames}} frame · {{seconds}}s",
+    "stepsSummary": "{{count}} 步",
+    "guideSessionTooltip": "Guide 会话 · {{date}} · {{frames}} frame · {{seconds}}s",
+    "calibrationTooltip": "Calibration · {{date}} · {{count}} 步",
+    "guideIconTooltip": "Guide 会话",
+    "calibrationIconTooltip": "Calibration 区段",
+    "selectGuiding": "请选择一个 guiding 区段。"
+  },
+  "header": {
+    "guiding": "Guiding header",
+    "calibration": "Calibration header",
+    "tooltip": "点击展开 PHD2 为本区段抓取的完整 header (设备、mount、算法、目标坐标)",
+    "linesCount": "{{count}} 行"
+  },
+  "recents": {
+    "title": "最近",
+    "remove": "移除",
+    "dropdownLabel": "最近的日志 ({{count}})",
+    "showTooltip": "显示最近打开的日志 (本地保存于浏览器)",
+    "hideTooltip": "隐藏最近日志列表",
+    "empty": "无最近日志。",
+    "current": "(当前)",
+    "reopenTooltip": "重新打开 {{name}}",
+    "removeTooltip": "从最近列表中移除 {{name}}",
+    "clearAll": "清空最近",
+    "clearAllTooltip": "从浏览器本地存储中永久删除所有最近打开的日志"
+  },
+  "folder": {
+    "title": "日志文件夹",
+    "logsCount": "{{count}} 个日志",
+    "show": "显示日志文件夹面板",
+    "hide": "隐藏日志文件夹面板",
+    "refresh": "刷新列表",
+    "menu": "文件夹菜单",
+    "change": "更换文件夹…",
+    "changeTooltip": "选择另一个文件夹;替换当前文件夹",
+    "forget": "忘记文件夹",
+    "forgetTooltip": "清除本浏览器中保存的文件夹句柄",
+    "unsupported": "文件夹浏览需要基于 Chromium 的浏览器 (Chrome 或 Edge)。请将日志拖到拖放区以加载。",
+    "choose": "选择文件夹…",
+    "chooseTooltip": "打开操作系统的文件夹选择器;浏览器将请求读取权限",
+    "pickHint": "选择你的 PHD2 日志文件夹 (通常为 <1>{{path}}</1>)。",
+    "reconnect": "重新连接",
+    "reconnectTooltip": "为本次会话重新授予读取权限",
+    "reconnectHint": "重新授予读取权限以恢复文件夹列表。",
+    "noLogs": "在此文件夹中未找到 guide log。请添加 `*GuideLog*` 文件或选择其他文件夹。",
+    "openTooltip": "打开 {{name}}",
+    "current": "(当前)"
+  }
+}

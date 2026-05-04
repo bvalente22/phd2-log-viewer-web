@@ -1,0 +1,33 @@
+{
+  "label": "Analysis",
+  "labelTooltip": "You are in the Analysis modal — click 'Close' or press Esc to return",
+  "close": "Close",
+  "closeTooltip": "Close the analysis view (Esc)",
+  "esc": "Esc",
+  "titleTooltip": "Source range and analysis mode for this run",
+  "title": {
+    "unguided": "unguided section · frames {{begin}}-{{end}}",
+    "rawRa": "RA corrections removed · {{frames}} frames · {{start}} — {{end}}",
+    "default": "{{frames}} frames · {{start}} — {{end}}"
+  },
+  "show": "show",
+  "showTooltip": "Toggle individual drift traces",
+  "raDriftTooltip": "Show/hide drift-corrected RA trace",
+  "decDriftTooltip": "Show/hide drift-corrected Dec trace",
+  "scale": "scale",
+  "scaleTooltip": "Y-axis units",
+  "arcsecTooltip": "Display Y in arc-seconds",
+  "pixelsTooltip": "Display Y in pixels",
+  "gestureHint": "scroll = X zoom · drag = X pan + Y zoom · hover = vertical cursor + readout",
+  "topPeaks": "Top 3 peaks",
+  "maxPeriod": "max period",
+  "maxPeriodSuffix": "s",
+  "maxPeriodTooltip": "Excludes any peak whose period exceeds this many seconds; 600s (10 min) is the default since PE worm cycles are typically well below that.",
+  "noPeaks": "No periodogram peaks under {{seconds}}s detected. Try raising the max-period filter or check the signal.",
+  "peakTitle": "Peak {{index}}: a periodic-error component at {{period}}s period",
+  "peakIndex": "#{{index}}",
+  "period": "Period",
+  "amplitude": "Amplitude",
+  "pp": "P-P",
+  "rms": "RMS"
+}

@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 /**
  * Collapsible disclosure that renders the raw header lines captured by the
  * parser for the active guiding or calibration section. Mirrors what the
@@ -10,25 +12,26 @@
  * field (equipment profile) and the line count.
  */
 export function SectionHeader({ hdr, kind }: { hdr: string[]; kind: 'GUIDING' | 'CALIBRATION' }) {
+  const { t } = useTranslation('sections');
   if (!hdr || hdr.length === 0) return null;
   // Pull the equipment-profile line for the collapsed peek; fall back to the
   // first line if absent (some logs don't emit it).
   const profileLine = hdr.find((l) => l.startsWith('Equipment Profile = ')) ?? hdr[0];
   const peek = profileLine.length > 80 ? profileLine.slice(0, 80) + '…' : profileLine;
-  const label = kind === 'GUIDING' ? 'Guiding header' : 'Calibration header';
+  const label = kind === 'GUIDING' ? t('header.guiding') : t('header.calibration');
 
   return (
     <details
       className="group border-b border-slate-800 bg-slate-900/60 px-3 py-1 text-xs text-slate-300"
-      title="Click to expand the full header captured by PHD2 for this section (equipment, mount, algorithms, target coords)"
+      title={t('header.tooltip')}
     >
       <summary className="cursor-pointer select-none list-none marker:hidden">
         {/* Caret rotates 90° when the details element is open (Tailwind's
             open: variant on the parent group). */}
-        <span className="mr-2 inline-block w-3 text-slate-500 transition-transform group-open:rotate-90">▸</span>
+        <span className="me-2 inline-block w-3 text-slate-500 transition-transform group-open:rotate-90">▸</span>
         <span className="font-medium text-slate-200">{label}</span>
         <span className="mx-2 text-slate-600">·</span>
-        <span className="text-slate-400">{hdr.length} lines</span>
+        <span className="text-slate-400">{t('header.linesCount', { count: hdr.length })}</span>
         <span className="mx-2 text-slate-600">·</span>
         <span className="text-slate-500" title={profileLine}>{peek}</span>
       </summary>

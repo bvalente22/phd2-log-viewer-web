@@ -1,0 +1,33 @@
+{
+  "label": "Analyse",
+  "labelTooltip": "Du befindest dich im Analyse-Modal — klicke „Schließen“ oder drücke Esc, um zurückzukehren",
+  "close": "Schließen",
+  "closeTooltip": "Analyseansicht schließen (Esc)",
+  "esc": "Esc",
+  "titleTooltip": "Quellbereich und Analysemodus dieses Laufs",
+  "title": {
+    "unguided": "ungeguideter Abschnitt · Frames {{begin}}-{{end}}",
+    "rawRa": "RA-Korrekturen entfernt · {{frames}} Frames · {{start}} — {{end}}",
+    "default": "{{frames}} Frames · {{start}} — {{end}}"
+  },
+  "show": "anzeigen",
+  "showTooltip": "Einzelne Drift-Spuren ein-/ausblenden",
+  "raDriftTooltip": "Drift-korrigierte RA-Spur ein-/ausblenden",
+  "decDriftTooltip": "Drift-korrigierte Dec-Spur ein-/ausblenden",
+  "scale": "Skala",
+  "scaleTooltip": "Y-Achsen-Einheit",
+  "arcsecTooltip": "Y in Bogensekunden anzeigen",
+  "pixelsTooltip": "Y in Pixeln anzeigen",
+  "gestureHint": "Scrollen = X-Zoom · Ziehen = X-Pan + Y-Zoom · Hover = vertikaler Cursor + Anzeige",
+  "topPeaks": "Top-3-Peaks",
+  "maxPeriod": "max. Periode",
+  "maxPeriodSuffix": "s",
+  "maxPeriodTooltip": "Schließt jeden Peak aus, dessen Periode diesen Wert in Sekunden überschreitet; 600s (10 min) ist Standard, da PE-Schneckenzyklen üblicherweise deutlich darunter liegen.",
+  "noPeaks": "Keine Periodogramm-Peaks unter {{seconds}}s erkannt. Erhöhe den Filter für die maximale Periode oder prüfe das Signal.",
+  "peakTitle": "Peak {{index}}: eine periodische Fehlerkomponente mit Periode {{period}}s",
+  "peakIndex": "#{{index}}",
+  "period": "Periode",
+  "amplitude": "Amplitude",
+  "pp": "P-P",
+  "rms": "RMS"
+}

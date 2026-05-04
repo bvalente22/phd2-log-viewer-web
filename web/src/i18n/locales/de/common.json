@@ -1,0 +1,20 @@
+{
+  "appName": "PHD2 Log Viewer",
+  "buildTooltip": "Build {{hash}}",
+  "phdVersion": "PHD2 v{{version}}",
+  "openAnother": "Anderes öffnen",
+  "openAnotherTooltip": "Aktuelles Log schließen und zur Drop-Zone zurückkehren, um ein anderes zu öffnen",
+  "selectSection": "Abschnitt wählen.",
+  "language": "Sprache",
+  "languageTooltip": "Oberflächensprache wechseln. Astrofotografie-Begriffe (RA, Dec, RMS usw.) bleiben auf Englisch.",
+  "dropZone": {
+    "title": "PHD2-Guidelog hier ablegen",
+    "tooltip": "PHD2-Guidelog-Datei hier ablegen. Das Log wird lokal verarbeitet; nichts wird hochgeladen.",
+    "pickFile": "oder Datei auswählen",
+    "pickFileTooltip": "Dateiauswahl öffnen, um ein PHD2-Guidelog zu wählen",
+    "parsing": "Verarbeite…",
+    "chooseLogsFolder": "Log-Ordner wählen…",
+    "chooseLogsFolderTooltip": "Wähle deinen PHD2-Log-Ordner; danach lassen sich alle Guidelogs aus der Seitenleiste durchsuchen",
+    "browseAllByDate": "Alle Guidelogs nach Datum durchstöbern."
+  }
+}
