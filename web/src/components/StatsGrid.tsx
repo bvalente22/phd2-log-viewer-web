@@ -1,11 +1,14 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { calcStats } from '../parser';
+import { fmtNumber, fmtInteger, fmtRoundedInt } from '../i18n/format';
 
-const fmt = (n: number, d = 3) => Number.isFinite(n) ? n.toFixed(d) : '—';
+const fmt = (n: number, d = 3) => fmtNumber(n, d);
 
 export function StatsGrid() {
+  const { t } = useTranslation('stats');
   const log = useLogStore((s) => s.log);
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const exclusions = useViewStore((s) => s.exclusions);
@@ -26,35 +29,35 @@ export function StatsGrid() {
   const arcsec = scaleMode === 'ARCSEC';
   const unit = arcsec ? '″' : 'px';
   const v = (px: number) => `${fmt(arcsec ? px * k : px)} ${unit}`;
-  const drift = (px: number) => `${fmt(arcsec ? px * k : px)} ${unit}/min`;
+  const drift = (px: number) => `${fmt(arcsec ? px * k : px)} ${unit}${t('guide.perMinSuffix')}`;
 
   const common: [string, string][] = [
-    ['Duration', `${Math.round(s.durationSec)} s`],
-    ['Included', String(s.includedCount)],
-    ['Excluded', String(s.excludedCount)],
-    ['RMS Total', v(s.rmsTotal)],
-    ['PAE', `${fmt(s.paeArcMin, 2)}′`],
+    [t('guide.duration'), `${fmtRoundedInt(s.durationSec)} ${t('guide.secondsSuffix')}`],
+    [t('guide.included'), fmtInteger(s.includedCount)],
+    [t('guide.excluded'), fmtInteger(s.excludedCount)],
+    [t('guide.rmsTotal'), v(s.rmsTotal)],
+    [t('guide.pae'), `${fmt(s.paeArcMin, 2)}′`],
   ];
   const raRow: [string, string][] = [
-    ['RMS', v(s.rmsRa)],
-    ['Peak', v(s.peakRa)],
-    ['Mean', v(s.meanRa)],
-    ['Drift', drift(s.driftRa)],
+    [t('guide.rms'), v(s.rmsRa)],
+    [t('guide.peak'), v(s.peakRa)],
+    [t('guide.mean'), v(s.meanRa)],
+    [t('guide.drift'), drift(s.driftRa)],
   ];
   const decRow: [string, string][] = [
-    ['RMS', v(s.rmsDec)],
-    ['Peak', v(s.peakDec)],
-    ['Mean', v(s.meanDec)],
-    ['Drift', drift(s.driftDec)],
+    [t('guide.rms'), v(s.rmsDec)],
+    [t('guide.peak'), v(s.peakDec)],
+    [t('guide.mean'), v(s.meanDec)],
+    [t('guide.drift'), drift(s.driftDec)],
   ];
 
   const copy = (val: string) => navigator.clipboard?.writeText(val);
 
   const Cell = ({ k: label, v: val }: { k: string; v: string }) => (
     <button
-      className="flex items-baseline gap-2 text-left hover:opacity-80"
+      className="flex items-baseline gap-2 text-start hover:opacity-80"
       onClick={() => copy(val)}
-      title={`${label}: ${val} — click to copy`}
+      title={t('copyTooltip', { label, value: val })}
     >
       <span className="text-xs text-slate-400">{label}</span>
       <span className="font-mono text-slate-100">{val}</span>
@@ -68,9 +71,10 @@ export function StatsGrid() {
     </div>
   );
 
+  // RA / Dec are PHD2 jargon — kept in English across all locales.
   return (
     <div className="flex flex-col gap-1 px-4 py-2 text-sm">
-      <Row label="Total" items={common} />
+      <Row label={t('rows.total')} items={common} />
       <Row label="RA" color="text-sky-400" items={raRow} />
       <Row label="Dec" color="text-rose-400" items={decRow} />
     </div>

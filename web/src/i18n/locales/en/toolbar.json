@@ -1,0 +1,91 @@
+{
+  "groups": {
+    "view": "view",
+    "viewTooltip": "Choose the chart layout",
+    "show": "show",
+    "showTooltip": "Toggle individual traces in the time view",
+    "coord": "coord",
+    "coordTooltip": "Coordinate frame for the error trace",
+    "device": "device",
+    "deviceTooltip": "Filter entries by which device made the correction",
+    "scale": "scale",
+    "scaleTooltip": "Y-axis units"
+  },
+  "view": {
+    "time": "time",
+    "timeTooltip": "Time-series view: error traces and pulses vs. time",
+    "scatter": "scatter",
+    "scatterTooltip": "Scatter view: each frame as a point in (RA, Dec) space, with the error ellipse"
+  },
+  "traces": {
+    "raPulses": "RA pulses",
+    "decPulses": "Dec pulses",
+    "events": "Events",
+    "raTooltip": "Show/hide the RA error trace",
+    "decTooltip": "Show/hide the Dec error trace",
+    "raPulsesTooltip": "Show/hide RA correction pulse durations as bars on the 0 line",
+    "decPulsesTooltip": "Show/hide Dec correction pulse durations as bars on the 0 line",
+    "massTooltip": "Show/hide guide-star mass (yellow), scaled to the bottom half of the chart",
+    "snrTooltip": "Show/hide guide-star SNR (white), scaled to the bottom half of the chart",
+    "eventsTooltip": "Show INFO events as inline labels along the bottom of the chart (matches the desktop \"events\" checkbox)",
+    "togglesScatterDisabled": "Trace toggles only apply in time view"
+  },
+  "coord": {
+    "raDecTooltip": "Plot mount-frame RA and Dec error (Dec is negated so north points up)",
+    "dxDyTooltip": "Plot raw camera-frame dx and dy (useful when calibration is suspect)"
+  },
+  "device": {
+    "mountTooltip": "Show only frames where the mount made the correction",
+    "aoTooltip": "Show only frames where the AO unit made the correction",
+    "noAo": "No AO data in this session — all frames are mount frames",
+    "noAoShort": "No AO data in this session"
+  },
+  "scale": {
+    "arcsec": "arc-sec",
+    "pixels": "pixels",
+    "arcsecTooltip": "Display Y values in arc-seconds (multiplied by the session pixel scale)",
+    "pixelsTooltip": "Display Y values in raw pixels",
+    "autoY": "auto Y",
+    "autoYTooltip": "Auto-fit Y to the typical guiding range (99th percentile of |error|), so dithers and lost-star spikes don't squash the routine signal. Off = use raw min/max.",
+    "yLocked": "🔒 Y locked",
+    "y": "🔓 Y",
+    "yLockedTooltip": "Lock Y range across section changes so different nights can be compared at the same scale",
+    "recenterY": "recenter Y",
+    "recenterYTooltip": "Recenter Y axis around 0 without changing the current zoom level"
+  },
+  "export": {
+    "pngTooltip": "Download a high-resolution PNG snapshot of the current chart",
+    "csvTooltip": "Download the entries of the current section as a CSV (includes an Excluded column for frames you've removed from the analysis)"
+  },
+  "legend": {
+    "tooltip": "Vertical dotted line styles you'll see overlaid on the chart. Hover any line for the event text.",
+    "dither": "dither",
+    "info": "info",
+    "excluded": "excluded"
+  },
+  "exclusions": {
+    "tooltip": "Frames excluded from stats / total frames in this section",
+    "label": "{{excluded}} / {{total}} excluded",
+    "labelExcluded": "{{excluded}}",
+    "labelTotal": " / {{total}} excluded"
+  },
+  "gestureHint": "scroll = X zoom · drag = X pan + Y zoom · shift+drag = include · ctrl+drag = exclude",
+  "contextMenu": {
+    "includeAll": "Include all frames",
+    "includeAllTooltip": "Re-include every frame; clears all exclusions in this section",
+    "excludeAll": "Exclude all frames",
+    "excludeAllTooltip": "Mark every frame as excluded from the analysis",
+    "excludeDithers": "Exclude dithers / settling",
+    "excludeDithersTooltip": "Add settling windows (and frames just after each DITHER event) to the existing exclusions",
+    "resetSection": "Reset section",
+    "resetSectionTooltip": "Reset this section's exclusions to its loaded state",
+    "resetZoom": "Reset zoom",
+    "resetZoomTooltip": "Auto-fit the X and Y axes to the full data range",
+    "analyzeSelected": "Analyze selected frames",
+    "analyzeSelectedTooltip": "Analyze every included, non-excluded frame: drift-corrected timeline + FFT periodogram",
+    "analyzeRawRa": "Analyze selected, raw RA",
+    "analyzeRawRaTooltip": "Same range, but with RA corrections re-added — shows what tracking would have looked like unguided",
+    "analyzeUnguided": "Analyze unguided section",
+    "analyzeUnguidedTooltip": "Analyze the unguided window under the cursor (or the first one in the session if you right-clicked elsewhere)"
+  }
+}

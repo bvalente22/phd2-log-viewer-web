@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { AnalysisModal } from '../components/AnalysisModal';
 import { DropZone } from '../components/DropZone';
 import { SectionList } from '../components/SectionList';
@@ -12,12 +13,14 @@ import { GraphContextMenu } from '../components/ContextMenu';
 import { RecentsPanel } from '../components/RecentsPanel';
 import { RecentsDropdown } from '../components/RecentsDropdown';
 import { LogsFolderPane } from '../components/LogsFolderPane';
+import { LanguagePicker } from '../components/LanguagePicker';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { useKeyboardShortcuts } from '../state/useKeyboard';
 
 export function ViewerPage() {
   useKeyboardShortcuts();
+  const { t } = useTranslation('common');
   const log = useLogStore((s) => s.log);
   const meta = useLogStore((s) => s.meta);
   const clear = useLogStore((s) => s.clear);
@@ -28,11 +31,14 @@ export function ViewerPage() {
     return (
       <>
         <div className="mx-auto flex h-full max-w-2xl flex-col justify-center gap-4 p-6">
-          <div>
-            <h1 className="text-2xl font-semibold">PHD2 Log Viewer</h1>
-            <p className="mt-1 text-xs text-slate-500" title={`build ${__APP_GITHASH__}`}>
-              v{__APP_VERSION__} · {__APP_GITHASH__}
-            </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-semibold">{t('appName')}</h1>
+              <p className="mt-1 text-xs text-slate-500" title={t('buildTooltip', { hash: __APP_GITHASH__ })}>
+                v{__APP_VERSION__} · {__APP_GITHASH__}
+              </p>
+            </div>
+            <LanguagePicker />
           </div>
           <DropZone />
           <RecentsPanel />
@@ -56,25 +62,28 @@ export function ViewerPage() {
       <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[auto_1fr]">
         <header className="col-span-2 flex items-center justify-between border-b border-slate-800 px-4 py-2">
         <h1 className="text-sm font-medium">
-          PHD2 Log Viewer
-          <span className="ml-2 text-xs text-slate-500" title={`build ${__APP_GITHASH__}`}>
+          {t('appName')}
+          <span className="ms-2 text-xs text-slate-500" title={t('buildTooltip', { hash: __APP_GITHASH__ })}>
             v{__APP_VERSION__} · {__APP_GITHASH__}
           </span>
           <span className="mx-2 text-slate-700">|</span>
           <span className="text-slate-400">{meta?.name}</span>
-          <span className="ml-2 text-xs text-slate-500">PHD2 v{log.phdVersion}</span>
+          <span className="ms-2 text-xs text-slate-500">{t('phdVersion', { version: log.phdVersion })}</span>
         </h1>
-        <button
-          className="text-xs text-slate-400 hover:text-slate-200"
-          onClick={clear}
-          title="Close the current log and return to the drop zone to open a different one"
-        >
-          Open another
-        </button>
+        <div className="flex items-center gap-3">
+          <LanguagePicker />
+          <button
+            className="text-xs text-slate-400 hover:text-slate-200"
+            onClick={clear}
+            title={t('openAnotherTooltip')}
+          >
+            {t('openAnother')}
+          </button>
+        </div>
       </header>
       {/* Sidebar spans the full content height so its scrollable section list
           extends to the bottom of the page, independent of the stats footer. */}
-      <aside className="flex flex-col overflow-hidden border-r border-slate-800">
+      <aside className="flex flex-col overflow-hidden border-e border-slate-800">
         <LogsFolderPane />
         <RecentsDropdown />
         <div className="flex-1 overflow-y-auto">
@@ -111,7 +120,7 @@ export function ViewerPage() {
         )}
         {!sec && (
           <div className="flex h-full items-center justify-center text-slate-500">
-            Select a section.
+            {t('selectSection')}
           </div>
         )}
       </main>

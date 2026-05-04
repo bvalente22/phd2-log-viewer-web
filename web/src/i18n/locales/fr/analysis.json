@@ -1,0 +1,33 @@
+{
+  "label": "Analyse",
+  "labelTooltip": "Tu es dans la modale Analyse — clique « Fermer » ou appuie sur Échap pour revenir",
+  "close": "Fermer",
+  "closeTooltip": "Fermer la vue d'analyse (Échap)",
+  "esc": "Échap",
+  "titleTooltip": "Plage source et mode d'analyse pour cette exécution",
+  "title": {
+    "unguided": "section non guidée · frames {{begin}}-{{end}}",
+    "rawRa": "corrections RA retirées · {{frames}} frames · {{start}} — {{end}}",
+    "default": "{{frames}} frames · {{start}} — {{end}}"
+  },
+  "show": "afficher",
+  "showTooltip": "Activer ou désactiver les traces de drift individuelles",
+  "raDriftTooltip": "Afficher/masquer la trace RA corrigée du drift",
+  "decDriftTooltip": "Afficher/masquer la trace Dec corrigée du drift",
+  "scale": "échelle",
+  "scaleTooltip": "Unités de l'axe Y",
+  "arcsecTooltip": "Afficher Y en secondes d'arc",
+  "pixelsTooltip": "Afficher Y en pixels",
+  "gestureHint": "molette = zoom X · glisser = pan X + zoom Y · survol = curseur vertical + lecture",
+  "topPeaks": "Top 3 pics",
+  "maxPeriod": "période max",
+  "maxPeriodSuffix": "s",
+  "maxPeriodTooltip": "Exclut tout pic dont la période dépasse ce nombre de secondes ; 600s (10 min) est la valeur par défaut, les cycles de PE de la vis sans fin étant en général bien en dessous.",
+  "noPeaks": "Aucun pic du périodogramme détecté sous {{seconds}}s. Augmente le filtre de période max ou vérifie le signal.",
+  "peakTitle": "Pic {{index}} : une composante d'erreur périodique de période {{period}}s",
+  "peakIndex": "n°{{index}}",
+  "period": "Période",
+  "amplitude": "Amplitude",
+  "pp": "P-P",
+  "rms": "RMS"
+}

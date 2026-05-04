@@ -1,4 +1,5 @@
 import { useId, useMemo, useState, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import Plot from 'react-plotly.js';
 // @ts-expect-error -- no types for the dist bundle; we only call relayout.
 import Plotly from 'plotly.js/dist/plotly';
@@ -30,6 +31,7 @@ interface PeriodogramChartProps {
  * the user sees exactly which period they're reading.
  */
 export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
+  const { t: tChart } = useTranslation('chart');
   const plotId = useId().replace(/:/g, '_');
   const [hover, setHover] = useState<string | null>(null);
 
@@ -41,7 +43,7 @@ export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
       x: Array.from(garun.fftPeriod),
       y: Array.from(garun.fftAmplitude).map((v) => v * k),
       type: 'scatter', mode: 'lines',
-      name: 'amplitude',
+      name: tChart('traces.amplitude'),
       line: { color: FFT_COLOR, width: 1.5 },
       fill: 'tozeroy',
       fillcolor: 'rgba(163, 230, 53, 0.1)',
@@ -141,11 +143,11 @@ export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
     plot_bgcolor: '#0f172a',
     font: { color: '#cbd5e1', size: 11 },
     xaxis: {
-      title: { text: 'period (s)' }, gridcolor: '#1e293b', zerolinecolor: '#334155',
+      title: { text: tChart('axes.period') }, gridcolor: '#1e293b', zerolinecolor: '#334155',
       type: 'log', range: xLogRange, fixedrange: false,
     },
     yaxis: {
-      title: { text: `amplitude (${unit === '″' ? 'arc-sec' : 'px'})` },
+      title: { text: unit === '″' ? tChart('axes.amplitudeArcsec') : tChart('axes.amplitudePixels') },
       gridcolor: '#1e293b', zerolinecolor: '#334155',
       autorange: true, fixedrange: true,
     },

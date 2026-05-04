@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import i18n from '../i18n';
 import { parseLogFilename } from '../parser/filename';
 import { saveFolderHandle, loadFolderHandle, clearFolderHandle } from '../storage/folderHandle';
 import { useLogStore } from './logStore';
@@ -78,7 +79,7 @@ export const useFolderStore = create<State & Actions>((set, get) => ({
     } catch (err) {
       // AbortError when user cancels the picker — silent no-op.
       if ((err as DOMException)?.name === 'AbortError') return;
-      set({ state: 'error', message: (err as Error).message ?? 'Failed to pick folder' });
+      set({ state: 'error', message: (err as Error).message ?? i18n.t('errors:pickFolder') });
     }
   },
 
@@ -94,7 +95,7 @@ export const useFolderStore = create<State & Actions>((set, get) => ({
       const records = await listFolder(cur.handle);
       set({ state: 'listing', handle: cur.handle, folderName: cur.folderName, records });
     } catch (err) {
-      set({ state: 'error', message: (err as Error).message ?? 'Failed to read folder' });
+      set({ state: 'error', message: (err as Error).message ?? i18n.t('errors:readFolder') });
     }
   },
 
@@ -114,7 +115,7 @@ export const useFolderStore = create<State & Actions>((set, get) => ({
       const records = await listFolder(cur.handle);
       set({ state: 'listing', handle: cur.handle, folderName: cur.folderName, records });
     } catch (err) {
-      set({ state: 'error', message: (err as Error).message ?? 'Failed to refresh folder' });
+      set({ state: 'error', message: (err as Error).message ?? i18n.t('errors:refreshFolder') });
     }
   },
 
@@ -124,7 +125,7 @@ export const useFolderStore = create<State & Actions>((set, get) => ({
       const text = await file.text();
       await useLogStore.getState().loadFromText(text, record.filename, { persist: false });
     } catch (err) {
-      set({ state: 'error', message: (err as Error).message ?? 'Failed to read log' });
+      set({ state: 'error', message: (err as Error).message ?? i18n.t('errors:readLog') });
     }
   },
 }));

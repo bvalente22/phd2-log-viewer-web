@@ -1,0 +1,33 @@
+{
+  "label": "Analisi",
+  "labelTooltip": "Sei nel modale Analisi — clicca «Chiudi» o premi Esc per tornare",
+  "close": "Chiudi",
+  "closeTooltip": "Chiude la vista di analisi (Esc)",
+  "esc": "Esc",
+  "titleTooltip": "Intervallo sorgente e modalità di analisi per questa esecuzione",
+  "title": {
+    "unguided": "sezione non guidata · frame {{begin}}-{{end}}",
+    "rawRa": "correzioni RA rimosse · {{frames}} frame · {{start}} — {{end}}",
+    "default": "{{frames}} frame · {{start}} — {{end}}"
+  },
+  "show": "mostra",
+  "showTooltip": "Attiva o disattiva singole tracce di drift",
+  "raDriftTooltip": "Mostra/nasconde la traccia RA corretta dal drift",
+  "decDriftTooltip": "Mostra/nasconde la traccia Dec corretta dal drift",
+  "scale": "scala",
+  "scaleTooltip": "Unità dell'asse Y",
+  "arcsecTooltip": "Mostra Y in secondi d'arco",
+  "pixelsTooltip": "Mostra Y in pixel",
+  "gestureHint": "rotella = zoom X · trascina = pan X + zoom Y · hover = cursore verticale + lettura",
+  "topPeaks": "Top 3 picchi",
+  "maxPeriod": "periodo max",
+  "maxPeriodSuffix": "s",
+  "maxPeriodTooltip": "Esclude qualsiasi picco la cui periodo superi questo numero di secondi; 600s (10 min) è il valore di default, dato che i cicli di PE della vite sono di solito ben sotto.",
+  "noPeaks": "Nessun picco del periodogramma rilevato sotto i {{seconds}}s. Prova ad alzare il filtro di periodo massimo o controlla il segnale.",
+  "peakTitle": "Picco {{index}}: una componente di errore periodico con periodo di {{period}}s",
+  "peakIndex": "n.{{index}}",
+  "period": "Periodo",
+  "amplitude": "Ampiezza",
+  "pp": "P-P",
+  "rms": "RMS"
+}

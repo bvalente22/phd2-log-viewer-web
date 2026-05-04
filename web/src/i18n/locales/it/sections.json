@@ -1,0 +1,55 @@
+{
+  "list": {
+    "noSections": "Nessuna sezione.",
+    "guideLabel": "Guide · {{date}}",
+    "calLabel": "Cal · {{date}}",
+    "framesSummary": "{{frames}} frame · {{seconds}}s",
+    "stepsSummary": "{{count}} passi",
+    "guideSessionTooltip": "Sessione di guiding · {{date}} · {{frames}} frame · {{seconds}}s",
+    "calibrationTooltip": "Calibrazione · {{date}} · {{count}} passi",
+    "guideIconTooltip": "Sessione di guiding",
+    "calibrationIconTooltip": "Sezione di calibrazione",
+    "selectGuiding": "Seleziona una sezione di guiding."
+  },
+  "header": {
+    "guiding": "Header di guiding",
+    "calibration": "Header di calibrazione",
+    "tooltip": "Clicca per espandere l'header completo catturato da PHD2 per questa sezione (equipaggiamento, montatura, algoritmi, coordinate del target)",
+    "linesCount": "{{count}} righe"
+  },
+  "recents": {
+    "title": "Recenti",
+    "remove": "Rimuovi",
+    "dropdownLabel": "Log recenti ({{count}})",
+    "showTooltip": "Mostra i log aperti di recente (memorizzati localmente nel browser)",
+    "hideTooltip": "Nasconde l'elenco dei log recenti",
+    "empty": "Nessun log recente.",
+    "current": "(attuale)",
+    "reopenTooltip": "Riapri {{name}}",
+    "removeTooltip": "Rimuovi {{name}} dall'elenco dei recenti",
+    "clearAll": "Svuota recenti",
+    "clearAllTooltip": "Elimina definitivamente tutti i log aperti di recente dalla memoria locale del browser"
+  },
+  "folder": {
+    "title": "Cartella log",
+    "logsCount": "{{count}} log",
+    "show": "Mostra il pannello cartella log",
+    "hide": "Nasconde il pannello cartella log",
+    "refresh": "Aggiorna l'elenco",
+    "menu": "Menu cartella",
+    "change": "Cambia cartella…",
+    "changeTooltip": "Scegli un'altra cartella; sostituisce quella corrente",
+    "forget": "Dimentica cartella",
+    "forgetTooltip": "Cancella l'handle di cartella salvato in questo browser",
+    "unsupported": "La navigazione cartelle richiede un browser basato su Chromium (Chrome o Edge). Trascina un log sulla zona di rilascio per caricarlo.",
+    "choose": "Scegli cartella…",
+    "chooseTooltip": "Apre il selettore cartelle del SO; il browser chiederà l'accesso in lettura",
+    "pickHint": "Scegli la tua cartella di log PHD2 (di solito <1>{{path}}</1>).",
+    "reconnect": "Riconnetti",
+    "reconnectTooltip": "Riconcedi l'accesso in lettura per questa sessione",
+    "reconnectHint": "Riconcedi l'accesso in lettura per ripristinare l'elenco della cartella.",
+    "noLogs": "Nessun guide log trovato in questa cartella. Aggiungi un file `*GuideLog*` o scegli un'altra cartella.",
+    "openTooltip": "Apri {{name}}",
+    "current": "(attuale)"
+  }
+}

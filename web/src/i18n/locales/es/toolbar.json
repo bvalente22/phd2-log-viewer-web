@@ -1,0 +1,91 @@
+{
+  "groups": {
+    "view": "vista",
+    "viewTooltip": "Elegir el diseño del gráfico",
+    "show": "mostrar",
+    "showTooltip": "Activa o desactiva trazas individuales en la vista temporal",
+    "coord": "coord",
+    "coordTooltip": "Sistema de coordenadas para la traza de error",
+    "device": "dispositivo",
+    "deviceTooltip": "Filtra entradas según el dispositivo que aplicó la corrección",
+    "scale": "escala",
+    "scaleTooltip": "Unidades del eje Y"
+  },
+  "view": {
+    "time": "tiempo",
+    "timeTooltip": "Vista temporal: trazas de error y pulsos en función del tiempo",
+    "scatter": "dispersión",
+    "scatterTooltip": "Vista de dispersión: cada frame como un punto en el espacio (RA, Dec), con la elipse de error"
+  },
+  "traces": {
+    "raPulses": "RA pulses",
+    "decPulses": "Dec pulses",
+    "events": "Eventos",
+    "raTooltip": "Mostrar/ocultar la traza de error en RA",
+    "decTooltip": "Mostrar/ocultar la traza de error en Dec",
+    "raPulsesTooltip": "Mostrar/ocultar la duración de los pulsos de corrección en RA como barras sobre la línea 0",
+    "decPulsesTooltip": "Mostrar/ocultar la duración de los pulsos de corrección en Dec como barras sobre la línea 0",
+    "massTooltip": "Mostrar/ocultar el Mass de la guide star (amarillo), escalado a la mitad inferior del gráfico",
+    "snrTooltip": "Mostrar/ocultar el SNR de la guide star (blanco), escalado a la mitad inferior del gráfico",
+    "eventsTooltip": "Muestra los eventos INFO como etiquetas en línea a lo largo de la parte inferior del gráfico (equivale a la casilla \"events\" del escritorio)",
+    "togglesScatterDisabled": "Las trazas solo aplican en la vista temporal"
+  },
+  "coord": {
+    "raDecTooltip": "Trazar el error en el sistema del montura RA y Dec (Dec se invierte para que el norte apunte hacia arriba)",
+    "dxDyTooltip": "Trazar dx y dy en bruto del sistema de la cámara (útil cuando la calibración es dudosa)"
+  },
+  "device": {
+    "mountTooltip": "Mostrar solo los frames donde la montura aplicó la corrección",
+    "aoTooltip": "Mostrar solo los frames donde el AO aplicó la corrección",
+    "noAo": "Esta sesión no tiene datos de AO — todos los frames son de la montura",
+    "noAoShort": "Esta sesión no tiene datos de AO"
+  },
+  "scale": {
+    "arcsec": "arc-sec",
+    "pixels": "píxeles",
+    "arcsecTooltip": "Mostrar valores Y en segundos de arco (multiplicados por la escala de píxeles de la sesión)",
+    "pixelsTooltip": "Mostrar valores Y en píxeles brutos",
+    "autoY": "auto Y",
+    "autoYTooltip": "Ajuste automático de Y al rango de guiado típico (percentil 99 de |error|), para que dithers y picos por pérdida de estrella no aplasten la señal habitual. Apagado = usar mín/máx brutos.",
+    "yLocked": "🔒 Y bloqueada",
+    "y": "🔓 Y",
+    "yLockedTooltip": "Bloquea el rango de Y entre cambios de sección para poder comparar diferentes noches a la misma escala",
+    "recenterY": "recentrar Y",
+    "recenterYTooltip": "Recentra el eje Y alrededor de 0 sin cambiar el nivel de zoom actual"
+  },
+  "export": {
+    "pngTooltip": "Descargar una captura PNG de alta resolución del gráfico actual",
+    "csvTooltip": "Descargar las entradas de la sección actual en CSV (incluye una columna Excluded para los frames que has retirado del análisis)"
+  },
+  "legend": {
+    "tooltip": "Estilos de líneas verticales punteadas que verás superpuestas en el gráfico. Pasa el ratón sobre cualquier línea para ver el texto del evento.",
+    "dither": "dither",
+    "info": "info",
+    "excluded": "excluido"
+  },
+  "exclusions": {
+    "tooltip": "Frames excluidos de las estadísticas / total de frames en esta sección",
+    "label": "{{excluded}} / {{total}} excluidos",
+    "labelExcluded": "{{excluded}}",
+    "labelTotal": " / {{total}} excluidos"
+  },
+  "gestureHint": "rueda = zoom X · arrastrar = pan X + zoom Y · shift+arrastrar = incluir · ctrl+arrastrar = excluir",
+  "contextMenu": {
+    "includeAll": "Incluir todos los frames",
+    "includeAllTooltip": "Vuelve a incluir todos los frames; limpia las exclusiones de esta sección",
+    "excludeAll": "Excluir todos los frames",
+    "excludeAllTooltip": "Marca todos los frames como excluidos del análisis",
+    "excludeDithers": "Excluir dithers / settling",
+    "excludeDithersTooltip": "Añade ventanas de settling (y los frames inmediatamente después de cada evento DITHER) a las exclusiones existentes",
+    "resetSection": "Restablecer sección",
+    "resetSectionTooltip": "Vuelve las exclusiones de esta sección a su estado original",
+    "resetZoom": "Restablecer zoom",
+    "resetZoomTooltip": "Ajusta automáticamente los ejes X e Y al rango completo de datos",
+    "analyzeSelected": "Analizar frames seleccionados",
+    "analyzeSelectedTooltip": "Analiza todos los frames incluidos y no excluidos: línea temporal corregida por drift + periodograma FFT",
+    "analyzeRawRa": "Analizar selección, RA en bruto",
+    "analyzeRawRaTooltip": "El mismo rango pero con las correcciones de RA reincorporadas — muestra cómo habría sido el seguimiento sin guiado",
+    "analyzeUnguided": "Analizar sección sin guiado",
+    "analyzeUnguidedTooltip": "Analiza la ventana sin guiado bajo el cursor (o la primera de la sesión si hiciste clic derecho fuera)"
+  }
+}

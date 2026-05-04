@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
+import { fmtNumber, fmtInteger } from '../i18n/format';
 import type { Calibration, CalibrationEntry } from '../parser';
 
-const fmt = (n: number, d = 2) => Number.isFinite(n) ? n.toFixed(d) : '—';
+const fmt = (n: number, d = 2) => fmtNumber(n, d);
 const fmtAngle = (rad: number) => `${fmt((rad * 180) / Math.PI, 1)}°`;
 
 /**
@@ -86,6 +88,7 @@ const orthogonalityError = (xAngle: number, yAngle: number): number => {
 };
 
 export function CalibrationStats() {
+  const { t } = useTranslation('stats');
   const log = useLogStore((s) => s.log);
   const sectionIdx = useLogStore((s) => s.selectedSection);
 
@@ -130,69 +133,57 @@ export function CalibrationStats() {
     fit ? fmtAngle(fit.angle) : '—';
 
   const common: { k: string; v: string; tip: string }[] = [
-    { k: 'Device', v: stats.cal.device, tip: 'Whether this calibration is for a Mount or an AO unit' },
-    { k: 'Steps', v: String(stats.cal.entries.length), tip: 'Total calibration steps recorded' },
+    { k: t('calibration.device'), v: stats.cal.device, tip: t('calibration.deviceTooltip') },
+    { k: t('calibration.steps'), v: fmtInteger(stats.cal.entries.length), tip: t('calibration.stepsTooltip') },
     {
-      k: 'Step dur',
-      v: stats.stepMs !== null ? `${fmt(stats.stepMs, 0)} ms` : '—',
-      tip: 'Pulse duration per calibration step (parsed from the "Calibration Step" field in the header)',
+      k: t('calibration.stepDur'),
+      v: stats.stepMs !== null ? `${fmt(stats.stepMs, 0)} ${t('calibration.msSuffix')}` : '—',
+      tip: t('calibration.stepDurTooltip'),
     },
     {
-      k: 'Orthogonality',
+      k: t('calibration.orthogonality'),
       v: stats.orth !== null ? `${fmt((stats.orth * 180) / Math.PI, 2)}°` : '—',
-      tip: 'Deviation of the angle between the RA and Dec axes from 90°. Values within ±5° are usually fine; >10° suggests a calibration problem.',
+      tip: t('calibration.orthogonalityTooltip'),
     },
     {
-      k: 'Rate ratio',
+      k: t('calibration.rateRatio'),
       v: stats.rateRatio !== null ? fmt(stats.rateRatio, 3) : '—',
-      tip: 'xRate / yRate. Far from 1 hints that the mount steps very differently in RA vs. Dec — common when Dec is near the pole.',
+      tip: t('calibration.rateRatioTooltip'),
     },
   ];
   const ra: { k: string; v: string; tip: string }[] = [
+    { k: t('calibration.xRate'), v: fmtRate(stats.xFit), tip: t('calibration.xRateTooltip') },
+    { k: t('calibration.xAngle'), v: fmtRateAngle(stats.xFit), tip: t('calibration.xAngleTooltip') },
     {
-      k: 'xRate',
-      v: fmtRate(stats.xFit),
-      tip: 'Effective RA rate computed from net West travel divided by total pulse time',
+      k: t('calibration.wTravel'),
+      v: stats.xFit
+        ? t('calibration.travelLabel', { distance: fmt(stats.xFit.distance, 2), pulses: fmtInteger(stats.xFit.pulses) })
+        : '—',
+      tip: t('calibration.wTravelTooltip'),
     },
-    {
-      k: 'xAngle',
-      v: fmtRateAngle(stats.xFit),
-      tip: 'Camera-frame angle of the RA axis (atan2 of the net West-step displacement)',
-    },
-    {
-      k: 'W travel',
-      v: stats.xFit ? `${fmt(stats.xFit.distance)} px / ${stats.xFit.pulses} pulses` : '—',
-      tip: 'Distance from the first to the last West step, and the number of pulses spanning it',
-    },
-    { k: 'West', v: String(stats.counts.WEST), tip: 'Total West calibration steps recorded' },
-    { k: 'East', v: String(stats.counts.EAST), tip: 'Total East calibration steps (return half)' },
+    { k: t('calibration.west'), v: fmtInteger(stats.counts.WEST), tip: t('calibration.westTooltip') },
+    { k: t('calibration.east'), v: fmtInteger(stats.counts.EAST), tip: t('calibration.eastTooltip') },
   ];
   const dec: { k: string; v: string; tip: string }[] = [
+    { k: t('calibration.yRate'), v: fmtRate(stats.yFit), tip: t('calibration.yRateTooltip') },
+    { k: t('calibration.yAngle'), v: fmtRateAngle(stats.yFit), tip: t('calibration.yAngleTooltip') },
     {
-      k: 'yRate',
-      v: fmtRate(stats.yFit),
-      tip: 'Effective Dec rate computed from net North travel divided by total pulse time',
+      k: t('calibration.nTravel'),
+      v: stats.yFit
+        ? t('calibration.travelLabel', { distance: fmt(stats.yFit.distance, 2), pulses: fmtInteger(stats.yFit.pulses) })
+        : '—',
+      tip: t('calibration.nTravelTooltip'),
     },
-    {
-      k: 'yAngle',
-      v: fmtRateAngle(stats.yFit),
-      tip: 'Camera-frame angle of the Dec axis (atan2 of the net North-step displacement)',
-    },
-    {
-      k: 'N travel',
-      v: stats.yFit ? `${fmt(stats.yFit.distance)} px / ${stats.yFit.pulses} pulses` : '—',
-      tip: 'Distance from the first to the last North step, and the number of pulses spanning it',
-    },
-    { k: 'North', v: String(stats.counts.NORTH), tip: 'Total North calibration steps recorded' },
-    { k: 'South', v: String(stats.counts.SOUTH), tip: 'Total South calibration steps (return half)' },
-    { k: 'Backlash', v: String(stats.counts.BACKLASH), tip: 'Backlash-detection steps' },
+    { k: t('calibration.north'), v: fmtInteger(stats.counts.NORTH), tip: t('calibration.northTooltip') },
+    { k: t('calibration.south'), v: fmtInteger(stats.counts.SOUTH), tip: t('calibration.southTooltip') },
+    { k: t('calibration.backlash'), v: fmtInteger(stats.counts.BACKLASH), tip: t('calibration.backlashTooltip') },
   ];
 
   const Cell = ({ k, v, tip }: { k: string; v: string; tip: string }) => (
     <button
-      className="flex items-baseline gap-2 text-left hover:opacity-80"
+      className="flex items-baseline gap-2 text-start hover:opacity-80"
       onClick={() => navigator.clipboard?.writeText(v)}
-      title={`${k}: ${v} — ${tip}. Click to copy.`}
+      title={t('copyTooltipDetailed', { label: k, value: v, tip })}
     >
       <span className="text-xs text-slate-400">{k}</span>
       <span className="font-mono text-slate-100">{v}</span>
@@ -208,9 +199,10 @@ export function CalibrationStats() {
     </div>
   );
 
+  // RA / Dec are PHD2 jargon — kept in English across all locales.
   return (
     <div className="flex flex-col gap-1 px-4 py-2 text-sm">
-      <Row label="Total" items={common} />
+      <Row label={t('rows.total')} items={common} />
       <Row label="RA" color="text-sky-400" items={ra} />
       <Row label="Dec" color="text-rose-400" items={dec} />
     </div>

@@ -1,0 +1,55 @@
+{
+  "list": {
+    "noSections": "Sin secciones.",
+    "guideLabel": "Guía · {{date}}",
+    "calLabel": "Cal · {{date}}",
+    "framesSummary": "{{frames}} frames · {{seconds}}s",
+    "stepsSummary": "{{count}} pasos",
+    "guideSessionTooltip": "Sesión de guiado · {{date}} · {{frames}} frames · {{seconds}}s",
+    "calibrationTooltip": "Calibración · {{date}} · {{count}} pasos",
+    "guideIconTooltip": "Sesión de guiado",
+    "calibrationIconTooltip": "Sección de calibración",
+    "selectGuiding": "Selecciona una sección de guiado."
+  },
+  "header": {
+    "guiding": "Header de guiado",
+    "calibration": "Header de calibración",
+    "tooltip": "Haz clic para expandir el header completo capturado por PHD2 para esta sección (equipo, montura, algoritmos, coordenadas del objetivo)",
+    "linesCount": "{{count}} líneas"
+  },
+  "recents": {
+    "title": "Recientes",
+    "remove": "Eliminar",
+    "dropdownLabel": "Logs recientes ({{count}})",
+    "showTooltip": "Mostrar los logs abiertos recientemente (almacenados localmente en tu navegador)",
+    "hideTooltip": "Ocultar la lista de logs recientes",
+    "empty": "Sin logs recientes.",
+    "current": "(actual)",
+    "reopenTooltip": "Reabrir {{name}}",
+    "removeTooltip": "Quitar {{name}} de la lista de recientes",
+    "clearAll": "Vaciar recientes",
+    "clearAllTooltip": "Eliminar permanentemente todos los logs abiertos recientemente del almacenamiento local del navegador"
+  },
+  "folder": {
+    "title": "Carpeta de logs",
+    "logsCount": "{{count}} logs",
+    "show": "Mostrar el panel de carpeta de logs",
+    "hide": "Ocultar el panel de carpeta de logs",
+    "refresh": "Actualizar el listado",
+    "menu": "Menú de carpeta",
+    "change": "Cambiar carpeta…",
+    "changeTooltip": "Elige otra carpeta; reemplaza la actual",
+    "forget": "Olvidar carpeta",
+    "forgetTooltip": "Borra el handle de carpeta guardado en este navegador",
+    "unsupported": "La navegación por carpetas requiere un navegador basado en Chromium (Chrome o Edge). Arrastra un log a la zona de carga para abrirlo.",
+    "choose": "Elegir carpeta…",
+    "chooseTooltip": "Abre el selector de carpetas del SO; el navegador te pedirá permiso de lectura",
+    "pickHint": "Elige tu carpeta de logs de PHD2 (normalmente <1>{{path}}</1>).",
+    "reconnect": "Reconectar",
+    "reconnectTooltip": "Volver a conceder acceso de lectura para esta sesión",
+    "reconnectHint": "Vuelve a conceder acceso de lectura para restaurar el listado de la carpeta.",
+    "noLogs": "No se han encontrado guide logs en esta carpeta. Añade un archivo `*GuideLog*` o elige otra carpeta.",
+    "openTooltip": "Abrir {{name}}",
+    "current": "(actual)"
+  }
+}

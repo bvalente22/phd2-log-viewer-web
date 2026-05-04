@@ -1,8 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
 import { useFolderStore } from '../state/folderStore';
 
 export function DropZone() {
+  const { t } = useTranslation('common');
   const loadFromText = useLogStore((s) => s.loadFromText);
   const loading = useLogStore((s) => s.loading);
   const error = useLogStore((s) => s.error);
@@ -20,7 +22,7 @@ export function DropZone() {
   return (
     <>
       <div
-        title="Drop a PHD2 guide log file here. The log is parsed locally; nothing is uploaded."
+        title={t('dropZone.tooltip')}
         className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-8 transition-colors ${
           dragOver ? 'border-sky-400 bg-sky-950/30' : 'border-slate-600'
         }`}
@@ -33,13 +35,13 @@ export function DropZone() {
           if (f) void handleFile(f);
         }}
       >
-        <p className="mb-3 text-slate-300">Drop a PHD2 guide log here</p>
+        <p className="mb-3 text-slate-300">{t('dropZone.title')}</p>
         <button
           className="rounded bg-sky-600 px-3 py-1 text-sm hover:bg-sky-500"
           onClick={() => inputRef.current?.click()}
-          title="Open the file picker to choose a PHD2 guide log"
+          title={t('dropZone.pickFileTooltip')}
         >
-          or pick a file
+          {t('dropZone.pickFile')}
         </button>
         <input
           ref={inputRef}
@@ -52,7 +54,7 @@ export function DropZone() {
             e.target.value = '';
           }}
         />
-        {loading && <p className="mt-3 text-sm text-slate-400">Parsing…</p>}
+        {loading && <p className="mt-3 text-sm text-slate-400">{t('dropZone.parsing')}</p>}
         {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
       </div>
       {folderSupported && (
@@ -60,11 +62,11 @@ export function DropZone() {
           <button
             className="rounded bg-slate-800 px-3 py-1 text-sm text-slate-200 hover:bg-slate-700"
             onClick={() => void pickFolder()}
-            title="Pick your PHD2 logs folder; afterwards every guide log will be browsable from the sidebar"
+            title={t('dropZone.chooseLogsFolderTooltip')}
           >
-            Choose logs folder…
+            {t('dropZone.chooseLogsFolder')}
           </button>
-          <p className="text-xs text-slate-500">Browse all your guide logs by date.</p>
+          <p className="text-xs text-slate-500">{t('dropZone.browseAllByDate')}</p>
         </div>
       )}
     </>

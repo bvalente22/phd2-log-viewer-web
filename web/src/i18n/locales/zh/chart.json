@@ -1,0 +1,15 @@
+{
+  "axes": {
+    "time": "时间 (s)",
+    "arcsec": "arc-sec",
+    "pixels": "像素",
+    "period": "周期 (s)",
+    "amplitudeArcsec": "振幅 (″)",
+    "amplitudePixels": "振幅 (px)"
+  },
+  "traces": {
+    "raPulse": "RA pulse",
+    "decPulse": "Dec pulse",
+    "amplitude": "振幅"
+  }
+}

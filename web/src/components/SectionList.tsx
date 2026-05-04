@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
+import { fmtInteger, fmtRoundedInt } from '../i18n/format';
 
 const GuideIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -21,12 +23,13 @@ const CalibrationIcon = () => (
 );
 
 export function SectionList() {
+  const { t } = useTranslation('sections');
   const log = useLogStore((s) => s.log);
   const selected = useLogStore((s) => s.selectedSection);
   const select = useLogStore((s) => s.selectSection);
 
   if (!log || log.sections.length === 0) {
-    return <p className="p-3 text-sm text-slate-400">No sections.</p>;
+    return <p className="p-3 text-sm text-slate-400">{t('list.noSections')}</p>;
   }
 
   return (
@@ -34,18 +37,27 @@ export function SectionList() {
       {log.sections.map((sec, i) => {
         const isCal = sec.type === 'CALIBRATION';
         const item = isCal ? log.calibrations[sec.idx] : log.sessions[sec.idx];
-        const label = isCal ? `Cal · ${item.date}` : `Guide · ${item.date}`;
+        const label = isCal
+          ? t('list.calLabel', { date: item.date })
+          : t('list.guideLabel', { date: item.date });
         const sub = isCal
-          ? `${log.calibrations[sec.idx].entries.length} steps`
-          : `${log.sessions[sec.idx].entries.length} frames · ${Math.round(log.sessions[sec.idx].duration)}s`;
+          ? t('list.stepsSummary', { count: fmtInteger(log.calibrations[sec.idx].entries.length) })
+          : t('list.framesSummary', {
+              frames: fmtInteger(log.sessions[sec.idx].entries.length),
+              seconds: fmtRoundedInt(log.sessions[sec.idx].duration),
+            });
         const isSelected = selected === i;
         const tip = isCal
-          ? `Calibration · ${item.date} · ${log.calibrations[sec.idx].entries.length} steps`
-          : `Guide session · ${item.date} · ${log.sessions[sec.idx].entries.length} frames · ${Math.round(log.sessions[sec.idx].duration)}s`;
+          ? t('list.calibrationTooltip', { date: item.date, count: fmtInteger(log.calibrations[sec.idx].entries.length) })
+          : t('list.guideSessionTooltip', {
+              date: item.date,
+              frames: fmtInteger(log.sessions[sec.idx].entries.length),
+              seconds: fmtRoundedInt(log.sessions[sec.idx].duration),
+            });
         return (
           <li key={i}>
             <button
-              className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-slate-800 ${
+              className={`flex w-full items-center gap-3 px-3 py-2 text-start text-sm hover:bg-slate-800 ${
                 isSelected ? 'bg-slate-800 text-sky-300' : 'text-slate-200'
               }`}
               onClick={() => select(i)}
@@ -53,7 +65,7 @@ export function SectionList() {
             >
               <span
                 className={isCal ? 'text-amber-400' : 'text-sky-400'}
-                title={isCal ? 'Calibration section' : 'Guide session'}
+                title={isCal ? t('list.calibrationIconTooltip') : t('list.guideIconTooltip')}
               >
                 {isCal ? <CalibrationIcon /> : <GuideIcon />}
               </span>
