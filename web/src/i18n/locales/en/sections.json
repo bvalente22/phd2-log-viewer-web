@@ -30,26 +30,9 @@
     "clearAll": "Clear all recents",
     "clearAllTooltip": "Permanently delete all recently-opened logs from your browser's local storage"
   },
-  "folder": {
-    "title": "Logs folder",
-    "logsCount": "{{count}} logs",
-    "show": "Show the logs-folder pane",
-    "hide": "Hide the logs-folder pane",
-    "refresh": "Refresh the listing",
-    "menu": "Folder menu",
-    "change": "Change folder…",
-    "changeTooltip": "Pick a different folder; replaces the current one",
-    "forget": "Forget folder",
-    "forgetTooltip": "Clear the saved folder handle from this browser",
-    "unsupported": "Folder browsing requires a Chromium-based browser (Chrome or Edge). Drag a log onto the drop zone to load one.",
-    "choose": "Choose folder…",
-    "chooseTooltip": "Open the OS folder picker; the browser will ask for read access",
-    "pickHint": "Pick your PHD2 logs folder (typically <1>{{path}}</1>).",
-    "reconnect": "Reconnect",
-    "reconnectTooltip": "Re-grant read access for this session",
-    "reconnectHint": "Re-grant read access to restore the folder listing.",
-    "noLogs": "No guide logs found in this folder. Add a `*GuideLog*` file or pick a different folder.",
-    "openTooltip": "Open {{name}}",
-    "current": "(current)"
+  "openLog": {
+    "title": "Open log",
+    "show": "Show the open-log pane",
+    "hide": "Hide the open-log pane"
   }
 }

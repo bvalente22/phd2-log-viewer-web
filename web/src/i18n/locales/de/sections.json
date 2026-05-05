@@ -30,26 +30,9 @@
     "clearAll": "Liste leeren",
     "clearAllTooltip": "Alle zuletzt geöffneten Logs dauerhaft aus dem lokalen Browser-Speicher löschen"
   },
-  "folder": {
-    "title": "Log-Ordner",
-    "logsCount": "{{count}} Logs",
-    "show": "Log-Ordner-Bereich anzeigen",
-    "hide": "Log-Ordner-Bereich ausblenden",
-    "refresh": "Liste aktualisieren",
-    "menu": "Ordner-Menü",
-    "change": "Ordner wechseln…",
-    "changeTooltip": "Anderen Ordner wählen; ersetzt den aktuellen",
-    "forget": "Ordner vergessen",
-    "forgetTooltip": "Gespeicherten Ordner-Handle aus diesem Browser löschen",
-    "unsupported": "Ordner-Browsing erfordert einen Chromium-basierten Browser (Chrome oder Edge). Ziehe ein Log auf die Drop-Zone, um es zu laden.",
-    "choose": "Ordner wählen…",
-    "chooseTooltip": "OS-Ordnerauswahl öffnen; der Browser fragt nach Lesezugriff",
-    "pickHint": "Wähle deinen PHD2-Log-Ordner (typischerweise <1>{{path}}</1>).",
-    "reconnect": "Neu verbinden",
-    "reconnectTooltip": "Lesezugriff für diese Sitzung erneut erteilen",
-    "reconnectHint": "Lesezugriff erneut erteilen, um die Ordnerliste wiederherzustellen.",
-    "noLogs": "In diesem Ordner wurden keine Guidelogs gefunden. Füge eine `*GuideLog*`-Datei hinzu oder wähle einen anderen Ordner.",
-    "openTooltip": "{{name}} öffnen",
-    "current": "(aktuell)"
+  "openLog": {
+    "title": "Log öffnen",
+    "show": "Bereich „Log öffnen“ anzeigen",
+    "hide": "Bereich „Log öffnen“ ausblenden"
   }
 }
