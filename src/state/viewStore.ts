@@ -12,6 +12,14 @@ export interface TraceVisibility {
   dec: boolean;
   raPulses: boolean;
   decPulses: boolean;
+  /**
+   * RA / Dec mount-limit overlays (LogViewFrame.cpp:1554-1595): up to
+   * four horizontal dotted lines per axis when toggled on, drawn in the
+   * trace color at ±(maxDur * rate / 1000) and ±minMo (each pair only
+   * when the corresponding limit is > 0 in the session header).
+   */
+  raLimits: boolean;
+  decLimits: boolean;
   mass: boolean;
   snr: boolean;
   events: boolean;
@@ -74,7 +82,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   scaleLocked: false,
   autoScaleY: true,
   lockedYRange: null,
-  traces: { ra: true, dec: true, raPulses: true, decPulses: true, mass: false, snr: false, events: false },
+  traces: { ra: true, dec: true, raPulses: true, decPulses: true, raLimits: false, decLimits: false, mass: false, snr: false, events: false },
   exclusions: new Map(),
   showRangeSlider: false,
 
