@@ -20,6 +20,16 @@ const PULSE_DEC = '#dc2626';
 const MASS_COLOR = '#facc15';
 const SNR_COLOR = '#e2e8f0';
 
+// Plotly config never changes per render — hoisting it as a stable module
+// reference avoids a `Plotly.react` reconcile pass each time React rerenders
+// (e.g. on hover, where only an overlay state changes).
+const PLOT_CONFIG = {
+  displayModeBar: false,
+  responsive: true,
+  scrollZoom: true,
+  doubleClick: false as const,
+};
+
 type Traces = ReturnType<typeof useViewStore.getState>['traces'];
 type ScaleMode = ReturnType<typeof useViewStore.getState>['scaleMode'];
 
@@ -137,16 +147,24 @@ function buildTraces(
   }
   const pulseScale = maxPulse > 0 && maxErr > 0 ? (maxErr * 0.5) / maxPulse : 0;
 
-  // Mass/SNR live in the bottom half of the chart (matches LogViewFrame.cpp:1678-1719:
-  // each scaled to (height/2)/max_value, anchored to the bottom edge).
-  // Half-height in data-space is yMax (since y range is [-yMax, yMax]).
-  // Offset by -yMax so the value 0 sits at the bottom of the chart.
+  // Guide-star Mass and SNR live on a SECONDARY y-axis (yaxis2) pinned to
+  // the top band of the chart. The desktop achieves the same effect by
+  // computing a screen-space scale (LogViewFrame.cpp:1678-1719:
+  // (height/2 - 10)/max_value, anchored to the bottom edge in pixels) so
+  // user zoom/pan on the guiding axis can't shove the Mass/SNR overlays
+  // through the RA/Dec traces. yaxis2 here is fixed-range [0, 1.05] with
+  // its own `domain` in the layout (top ~30% of the chart), which is the
+  // Plotly-native equivalent of "screen-anchored": the band's screen
+  // position never moves, no matter what the user does to yaxis.
+  //
+  // We normalize each trace into [0, 1] using its own per-session max so
+  // Mass and SNR are shape-comparable inside the band. They share the
+  // band and may overlap each other, but neither overlaps the guiding
+  // traces below.
   let maxMass = 0;
   for (const e of visibleEntries) if (e.mass > maxMass) maxMass = e.mass;
   let maxSnr = 0;
   for (const e of visibleEntries) if (e.snr > maxSnr) maxSnr = e.snr;
-  const massScale = maxMass > 0 ? yMax / maxMass : 0;
-  const snrScale = maxSnr > 0 ? yMax / maxSnr : 0;
 
   const xName = coordMode === 'RA_DEC' ? 'RA' : 'dx';
   const yName = coordMode === 'RA_DEC' ? 'Dec' : 'dy';
@@ -190,9 +208,10 @@ function buildTraces(
   if (traces.mass) {
     out.push({
       x: t,
-      y: visibleEntries.map((e) => -yMax + e.mass * massScale),
+      y: visibleEntries.map((e) => (maxMass > 0 ? e.mass / maxMass : 0)),
       customdata: visibleEntries.map((e) => e.mass),
       type: 'scattergl', mode: 'lines',
+      yaxis: 'y2',
       name: 'Mass', line: { color: MASS_COLOR, width: 1 },
       hovertemplate: 'Mass: %{customdata}<extra></extra>',
     } as Data);
@@ -200,9 +219,10 @@ function buildTraces(
   if (traces.snr) {
     out.push({
       x: t,
-      y: visibleEntries.map((e) => -yMax + e.snr * snrScale),
+      y: visibleEntries.map((e) => (maxSnr > 0 ? e.snr / maxSnr : 0)),
       customdata: visibleEntries.map((e) => e.snr),
       type: 'scattergl', mode: 'lines',
+      yaxis: 'y2',
       name: 'SNR', line: { color: SNR_COLOR, width: 1 },
       hovertemplate: 'SNR: %{customdata:.1f}<extra></extra>',
     } as Data);
@@ -324,6 +344,7 @@ export function GuideGraph() {
   const device = useViewStore((s) => s.device);
   const scaleLocked = useViewStore((s) => s.scaleLocked);
   const autoScaleY = useViewStore((s) => s.autoScaleY);
+  const showRangeSlider = useViewStore((s) => s.showRangeSlider);
   const excludeRange = useViewStore((s) => s.excludeRange);
   const includeRange = useViewStore((s) => s.includeRange);
 
@@ -636,15 +657,43 @@ export function GuideGraph() {
   // Plotly's plotly_hover event fires with the nearest point on the topmost
   // trace. We use just its x (= time in seconds) and look up the actual
   // GuideEntry, so the readout shows ALL fields, not just the trace value.
+  //
+  // Plotly can fire hover events well above 60Hz on a fast mousemove. Each
+  // setHoverInfo call re-renders GuideGraph, so we batch through rAF: at
+  // most one commit per frame, with the latest value winning. The pending
+  // text and the rAF id live in refs so the effect-friendly closure doesn't
+  // need to re-bind the listener.
+  const hoverRafRef = useRef<number | null>(null);
+  const pendingHoverRef = useRef<string | null>(null);
   const onHover = useCallback((ev: PlotlyHoverEvent) => {
     if (!data) return;
     const x = ev.points?.[0]?.x;
     if (typeof x !== 'number') return;
     const entry = findClosestEntry(data.session.entries, x);
-    if (entry) setHoverInfo(formatRowInfo(entry));
+    if (!entry) return;
+    pendingHoverRef.current = formatRowInfo(entry);
+    if (hoverRafRef.current == null) {
+      hoverRafRef.current = requestAnimationFrame(() => {
+        hoverRafRef.current = null;
+        setHoverInfo(pendingHoverRef.current);
+      });
+    }
   }, [data]);
 
-  const onUnhover = useCallback(() => setHoverInfo(null), []);
+  const onUnhover = useCallback(() => {
+    if (hoverRafRef.current != null) {
+      cancelAnimationFrame(hoverRafRef.current);
+      hoverRafRef.current = null;
+    }
+    pendingHoverRef.current = null;
+    setHoverInfo(null);
+  }, []);
+
+  // Cancel any in-flight rAF on unmount so a late callback can't fire
+  // setHoverInfo on an unmounted component.
+  useEffect(() => () => {
+    if (hoverRafRef.current != null) cancelAnimationFrame(hoverRafRef.current);
+  }, []);
 
   // Plotly fires plotly_relayout for any user-driven range change (scroll
   // zoom, drag-zoom, etc.). Persist the new range into the per-section view
@@ -692,59 +741,110 @@ export function GuideGraph() {
     return () => cancelAnimationFrame(id);
   }, [data, traces.events]);
 
-  if (!data) {
-    return <div className="flex h-full items-center justify-center text-slate-500">{tSections('list.selectGuiding')}</div>;
-  }
-
+  // Compute yTitle outside the early-return so the memo below can reference
+  // it without being skipped when data is null (hooks must run unconditionally).
   const yTitle = scaleMode === 'ARCSEC' ? tChart('axes.arcsec') : tChart('axes.pixels');
 
-  const layout: Partial<Layout> = {
-    autosize: true,
-    margin: { l: 60, r: 60, t: 20, b: 40 },
-    paper_bgcolor: '#0f172a',
-    plot_bgcolor: '#0f172a',
-    font: { color: '#cbd5e1', size: 11 },
-    xaxis: {
-      title: { text: tChart('axes.time') }, gridcolor: '#1e293b', zerolinecolor: '#334155',
-      // X is unfixed so Plotly's built-in scrollZoom (config below) can zoom
-      // it via the wheel; Plotly handles cursor-anchored zoom correctly. Drag
-      // gestures are owned by our custom handlers (Plotly dragmode:false),
-      // so leaving fixedrange:false here does not enable any unwanted drag.
-      // We always provide an *explicit* range (this section's saved view, or
-      // the data extent on first visit) so Plotly never sees autorange:true
-      // and the first wheel event can't anchor on a stale 0 offset.
-      fixedrange: false,
-      range: sectionViews.get(data.sessionIdx)?.x ?? data.xExtent,
-      // Compact range-slider thumbnail beneath the chart shows the full
-      // session at a glance and lets the user drag to scrub a window.
-      rangeslider: {
-        visible: true,
-        thickness: 0.06,
-        bgcolor: '#020617',
-        bordercolor: '#1e293b',
-        borderwidth: 1,
+  // Memoizing the layout matters: GuideGraph re-renders on every hover
+  // (hoverInfo state) and on any viewStore change, but the layout only
+  // legitimately depends on the inputs below. Without this memo react-plotly.js
+  // re-diffs the layout on every hover event and may issue a Plotly.react
+  // call, which is the dominant cost at ~60 hovers/sec during a drag. The
+  // mutable section-views map is read on each rebuild — we don't include it
+  // in deps because drag-driven range changes go straight to Plotly via
+  // queueRelayout, so a stale React-side layout isn't an issue.
+  const layout = useMemo<Partial<Layout> | null>(() => {
+    if (!data) return null;
+    // Split-domain layout: when Mass or SNR is enabled, reserve the top
+    // ~30% of the chart for guide-star traces (yaxis2) and confine the
+    // guiding traces (yaxis) to the bottom 65%, leaving a 5% gap as a
+    // visual divider. When neither is on, yaxis takes the full chart so
+    // RA/Dec/pulses get the maximum vertical resolution.
+    const showStarBand = traces.mass || traces.snr;
+    const guideDomain: [number, number] = showStarBand ? [0, 0.65] : [0, 1];
+    const starDomain: [number, number] = [0.7, 1];
+    return {
+      autosize: true,
+      margin: { l: 60, r: 60, t: 20, b: 40 },
+      paper_bgcolor: '#0f172a',
+      plot_bgcolor: '#0f172a',
+      font: { color: '#cbd5e1', size: 11 },
+      xaxis: {
+        title: { text: tChart('axes.time') }, gridcolor: '#1e293b', zerolinecolor: '#334155',
+        // X is unfixed so Plotly's built-in scrollZoom (config below) can zoom
+        // it via the wheel; Plotly handles cursor-anchored zoom correctly. Drag
+        // gestures are owned by our custom handlers (Plotly dragmode:false),
+        // so leaving fixedrange:false here does not enable any unwanted drag.
+        // We always provide an *explicit* range (this section's saved view, or
+        // the data extent on first visit) so Plotly never sees autorange:true
+        // and the first wheel event can't anchor on a stale 0 offset.
+        fixedrange: false,
+        range: sectionViews.get(data.sessionIdx)?.x ?? data.xExtent,
+        // Compact range-slider thumbnail beneath the chart shows the full
+        // session at a glance and lets the user drag to scrub a window.
+        // Off by default: with many traces visible, the slider has to
+        // re-render its own thumbnail on every relayout (every drag tick),
+        // which dominates frame time. The toolbar has a "range slider"
+        // toggle to bring it back when you actually want a navigator.
+        rangeslider: {
+          visible: showRangeSlider,
+          thickness: 0.06,
+          bgcolor: '#020617',
+          bordercolor: '#1e293b',
+          borderwidth: 1,
+        },
       },
-    },
-    yaxis: {
-      title: { text: yTitle }, gridcolor: '#1e293b',
-      zerolinecolor: '#64748b', zerolinewidth: 1,
-      // Y stays fixed so scrollZoom only ever affects X. Our drag handler
-      // calls Plotly.relayout({yaxis.range:...}) directly, which bypasses
-      // fixedrange.
-      fixedrange: true,
-      // Y range source: scale-locked global > per-section saved Y > the
-      // computed default (auto-Y percentile or raw min/max of this session).
-      range: (scaleLocked && lockedYView)
-        ? lockedYView
-        : sectionViews.get(data.sessionIdx)?.y ?? [-data.yMax, data.yMax],
-    },
-    shapes: data.shapes,
-    annotations: initialAnnotations,
-    showlegend: true,
-    legend: { orientation: 'h', y: 1.1 },
-    dragmode: false,
-    barmode: 'overlay',
-  };
+      yaxis: {
+        title: { text: yTitle }, gridcolor: '#1e293b',
+        zerolinecolor: '#64748b', zerolinewidth: 1,
+        // Y stays fixed so scrollZoom only ever affects X. Our drag handler
+        // calls Plotly.relayout({yaxis.range:...}) directly, which bypasses
+        // fixedrange.
+        fixedrange: true,
+        // Y range source: scale-locked global > per-section saved Y > the
+        // computed default (auto-Y percentile or raw min/max of this session).
+        range: (scaleLocked && lockedYView)
+          ? lockedYView
+          : sectionViews.get(data.sessionIdx)?.y ?? [-data.yMax, data.yMax],
+        domain: guideDomain,
+      },
+      // Secondary y-axis for guide-star Mass/SNR. Pinned to the top
+      // ~30% of the chart via `domain`, with a fixed [0, 1.05] range
+      // (traces are normalized to [0, 1] in buildTraces, with a hair of
+      // headroom above 1.0 so the peaks aren't clipped right at the
+      // border). The user can't pan/zoom this axis — its job is to be a
+      // stable, zoom-independent shelf for the guide-star overlays. Tick
+      // labels / grid lines are hidden because the absolute values
+      // aren't meaningful here (only the trace shape matters within the
+      // session); the legend entries identify the lines by color.
+      yaxis2: {
+        domain: starDomain,
+        range: [0, 1.05],
+        fixedrange: true,
+        showticklabels: false,
+        showgrid: false,
+        zeroline: false,
+        showline: false,
+        ticks: '',
+        anchor: 'x',
+        side: 'right',
+      },
+      shapes: data.shapes,
+      annotations: initialAnnotations,
+      showlegend: true,
+      legend: { orientation: 'h', y: 1.1 },
+      dragmode: false,
+      barmode: 'overlay',
+      // uirevision keeps Plotly's UI-side caches stable across our
+      // re-renders that don't change the data shape — anything keyed to
+      // sessionIdx is the right granularity (a new section = new chart).
+      uirevision: data.sessionIdx,
+    };
+  }, [data, showRangeSlider, scaleLocked, initialAnnotations, tChart, yTitle, traces.mass, traces.snr]);
+
+  if (!data || !layout) {
+    return <div className="flex h-full items-center justify-center text-slate-500">{tSections('list.selectGuiding')}</div>;
+  }
 
   return (
     <div className="relative h-full w-full">
@@ -752,7 +852,7 @@ export function GuideGraph() {
         divId={plotId}
         data={data.traces}
         layout={layout}
-        config={{ displayModeBar: false, responsive: true, scrollZoom: true, doubleClick: false }}
+        config={PLOT_CONFIG}
         style={{ width: '100%', height: '100%' }}
         useResizeHandler
         onRelayout={onRelayout as never}

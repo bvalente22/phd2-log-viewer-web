@@ -5,6 +5,7 @@
   "openAnother": "Open another",
   "openAnotherTooltip": "Close the current log and return to the drop zone to open a different one",
   "selectSection": "Select a section.",
+  "noLogHint": "Drop a guide log into the Open log pane to begin.",
   "language": "Language",
   "languageTooltip": "Switch the interface language. Astrophotography terms (RA, Dec, RMS, etc.) stay in English.",
   "dropZone": {

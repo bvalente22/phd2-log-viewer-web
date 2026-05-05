@@ -4,12 +4,28 @@
     "viewTooltip": "Elegir el diseño del gráfico",
     "show": "mostrar",
     "showTooltip": "Activa o desactiva trazas individuales en la vista temporal",
+    "axis": "Eje",
+    "axisTooltip": "Mostrar/ocultar las trazas de error RA y Dec",
+    "pulses": "Pulsos guía",
+    "pulsesTooltip": "Mostrar/ocultar las barras de pulsos de corrección sobre la línea 0",
+    "guideStar": "Estrella guía",
+    "guideStarTooltip": "Mostrar/ocultar las superposiciones de Mass y SNR de la estrella guía",
+    "events": "Eventos",
+    "eventsTooltip": "Mostrar/ocultar las etiquetas en línea de eventos INFO",
+    "rangeSlider": "navegador",
+    "rangeSliderTooltip": "Mostrar u ocultar la franja navegadora bajo el gráfico",
+    "export": "exportar",
+    "exportTooltip": "Guardar el gráfico actual o sus datos en un archivo",
     "coord": "coord",
     "coordTooltip": "Sistema de coordenadas para la traza de error",
     "device": "dispositivo",
     "deviceTooltip": "Filtra entradas según el dispositivo que aplicó la corrección",
     "scale": "escala",
     "scaleTooltip": "Unidades del eje Y"
+  },
+  "rangeSlider": {
+    "show": "mostrar",
+    "showTooltip": "Mostrar la franja navegadora bajo el gráfico. Ocúltala para arrastrar más fluido cuando hay muchas trazas visibles."
   },
   "view": {
     "time": "tiempo",
@@ -54,6 +70,8 @@
     "recenterYTooltip": "Recentra el eje Y alrededor de 0 sin cambiar el nivel de zoom actual"
   },
   "export": {
+    "png": "Exportar PNG",
+    "csv": "Exportar CSV",
     "pngTooltip": "Descargar una captura PNG de alta resolución del gráfico actual",
     "csvTooltip": "Descargar las entradas de la sección actual en CSV (incluye una columna Excluded para los frames que has retirado del análisis)"
   },
