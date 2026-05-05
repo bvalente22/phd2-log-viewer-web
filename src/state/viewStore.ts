@@ -35,6 +35,13 @@ interface ViewState {
   lockedYRange: [number, number] | null;
   traces: TraceVisibility;
   exclusions: Map<number, Uint8Array>;
+  /**
+   * Show the Plotly range-slider strip beneath the chart. Defaults to off
+   * because the slider noticeably slows large-trace drag interactions
+   * (every relayout has to re-render the thumbnail too); user can toggle
+   * it back on from the toolbar when they want a navigator.
+   */
+  showRangeSlider: boolean;
 
   setCoordMode: (m: CoordMode) => void;
   setDevice: (d: Device) => void;
@@ -43,6 +50,7 @@ interface ViewState {
   setGraphMode: (m: GraphMode) => void;
   setAutoScaleY: (b: boolean) => void;
   setScaleLocked: (b: boolean, range?: [number, number]) => void;
+  setShowRangeSlider: (b: boolean) => void;
   toggleTrace: (k: keyof TraceVisibility) => void;
 
   ensureMask: (sessionIdx: number, entryCount: number) => Uint8Array;
@@ -68,6 +76,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   lockedYRange: null,
   traces: { ra: true, dec: true, raPulses: true, decPulses: true, mass: false, snr: false, events: false },
   exclusions: new Map(),
+  showRangeSlider: false,
 
   setCoordMode: (m) => set({ coordMode: m }),
   setDevice: (d) => set({ device: d }),
@@ -76,6 +85,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   setGraphMode: (m) => set({ graphMode: m }),
   setAutoScaleY: (b) => set({ autoScaleY: b }),
   setScaleLocked: (b, range) => set({ scaleLocked: b, lockedYRange: b && range ? range : null }),
+  setShowRangeSlider: (b) => set({ showRangeSlider: b }),
   toggleTrace: (k) => set((s) => ({ traces: { ...s.traces, [k]: !s.traces[k] } })),
 
   ensureMask: (sessionIdx, entryCount) => {
@@ -147,5 +157,6 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
     scaleLocked: s.scaleLocked,
     autoScaleY: s.autoScaleY,
     traces: s.traces,
+    showRangeSlider: s.showRangeSlider,
   }),
 }));

@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import type { GuideLog } from '../parser';
-import { parseLog } from '../parser';
+// parseLogAsync runs parseLog in a Web Worker so a multi-MB log doesn't
+// block the main thread (sidebar, language picker, drop zone all stay
+// interactive while parsing). Falls back to a synchronous parse when the
+// Worker API isn't available (e.g. vitest jsdom).
+import { parseLogAsync } from '../parser/parseLog.client';
 import { putRecent } from '../storage/recents';
 
 export interface LogMeta {
@@ -29,7 +33,7 @@ export const useLogStore = create<LogState>((set) => ({
   loadFromText: async (text, name, opts) => {
     set({ loading: true, error: null });
     try {
-      const log = parseLog(text);
+      const log = await parseLogAsync(text);
       let recentId: string | null = null;
       if (opts?.persist !== false) {
         recentId = await putRecent({ name, size: text.length, text });

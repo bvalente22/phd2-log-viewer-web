@@ -4,12 +4,28 @@
     "viewTooltip": "选择图表布局",
     "show": "显示",
     "showTooltip": "在时间视图中切换各条轨迹的显示",
+    "axis": "轴",
+    "axisTooltip": "切换 RA 与 Dec 误差曲线",
+    "pulses": "导星脉冲",
+    "pulsesTooltip": "切换 0 线上的校正脉冲条形显示",
+    "guideStar": "导星",
+    "guideStarTooltip": "切换导星 Mass 与 SNR 叠加显示",
+    "events": "事件",
+    "eventsTooltip": "切换内联 INFO 事件标签",
+    "rangeSlider": "范围滑块",
+    "rangeSliderTooltip": "显示或隐藏图表下方的范围滑块",
+    "export": "导出",
+    "exportTooltip": "将当前图表或其数据保存到文件",
     "coord": "坐标",
     "coordTooltip": "误差轨迹所用的坐标系",
     "device": "设备",
     "deviceTooltip": "按执行修正的设备过滤条目",
     "scale": "刻度",
     "scaleTooltip": "Y 轴单位"
+  },
+  "rangeSlider": {
+    "show": "显示",
+    "showTooltip": "在图表下方显示范围滑块。当显示多条轨迹时,隐藏它可让拖动更流畅。"
   },
   "view": {
     "time": "时间",
@@ -54,6 +70,8 @@
     "recenterYTooltip": "在不改变当前缩放级别的情况下,将 Y 轴重新居中到 0"
   },
   "export": {
+    "png": "导出 PNG",
+    "csv": "导出 CSV",
     "pngTooltip": "下载当前图表的高分辨率 PNG 截图",
     "csvTooltip": "将当前区段的条目下载为 CSV (包含 Excluded 列,标记你从分析中移除的 frame)"
   },

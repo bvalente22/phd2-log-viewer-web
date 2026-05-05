@@ -4,12 +4,28 @@
     "viewTooltip": "Diagrammlayout wählen",
     "show": "anzeigen",
     "showTooltip": "Einzelne Spuren in der Zeitansicht ein-/ausblenden",
+    "axis": "Achse",
+    "axisTooltip": "RA- und Dec-Fehlerspuren ein-/ausblenden",
+    "pulses": "Korrektur-Pulse",
+    "pulsesTooltip": "Korrektur-Puls-Balken auf der 0-Linie ein-/ausblenden",
+    "guideStar": "Leitstern",
+    "guideStarTooltip": "Leitstern-Masse und SNR ein-/ausblenden",
+    "events": "Ereignisse",
+    "eventsTooltip": "INFO-Ereignis-Beschriftungen ein-/ausblenden",
+    "rangeSlider": "Navigator",
+    "rangeSliderTooltip": "Navigator-Streifen unterhalb des Diagramms ein- oder ausblenden",
+    "export": "Export",
+    "exportTooltip": "Aktuelles Diagramm oder seine Daten in eine Datei speichern",
     "coord": "Koord.",
     "coordTooltip": "Koordinatensystem für die Fehlerspur",
     "device": "Gerät",
     "deviceTooltip": "Einträge nach dem Gerät filtern, das die Korrektur ausgeführt hat",
     "scale": "Skala",
     "scaleTooltip": "Y-Achsen-Einheit"
+  },
+  "rangeSlider": {
+    "show": "anzeigen",
+    "showTooltip": "Navigator-Streifen unterhalb des Diagramms anzeigen. Ausblenden für flüssigeres Ziehen, wenn viele Spuren sichtbar sind."
   },
   "view": {
     "time": "Zeit",
@@ -54,6 +70,8 @@
     "recenterYTooltip": "Y-Achse um 0 neu zentrieren, ohne die aktuelle Zoomstufe zu ändern"
   },
   "export": {
+    "png": "PNG exportieren",
+    "csv": "CSV exportieren",
     "pngTooltip": "Hochauflösenden PNG-Schnappschuss des aktuellen Diagramms herunterladen",
     "csvTooltip": "Einträge des aktuellen Abschnitts als CSV herunterladen (enthält eine Excluded-Spalte für aus der Analyse entfernte Frames)"
   },
