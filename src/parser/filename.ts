@@ -6,7 +6,7 @@
  * the name itself, so we parse to local-time epoch ms — same convention
  * used elsewhere in the parser layer).
  *
- * Used by the logs-folder browser (`LogsFolderPane.tsx`) to present logs
+ * Used by the logs-folder browser (`folderStore.ts`) to present logs
  * by date instead of filename and to filter `DebugLog`/other non-guide
  * files out of the listing.
  */

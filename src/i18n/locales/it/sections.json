@@ -30,26 +30,9 @@
     "clearAll": "Svuota recenti",
     "clearAllTooltip": "Elimina definitivamente tutti i log aperti di recente dalla memoria locale del browser"
   },
-  "folder": {
-    "title": "Cartella log",
-    "logsCount": "{{count}} log",
-    "show": "Mostra il pannello cartella log",
-    "hide": "Nasconde il pannello cartella log",
-    "refresh": "Aggiorna l'elenco",
-    "menu": "Menu cartella",
-    "change": "Cambia cartella…",
-    "changeTooltip": "Scegli un'altra cartella; sostituisce quella corrente",
-    "forget": "Dimentica cartella",
-    "forgetTooltip": "Cancella l'handle di cartella salvato in questo browser",
-    "unsupported": "La navigazione cartelle richiede un browser basato su Chromium (Chrome o Edge). Trascina un log sulla zona di rilascio per caricarlo.",
-    "choose": "Scegli cartella…",
-    "chooseTooltip": "Apre il selettore cartelle del SO; il browser chiederà l'accesso in lettura",
-    "pickHint": "Scegli la tua cartella di log PHD2 (di solito <1>{{path}}</1>).",
-    "reconnect": "Riconnetti",
-    "reconnectTooltip": "Riconcedi l'accesso in lettura per questa sessione",
-    "reconnectHint": "Riconcedi l'accesso in lettura per ripristinare l'elenco della cartella.",
-    "noLogs": "Nessun guide log trovato in questa cartella. Aggiungi un file `*GuideLog*` o scegli un'altra cartella.",
-    "openTooltip": "Apri {{name}}",
-    "current": "(attuale)"
+  "openLog": {
+    "title": "Apri log",
+    "show": "Mostra il pannello apertura log",
+    "hide": "Nasconde il pannello apertura log"
   }
 }
