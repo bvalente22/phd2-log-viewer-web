@@ -292,8 +292,55 @@ function buildEventAnnotations(
   }));
 }
 
-function buildShapes(s: GuideSession, mask: Uint8Array | undefined): Partial<Shape>[] {
+/**
+ * Build the four horizontal dotted lines that mark the mount's RA / Dec
+ * correction limits — `maxDur` (max correction duration, milliseconds) and
+ * `minMo` (minimum motion threshold, pixels). Mirrors LogViewFrame.cpp:1554-1595:
+ *   y_maxDur = ±(maxDur * rate / 1000)   pixels of mount displacement
+ *   y_minMo  = ±minMo                    already in pixels
+ * Both are then scaled into the chart's data Y units (arc-sec when
+ * `scaleMode === 'ARCSEC'`, raw pixels otherwise) by multiplying by `k`.
+ * Each pair is only emitted when the corresponding header value is > 0;
+ * sessions with one limit unset (e.g. only minMo configured) get just
+ * two lines instead of four. xref:'paper' makes the lines span the full
+ * chart width regardless of x-zoom, matching the desktop's `0..fullw`.
+ */
+function pushLimitLines(
+  shapes: Partial<Shape>[],
+  axis: 'ra' | 'dec',
+  s: GuideSession,
+  k: number,
+): void {
+  const lim = axis === 'ra' ? s.mount.xlim : s.mount.ylim;
+  const rate = axis === 'ra' ? s.mount.xRate : s.mount.yRate;
+  const color = axis === 'ra' ? RA_COLOR : DEC_COLOR;
+  const dataMax = lim.maxDur > 0 ? (lim.maxDur * rate / 1000) * k : 0;
+  const dataMin = lim.minMo > 0 ? lim.minMo * k : 0;
+  const pushPair = (yAbs: number) => {
+    for (const y of [yAbs, -yAbs]) {
+      shapes.push({
+        type: 'line',
+        xref: 'paper', x0: 0, x1: 1,
+        yref: 'y', y0: y, y1: y,
+        line: { color, width: 1, dash: 'dot' },
+      });
+    }
+  };
+  if (dataMax > 0) pushPair(dataMax);
+  if (dataMin > 0) pushPair(dataMin);
+}
+
+function buildShapes(
+  s: GuideSession,
+  mask: Uint8Array | undefined,
+  traces: Traces,
+  scaleMode: ScaleMode,
+): Partial<Shape>[] {
   const shapes: Partial<Shape>[] = [];
+  const k = scaleMode === 'ARCSEC' ? s.pixelScale : 1;
+
+  if (traces.raLimits) pushLimitLines(shapes, 'ra', s, k);
+  if (traces.decLimits) pushLimitLines(shapes, 'dec', s, k);
 
   if (mask) {
     let runStart = -1;
@@ -487,7 +534,7 @@ export function GuideGraph() {
       yMax,
       xExtent,
       traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo),
-      shapes: buildShapes(session, mask),
+      shapes: buildShapes(session, mask, traces, scaleMode),
       eventInputs,
     };
   }, [log, sectionIdx, exclusions, scaleMode, traces, coordMode, device, autoScaleY]);

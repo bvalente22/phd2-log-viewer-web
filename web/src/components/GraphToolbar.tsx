@@ -136,19 +136,22 @@ export function GraphToolbar() {
   const hasAo = !!session?.entries.some((e) => e.mount === 'AO');
 
   // RA / Dec / Mount / AO / dx / dy are PHD2 jargon — kept in English across
-  // every locale (see locales/README.md). Trace toggles are grouped into
-  // four sub-sections so each display attribute is obvious at a glance:
-  // Axis (the error traces), Guide Pulses (correction-pulse bars), Guide
-  // Star (mass and SNR overlays), and Events (inline INFO labels). Each
-  // toggle is tinted to match its trace color on the chart.
+  // every locale (see locales/README.md). Trace toggles are now grouped
+  // by AXIS so each axis's overlays sit together: RA group has the line,
+  // its correction-pulse bars, and its mount-limit dotted lines; Dec
+  // group mirrors that. Mass + SNR (guide-star metrics) and Events
+  // (inline INFO labels) keep their own groups. Each chip is tinted to
+  // match its trace color on the chart.
   type TraceItem = { key: keyof TraceVisibility; label: string; title: string; tone: ChipTone };
-  const axisItems: TraceItem[] = [
-    { key: 'ra',  label: 'RA',  title: t('traces.raTooltip'),  tone: 'ra'  },
-    { key: 'dec', label: 'Dec', title: t('traces.decTooltip'), tone: 'dec' },
+  const raItems: TraceItem[] = [
+    { key: 'ra',       label: 'RA',                 title: t('traces.raTooltip'),       tone: 'ra' },
+    { key: 'raPulses', label: t('traces.raPulses'), title: t('traces.raPulsesTooltip'), tone: 'ra' },
+    { key: 'raLimits', label: t('traces.raLimits'), title: t('traces.raLimitsTooltip'), tone: 'ra' },
   ];
-  const pulseItems: TraceItem[] = [
-    { key: 'raPulses',  label: t('traces.raPulses'),  title: t('traces.raPulsesTooltip'),  tone: 'ra'  },
-    { key: 'decPulses', label: t('traces.decPulses'), title: t('traces.decPulsesTooltip'), tone: 'dec' },
+  const decItems: TraceItem[] = [
+    { key: 'dec',       label: 'Dec',                  title: t('traces.decTooltip'),       tone: 'dec' },
+    { key: 'decPulses', label: t('traces.decPulses'),  title: t('traces.decPulsesTooltip'), tone: 'dec' },
+    { key: 'decLimits', label: t('traces.decLimits'),  title: t('traces.decLimitsTooltip'), tone: 'dec' },
   ];
   const starItems: TraceItem[] = [
     { key: 'mass', label: 'Mass', title: t('traces.massTooltip'), tone: 'mass' },
@@ -182,8 +185,8 @@ export function GraphToolbar() {
     <div className="flex flex-col border-b border-slate-800 text-xs">
       {/* Row 1 — DATA: what data is plotted on the chart. */}
       <div className="flex w-full flex-wrap items-center gap-2 px-3 py-1">
-        {renderTraceGroup(t('groups.axis'),      t('groups.axisTooltip'),      axisItems)}
-        {renderTraceGroup(t('groups.pulses'),    t('groups.pulsesTooltip'),    pulseItems)}
+        {renderTraceGroup('RA',  t('groups.raTooltip'),  raItems)}
+        {renderTraceGroup('Dec', t('groups.decTooltip'), decItems)}
         {renderTraceGroup(t('groups.guideStar'), t('groups.guideStarTooltip'), starItems)}
         {renderTraceGroup(t('groups.events'),    t('groups.eventsTooltip'),    eventItems)}
         <span className="ms-3 me-1 text-slate-500" title={t('groups.coordTooltip')}>{t('groups.coord')}:</span>
