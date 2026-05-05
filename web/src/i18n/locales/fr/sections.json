@@ -30,26 +30,9 @@
     "clearAll": "Vider les récents",
     "clearAllTooltip": "Supprimer définitivement tous les logs récemment ouverts du stockage local du navigateur"
   },
-  "folder": {
-    "title": "Dossier de logs",
-    "logsCount": "{{count}} logs",
-    "show": "Afficher le panneau dossier de logs",
-    "hide": "Masquer le panneau dossier de logs",
-    "refresh": "Actualiser la liste",
-    "menu": "Menu du dossier",
-    "change": "Changer de dossier…",
-    "changeTooltip": "Choisir un autre dossier ; remplace le courant",
-    "forget": "Oublier le dossier",
-    "forgetTooltip": "Effacer le handle de dossier enregistré dans ce navigateur",
-    "unsupported": "Le parcours de dossier nécessite un navigateur basé sur Chromium (Chrome ou Edge). Glisse un log sur la zone de dépôt pour le charger.",
-    "choose": "Choisir un dossier…",
-    "chooseTooltip": "Ouvrir le sélecteur de dossier de l'OS ; le navigateur demandera l'accès en lecture",
-    "pickHint": "Choisis ton dossier de logs PHD2 (généralement <1>{{path}}</1>).",
-    "reconnect": "Reconnecter",
-    "reconnectTooltip": "Re-accorder l'accès en lecture pour cette session",
-    "reconnectHint": "Re-accorde l'accès en lecture pour restaurer la liste du dossier.",
-    "noLogs": "Aucun guide log trouvé dans ce dossier. Ajoute un fichier `*GuideLog*` ou choisis un autre dossier.",
-    "openTooltip": "Ouvrir {{name}}",
-    "current": "(actuel)"
+  "openLog": {
+    "title": "Ouvrir un log",
+    "show": "Afficher le panneau d'ouverture",
+    "hide": "Masquer le panneau d'ouverture"
   }
 }
