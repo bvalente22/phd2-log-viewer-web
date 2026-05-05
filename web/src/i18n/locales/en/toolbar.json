@@ -4,12 +4,28 @@
     "viewTooltip": "Choose the chart layout",
     "show": "show",
     "showTooltip": "Toggle individual traces in the time view",
+    "axis": "Axis",
+    "axisTooltip": "Toggle the RA and Dec error traces",
+    "pulses": "Guide Pulses",
+    "pulsesTooltip": "Toggle correction-pulse bars on the 0 line",
+    "guideStar": "Guide Star",
+    "guideStarTooltip": "Toggle guide-star mass and SNR overlays",
+    "events": "Events",
+    "eventsTooltip": "Toggle inline INFO event labels",
+    "rangeSlider": "range slider",
+    "rangeSliderTooltip": "Show or hide the navigator strip beneath the chart",
+    "export": "export",
+    "exportTooltip": "Save the current chart or its data to a file",
     "coord": "coord",
     "coordTooltip": "Coordinate frame for the error trace",
     "device": "device",
     "deviceTooltip": "Filter entries by which device made the correction",
     "scale": "scale",
     "scaleTooltip": "Y-axis units"
+  },
+  "rangeSlider": {
+    "show": "show",
+    "showTooltip": "Show the navigator strip beneath the chart. Hide it for snappier dragging when many traces are visible."
   },
   "view": {
     "time": "time",
@@ -54,6 +70,8 @@
     "recenterYTooltip": "Recenter Y axis around 0 without changing the current zoom level"
   },
   "export": {
+    "png": "Export PNG",
+    "csv": "Export CSV",
     "pngTooltip": "Download a high-resolution PNG snapshot of the current chart",
     "csvTooltip": "Download the entries of the current section as a CSV (includes an Excluded column for frames you've removed from the analysis)"
   },

@@ -5,6 +5,7 @@
   "openAnother": "Apri un altro",
   "openAnotherTooltip": "Chiude il log corrente e torna alla zona di rilascio per aprirne un altro",
   "selectSection": "Seleziona una sezione.",
+  "noLogHint": "Trascina un guide log nel pannello «Apri log» per iniziare.",
   "language": "Lingua",
   "languageTooltip": "Cambia la lingua dell'interfaccia. I termini di astrofotografia (RA, Dec, RMS, ecc.) restano in inglese.",
   "dropZone": {

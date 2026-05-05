@@ -14,7 +14,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "allowImportingTsExtensions": false,
-    "types": ["vitest/globals", "wicg-file-system-access"]
+    "types": ["vitest/globals", "wicg-file-system-access", "vite/client"]
   },
   "include": ["src", "e2e"],
   "references": [{ "path": "./tsconfig.node.json" }]

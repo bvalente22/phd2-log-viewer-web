@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 import { AnalysisModal } from '../components/AnalysisModal';
-import { DropZone } from '../components/DropZone';
 import { SectionList } from '../components/SectionList';
 import { StatsGrid } from '../components/StatsGrid';
 import { GuideGraph } from '../components/GuideGraph';
@@ -10,7 +9,6 @@ import { CalibrationStats } from '../components/CalibrationStats';
 import { SectionHeader } from '../components/SectionHeader';
 import { GraphToolbar } from '../components/GraphToolbar';
 import { GraphContextMenu } from '../components/ContextMenu';
-import { RecentsPanel } from '../components/RecentsPanel';
 import { RecentsDropdown } from '../components/RecentsDropdown';
 import { LogsFolderPane } from '../components/LogsFolderPane';
 import { LanguagePicker } from '../components/LanguagePicker';
@@ -27,31 +25,14 @@ export function ViewerPage() {
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const graphMode = useViewStore((s) => s.graphMode);
 
-  if (!log) {
-    return (
-      <>
-        <div className="mx-auto flex h-full max-w-2xl flex-col justify-center gap-4 p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-semibold">{t('appName')}</h1>
-              <p className="mt-1 text-xs text-slate-500" title={t('buildTooltip', { hash: __APP_GITHASH__ })}>
-                v{__APP_VERSION__} · {__APP_GITHASH__}
-              </p>
-            </div>
-            <LanguagePicker />
-          </div>
-          <DropZone />
-          <RecentsPanel />
-        </div>
-        <AnalysisModal />
-      </>
-    );
-  }
-
-  const sec = sectionIdx >= 0 ? log.sections[sectionIdx] : null;
+  // No more dedicated home/landing page: the app always renders the viewer
+  // chrome (header + sidebar + main pane). Until a log is loaded the sidebar
+  // shows the Open-log drop zone (LogsFolderPane) and the Recents dropdown,
+  // so the user has the same entry points without an extra hop.
+  const sec = log && sectionIdx >= 0 ? log.sections[sectionIdx] : null;
   const isGuiding = sec?.type === 'GUIDING';
   const isCalibration = sec?.type === 'CALIBRATION';
-  const sectionHdr = sec
+  const sectionHdr = sec && log
     ? sec.type === 'GUIDING'
       ? log.sessions[sec.idx]?.hdr
       : log.calibrations[sec.idx]?.hdr
@@ -66,19 +47,25 @@ export function ViewerPage() {
           <span className="ms-2 text-xs text-slate-500" title={t('buildTooltip', { hash: __APP_GITHASH__ })}>
             v{__APP_VERSION__} · {__APP_GITHASH__}
           </span>
-          <span className="mx-2 text-slate-700">|</span>
-          <span className="text-slate-400">{meta?.name}</span>
-          <span className="ms-2 text-xs text-slate-500">{t('phdVersion', { version: log.phdVersion })}</span>
+          {log && (
+            <>
+              <span className="mx-2 text-slate-700">|</span>
+              <span className="text-slate-400">{meta?.name}</span>
+              <span className="ms-2 text-xs text-slate-500">{t('phdVersion', { version: log.phdVersion })}</span>
+            </>
+          )}
         </h1>
         <div className="flex items-center gap-3">
           <LanguagePicker />
-          <button
-            className="text-xs text-slate-400 hover:text-slate-200"
-            onClick={clear}
-            title={t('openAnotherTooltip')}
-          >
-            {t('openAnother')}
-          </button>
+          {log && (
+            <button
+              className="text-xs text-slate-400 hover:text-slate-200"
+              onClick={clear}
+              title={t('openAnotherTooltip')}
+            >
+              {t('openAnother')}
+            </button>
+          )}
         </div>
       </header>
       {/* Sidebar spans the full content height so its scrollable section list
@@ -118,7 +105,12 @@ export function ViewerPage() {
             </div>
           </>
         )}
-        {!sec && (
+        {!log && (
+          <div className="flex h-full items-center justify-center px-6 text-center text-sm text-slate-500">
+            {t('noLogHint')}
+          </div>
+        )}
+        {log && !sec && (
           <div className="flex h-full items-center justify-center text-slate-500">
             {t('selectSection')}
           </div>

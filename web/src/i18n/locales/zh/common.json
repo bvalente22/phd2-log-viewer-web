@@ -5,6 +5,7 @@
   "openAnother": "打开另一个",
   "openAnotherTooltip": "关闭当前日志,返回拖放区以打开其他日志",
   "selectSection": "请选择一个区段。",
+  "noLogHint": "将 guide log 拖入「打开日志」面板即可开始。",
   "language": "语言",
   "languageTooltip": "切换界面语言。天文摄影术语 (RA、Dec、RMS 等) 保持英文。",
   "dropZone": {

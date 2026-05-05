@@ -4,12 +4,28 @@
     "viewTooltip": "Scegli il layout del grafico",
     "show": "mostra",
     "showTooltip": "Attiva o disattiva singole tracce nella vista temporale",
+    "axis": "Asse",
+    "axisTooltip": "Mostra/nascondi le tracce di errore RA e Dec",
+    "pulses": "Impulsi di guida",
+    "pulsesTooltip": "Mostra/nascondi le barre degli impulsi di correzione sulla linea 0",
+    "guideStar": "Stella guida",
+    "guideStarTooltip": "Mostra/nascondi le sovrapposizioni di Mass e SNR della stella guida",
+    "events": "Eventi",
+    "eventsTooltip": "Mostra/nascondi le etichette in linea degli eventi INFO",
+    "rangeSlider": "navigatore",
+    "rangeSliderTooltip": "Mostra o nascondi la striscia di navigazione sotto il grafico",
+    "export": "esporta",
+    "exportTooltip": "Salva il grafico corrente o i suoi dati in un file",
     "coord": "coord",
     "coordTooltip": "Sistema di coordinate per la traccia di errore",
     "device": "dispositivo",
     "deviceTooltip": "Filtra le voci in base al dispositivo che ha applicato la correzione",
     "scale": "scala",
     "scaleTooltip": "Unità dell'asse Y"
+  },
+  "rangeSlider": {
+    "show": "mostra",
+    "showTooltip": "Mostra la striscia di navigazione sotto il grafico. Nascondila per un trascinamento più fluido quando sono visibili molte tracce."
   },
   "view": {
     "time": "tempo",
@@ -54,6 +70,8 @@
     "recenterYTooltip": "Ricentra l'asse Y attorno a 0 senza cambiare il livello di zoom corrente"
   },
   "export": {
+    "png": "Esporta PNG",
+    "csv": "Esporta CSV",
     "pngTooltip": "Scarica un'istantanea PNG ad alta risoluzione del grafico corrente",
     "csvTooltip": "Scarica le voci della sezione corrente in CSV (include una colonna Excluded per i frame rimossi dall'analisi)"
   },

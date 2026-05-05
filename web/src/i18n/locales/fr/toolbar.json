@@ -4,12 +4,28 @@
     "viewTooltip": "Choisir la mise en page du graphique",
     "show": "afficher",
     "showTooltip": "Activer ou désactiver les traces individuelles dans la vue temporelle",
+    "axis": "Axe",
+    "axisTooltip": "Afficher/masquer les traces d'erreur RA et Dec",
+    "pulses": "Impulsions de guidage",
+    "pulsesTooltip": "Afficher/masquer les barres d'impulsions de correction sur la ligne 0",
+    "guideStar": "Étoile guide",
+    "guideStarTooltip": "Afficher/masquer les superpositions de masse et SNR de l'étoile guide",
+    "events": "Événements",
+    "eventsTooltip": "Afficher/masquer les étiquettes d'événements INFO en ligne",
+    "rangeSlider": "navigateur",
+    "rangeSliderTooltip": "Afficher ou masquer la bande navigateur sous le graphique",
+    "export": "exporter",
+    "exportTooltip": "Enregistrer le graphique courant ou ses données dans un fichier",
     "coord": "coord",
     "coordTooltip": "Système de coordonnées pour la trace d'erreur",
     "device": "appareil",
     "deviceTooltip": "Filtrer les entrées selon l'appareil ayant appliqué la correction",
     "scale": "échelle",
     "scaleTooltip": "Unités de l'axe Y"
+  },
+  "rangeSlider": {
+    "show": "afficher",
+    "showTooltip": "Afficher la bande navigateur sous le graphique. Masquez-la pour un glissement plus fluide lorsque de nombreuses traces sont visibles."
   },
   "view": {
     "time": "temps",
@@ -54,6 +70,8 @@
     "recenterYTooltip": "Recentre l'axe Y autour de 0 sans modifier le niveau de zoom actuel"
   },
   "export": {
+    "png": "Exporter PNG",
+    "csv": "Exporter CSV",
     "pngTooltip": "Télécharger un instantané PNG haute résolution du graphique courant",
     "csvTooltip": "Télécharger les entrées de la section courante en CSV (inclut une colonne Excluded pour les frames retirés de l'analyse)"
   },
