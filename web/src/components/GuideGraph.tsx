@@ -344,6 +344,52 @@ function pushLimitLines(
   if (dataMin > 0) pushPair(dataMin);
 }
 
+/**
+ * Cardinal-direction labels for the right edge of the chart, ported
+ * from LogViewFrame.cpp:1605 (GuideEast) and 1643 (GuideNorth). The
+ * desktop draws "GuideEast" near the bottom of the chart in the RA
+ * trace color and "GuideNorth" near the top in the Dec trace color,
+ * each gated on the corresponding axis trace being visible. They give
+ * the user a fixed visual reference for which direction positive
+ * corrections are pushing the mount, independent of zoom / pan.
+ *
+ * In our split-domain layout the labels live inside the *guiding*
+ * band (yaxis), not the guide-star band (yaxis2). When Mass or SNR is
+ * active that band is `[0, 0.65]` of the paper area; otherwise it's
+ * the full `[0, 1]`. Either way, "GuideNorth" is at the top of the
+ * guiding band and "GuideEast" is at the bottom.
+ *
+ * Colors match the trace colors at slightly reduced opacity so the
+ * labels read as ambient context rather than as part of the data.
+ */
+function buildCardinalAnnotations(
+  traces: Traces,
+  guideDomain: [number, number],
+): Partial<Annotations>[] {
+  const out: Partial<Annotations>[] = [];
+  if (traces.dec) {
+    out.push({
+      text: 'GuideNorth',
+      xref: 'paper', yref: 'paper',
+      x: 0.995, y: guideDomain[1] - 0.01,
+      xanchor: 'right', yanchor: 'top',
+      showarrow: false,
+      font: { size: 11, color: 'rgba(248, 113, 113, 0.85)' },
+    });
+  }
+  if (traces.ra) {
+    out.push({
+      text: 'GuideEast',
+      xref: 'paper', yref: 'paper',
+      x: 0.995, y: guideDomain[0] + 0.01,
+      xanchor: 'right', yanchor: 'bottom',
+      showarrow: false,
+      font: { size: 11, color: 'rgba(96, 165, 250, 0.85)' },
+    });
+  }
+  return out;
+}
+
 function buildShapes(
   s: GuideSession,
   mask: Uint8Array | undefined,
@@ -573,17 +619,27 @@ export function GuideGraph() {
   }, [data, exclusions, setMask]);
 
   const initialAnnotations = useMemo<Partial<Annotations>[]>(() => {
-    if (!data || data.eventInputs.length === 0) return [];
-    const measure = measureTextPxRef.current!;
-    // Use the natural span of the data for first paint. The relayout
-    // handler below recomputes once the chart actually has a real width.
-    const span = Math.max(1e-6, data.xExtent[1] - data.xExtent[0]);
-    // Assume a ~1000 px chart for first paint; relayout will correct it.
-    const pxPerSecond = 1000 / span;
-    const laid = layoutInlineEvents(data.eventInputs, pxPerSecond, measure);
-    const tc = themeOf(themeId).plot;
-    return buildEventAnnotations(laid, tc.annotationBg, tc.annotationFg);
-  }, [data, themeId]);
+    if (!data) return [];
+    let eventAnns: Partial<Annotations>[] = [];
+    if (data.eventInputs.length > 0) {
+      const measure = measureTextPxRef.current!;
+      // Use the natural span of the data for first paint. The relayout
+      // handler below recomputes once the chart actually has a real width.
+      const span = Math.max(1e-6, data.xExtent[1] - data.xExtent[0]);
+      // Assume a ~1000 px chart for first paint; relayout will correct it.
+      const pxPerSecond = 1000 / span;
+      const laid = layoutInlineEvents(data.eventInputs, pxPerSecond, measure);
+      const tc = themeOf(themeId).plot;
+      eventAnns = buildEventAnnotations(laid, tc.annotationBg, tc.annotationFg);
+    }
+    // Cardinal direction labels piggyback on the same `annotations` slot
+    // so they survive the inline-event re-layout that runs on x-zoom
+    // (see refreshAnnotationsRef.current below — that handler also
+    // re-emits the cardinal labels).
+    const showStarBand = traces.mass || traces.snr;
+    const guideDomain: [number, number] = showStarBand ? [0, 0.65] : [0, 1];
+    return [...eventAnns, ...buildCardinalAnnotations(traces, guideDomain)];
+  }, [data, themeId, traces]);
 
   useEffect(() => {
     refreshAnnotationsRef.current = () => {
@@ -595,18 +651,30 @@ export function GuideGraph() {
       // layout prop covers the pre-init case, so we just skip until ready.
       const div = document.getElementById(plotId) as PlotDiv | null;
       if (!div?._fullLayout) return;
-      if (!data || data.eventInputs.length === 0) return;
-      const xa = div._fullLayout.xaxis;
-      const widthPx = xa?._length ?? div.clientWidth ?? 1000;
-      const range = xa?.range ?? data.xExtent;
-      const span = Math.max(1e-6, range[1] - range[0]);
-      const pxPerSecond = widthPx / span;
-      const measure = measureTextPxRef.current!;
-      const laid = layoutInlineEvents(data.eventInputs, pxPerSecond, measure);
-      const tc = themeOf(themeId).plot;
-      void Plotly.relayout(plotId, { annotations: buildEventAnnotations(laid, tc.annotationBg, tc.annotationFg) });
+      if (!data) return;
+
+      const showStarBand = traces.mass || traces.snr;
+      const guideDomain: [number, number] = showStarBand ? [0, 0.65] : [0, 1];
+      const cardinalAnns = buildCardinalAnnotations(traces, guideDomain);
+
+      let eventAnns: Partial<Annotations>[] = [];
+      if (data.eventInputs.length > 0) {
+        const xa = div._fullLayout.xaxis;
+        const widthPx = xa?._length ?? div.clientWidth ?? 1000;
+        const range = xa?.range ?? data.xExtent;
+        const span = Math.max(1e-6, range[1] - range[0]);
+        const pxPerSecond = widthPx / span;
+        const measure = measureTextPxRef.current!;
+        const laid = layoutInlineEvents(data.eventInputs, pxPerSecond, measure);
+        const tc = themeOf(themeId).plot;
+        eventAnns = buildEventAnnotations(laid, tc.annotationBg, tc.annotationFg);
+      }
+      // `annotations` is replaced wholesale by Plotly.relayout, so we
+      // always emit BOTH event and cardinal annotations together —
+      // omitting cardinals would erase them on the next x-zoom.
+      void Plotly.relayout(plotId, { annotations: [...eventAnns, ...cardinalAnns] });
     };
-  }, [data, plotId, themeId]);
+  }, [data, plotId, themeId, traces]);
 
   // Mouse-wheel X zoom is handled by Plotly's built-in scrollZoom (config),
   // constrained to the X axis by setting yaxis.fixedrange:true on the layout.
