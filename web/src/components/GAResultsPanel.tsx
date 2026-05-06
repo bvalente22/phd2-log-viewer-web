@@ -21,6 +21,34 @@ const fmtElapsed = (start: number | undefined, end: number | undefined): string 
   return `${m}m ${s}s`;
 };
 
+/**
+ * PHD2 emits multiple metrics joined by commas on a single GA Result
+ * line, e.g.
+ *   "SNR=296.3, Samples=52, Elapsed Time=218s, RA HPF-RMS= 0.01 px (  0.04 arc-sec ), …"
+ * We split on top-level commas (i.e. commas not inside parentheses,
+ * since the arc-sec parenthetical sometimes contains commas in
+ * localized PHD2 builds) so the panel can render each metric on its
+ * own line for legibility.
+ */
+const splitMetricLine = (line: string): string[] => {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '(') depth++;
+    else if (c === ')') depth = Math.max(0, depth - 1);
+    else if (c === ',' && depth === 0) {
+      const piece = line.slice(start, i).trim();
+      if (piece) out.push(piece);
+      start = i + 1;
+    }
+  }
+  const tail = line.slice(start).trim();
+  if (tail) out.push(tail);
+  return out;
+};
+
 interface RunCardProps {
   run: GARecommendationRun;
   startsMs: number | null;
@@ -54,9 +82,11 @@ const RunCard = ({ run, startsMs, t }: RunCardProps) => {
           <summary className="cursor-pointer select-none hover:text-slate-300">
             {t('ga.metrics', { count: run.metrics.length })}
           </summary>
-          <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] leading-tight text-slate-300">
-            {run.metrics.join('\n')}
-          </pre>
+          <ul className="mt-1 space-y-0.5 font-mono text-[11px] leading-tight text-slate-300">
+            {run.metrics.flatMap(splitMetricLine).map((piece, i) => (
+              <li key={i}>{piece}</li>
+            ))}
+          </ul>
         </details>
       )}
     </div>
@@ -95,11 +125,17 @@ export function GAResultsPanel() {
 
   return (
     <details
-      className="border-b border-slate-800 bg-slate-900/40 px-3 py-1 text-xs"
+      // Sky-tinted accent so the GA strip stands out from the
+      // adjacent neutral SectionHeader strip — the user couldn't
+      // tell at a glance that the panel was a separate, expandable
+      // section. The sky-* palette isn't overridden by any theme
+      // (themes only retint the slate-* surface classes), so this
+      // accent stays vivid in Dark / Paper / High contrast / Night.
+      className="border-y-2 border-sky-500/60 bg-sky-900/20 px-3 py-1 text-xs"
       open
       title={t('ga.summaryTooltip')}
     >
-      <summary className="cursor-pointer select-none text-slate-300 hover:text-slate-100">
+      <summary className="cursor-pointer select-none font-semibold text-sky-300 hover:text-sky-200">
         {t('ga.summary', { count: runs.length })}
       </summary>
       <div className="mt-2 space-y-2 pb-1">
