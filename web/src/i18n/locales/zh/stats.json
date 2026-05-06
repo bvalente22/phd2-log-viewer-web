@@ -57,5 +57,14 @@
     "msSuffix": "ms"
   },
   "copyTooltip": "{{label}}: {{value}} — 点击复制",
-  "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}。点击复制。"
+  "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}。点击复制。",
+  "ga": {
+    "summary": "Guiding Assistant ({{count}})",
+    "summaryTooltip": "本会话中检测到的 PHD2 Guiding Assistant 执行 — 点击展开或收起建议面板",
+    "runTitle": "执行",
+    "runDuration": "{{duration}}",
+    "runUnclosed": "未恢复导星",
+    "metrics": "原始指标 ({{count}})",
+    "metricsTooltip": "日志中非建议的 GA Result 行:SNR、RMS、RA/Dec 峰值、漂移速率、Backlash 估计、极轴对齐误差"
+  }
 }
