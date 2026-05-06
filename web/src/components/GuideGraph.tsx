@@ -103,18 +103,32 @@ function findClosestEntry(entries: GuideSession['entries'], dt: number): GuideSe
 /**
  * Pull the (x, y) value pair to plot for a given entry.
  *
- * Mirrors the desktop app's coord switch in `LogViewFrame.cpp:1731-1750`:
- *   val_x = radec ? raraw : dx
- *   val_y = radec ? -decraw : dy
- * The Dec negation is what makes "north up" on the chart while keeping
- * the raw PHD2 values in the log unchanged.
+ * The desktop draws into wxDC where Y increases DOWNWARD. Its formulas
+ * are (LogViewFrame.cpp:1731-1750):
+ *   screen_y = y0 + (radec ? raraw : dx) * vscale          // RA / dx
+ *   screen_y = y0 + (radec ? -decraw : dy) * vscale        // Dec / dy
+ *
+ * Visually this means in the desktop:
+ *   East (positive raraw) plots BELOW the 0 line          (bottom)
+ *   North (positive decraw) plots ABOVE the 0 line        (top, via the
+ *                                                          decraw negation)
+ *
+ * Plotly's Y axis is the opposite: positive y goes UP. So to reproduce
+ * the desktop's "North up, East down" visual we flip the sign of every
+ * value the desktop would draw with a positive screen-y formula. The
+ * net result:
+ *   raraw / dx / dy  → negate (positive value plots BELOW 0 in our chart)
+ *   decraw           → leave as-is (positive value plots ABOVE 0)
+ *
+ * The labels we render at the right edge ("GuideEast" at bottom,
+ * "GuideNorth" at top) only make sense with this convention.
  */
 const valuePair = (
   e: GuideSession['entries'][number],
   coordMode: ReturnType<typeof useViewStore.getState>['coordMode'],
 ): { x: number; y: number } => {
-  if (coordMode === 'RA_DEC') return { x: e.raraw, y: -e.decraw };
-  return { x: e.dx, y: e.dy };
+  if (coordMode === 'RA_DEC') return { x: -e.raraw, y: e.decraw };
+  return { x: -e.dx, y: -e.dy };
 };
 
 function buildTraces(
@@ -189,9 +203,14 @@ function buildTraces(
     } as Data);
   }
   if (traces.raPulses) {
+    // Desktop (LogViewFrame.cpp:1629): height = +radur*scale, drawn DOWN
+    // from y0 in wxDC → positive radur (East) appears BELOW the 0 line.
+    // Plotly's Y is up, so we negate to land East on the bottom too.
+    // Hovertemplate keeps the raw signed `radur` so a positive value
+    // still reads as "East" / negative as "West".
     out.push({
       x: t,
-      y: visibleEntries.map((e) => e.radur * pulseScale),
+      y: visibleEntries.map((e) => -e.radur * pulseScale),
       customdata: visibleEntries.map((e) => e.radur),
       type: 'bar',
       name: 'RA pulse',
@@ -200,20 +219,17 @@ function buildTraces(
     } as Data);
   }
   if (traces.decPulses) {
-    // Dec pulse height is NEGATED to match the Dec error trace, which
-    // itself is negated in display so that "north up" matches the user's
-    // mental picture (LogViewFrame.cpp:1750 plots `-decraw`). Without
-    // this negation the pulse bars grow opposite to the error they're
-    // correcting; with it, a positive decdur (north correction) lands
-    // on the same side of the 0 line as a positive Dec error excursion,
-    // matching LogViewFrame.cpp:1667 (`int height = -(int)(e.decdur * yRate * vscale);`).
-    // RA pulses are not negated for the same reason RA error is not
-    // negated — RA convention shares a sign-frame with the camera.
-    // Hovertemplate still shows the raw decdur sign so the user can
-    // read "+1234 ms (north)" or "-987 ms (south)" unaltered.
+    // Desktop (LogViewFrame.cpp:1667): height = -decdur*scale, drawn DOWN
+    // from y0 in wxDC. So positive decdur (North) → height < 0 → the
+    // rectangle is drawn ABOVE y0, i.e. North appears ABOVE the 0 line.
+    // In Plotly's Y-up world we want the same visual: positive decdur
+    // plotted at positive y. The desktop's `-decdur` is purely a wxDC
+    // workaround; here we plot the signed value directly. The matching
+    // Dec error trace also lands on this same side because we removed
+    // the historical `-decraw` negation in valuePair (see comment there).
     out.push({
       x: t,
-      y: visibleEntries.map((e) => -e.decdur * pulseScale),
+      y: visibleEntries.map((e) => e.decdur * pulseScale),
       customdata: visibleEntries.map((e) => e.decdur),
       type: 'bar',
       name: 'Dec pulse',
