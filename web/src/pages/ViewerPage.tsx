@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnalysisModal } from '../components/AnalysisModal';
 import { SectionList } from '../components/SectionList';
@@ -12,18 +13,33 @@ import { GraphContextMenu } from '../components/ContextMenu';
 import { RecentsDropdown } from '../components/RecentsDropdown';
 import { LogsFolderPane } from '../components/LogsFolderPane';
 import { LanguagePicker } from '../components/LanguagePicker';
+import { ThemePicker } from '../components/ThemePicker';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { useKeyboardShortcuts } from '../state/useKeyboard';
+import { themeOf } from '../themes';
 
 export function ViewerPage() {
   useKeyboardShortcuts();
   const { t } = useTranslation('common');
   const log = useLogStore((s) => s.log);
   const meta = useLogStore((s) => s.meta);
-  const clear = useLogStore((s) => s.clear);
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const graphMode = useViewStore((s) => s.graphMode);
+  const theme = useViewStore((s) => s.theme);
+
+  // Apply the active theme to <html> as a data attribute. CSS in
+  // index.css selectors `[data-theme="paper"] .bg-slate-900 { ... }`
+  // override the default Tailwind slate-* surface classes for non-default
+  // themes. We use the html element (not body) so the rule cascade also
+  // affects the body background painted before React hydrates — avoids
+  // a flash of dark theme on first paint when a non-default theme is
+  // restored from localStorage.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.theme = themeOf(theme).dataAttr;
+    return () => { delete root.dataset.theme; };
+  }, [theme]);
 
   // No more dedicated home/landing page: the app always renders the viewer
   // chrome (header + sidebar + main pane). Until a log is loaded the sidebar
@@ -56,16 +72,8 @@ export function ViewerPage() {
           )}
         </h1>
         <div className="flex items-center gap-3">
+          <ThemePicker />
           <LanguagePicker />
-          {log && (
-            <button
-              className="text-xs text-slate-400 hover:text-slate-200"
-              onClick={clear}
-              title={t('openAnotherTooltip')}
-            >
-              {t('openAnother')}
-            </button>
-          )}
         </div>
       </header>
       {/* Sidebar spans the full content height so its scrollable section list

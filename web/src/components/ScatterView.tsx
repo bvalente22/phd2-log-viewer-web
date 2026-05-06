@@ -5,6 +5,7 @@ import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { calcStats } from '../parser';
 import type { GuideSession } from '../parser';
+import { themeOf } from '../themes';
 
 const RA_COLOR = '#60a5fa';
 const DEC_COLOR = '#f87171';
@@ -47,6 +48,7 @@ export function ScatterView() {
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const exclusions = useViewStore((s) => s.exclusions);
   const scaleMode = useViewStore((s) => s.scaleMode);
+  const themeId = useViewStore((s) => s.theme);
   const device = useViewStore((s) => s.device);
 
   const data = useMemo(() => {
@@ -137,19 +139,20 @@ export function ScatterView() {
   }
 
   const unit = scaleMode === 'ARCSEC' ? 'arc-sec' : 'pixels';
+  const tc = themeOf(themeId).plot;
   const layout: Partial<Layout> = {
     autosize: true,
     margin: { l: 60, r: 30, t: 20, b: 50 },
-    paper_bgcolor: '#0f172a',
-    plot_bgcolor: '#0f172a',
-    font: { color: '#cbd5e1', size: 11 },
+    paper_bgcolor: tc.paper,
+    plot_bgcolor: tc.plot,
+    font: { color: tc.font, size: 11 },
     xaxis: {
-      title: { text: `RA (${unit})` }, gridcolor: '#1e293b', zerolinecolor: '#475569',
+      title: { text: `RA (${unit})` }, gridcolor: tc.grid, zerolinecolor: tc.zerolineStrong,
       range: [-data.range, data.range],
       scaleanchor: 'y', scaleratio: 1,
     },
     yaxis: {
-      title: { text: `Dec (${unit})` }, gridcolor: '#1e293b', zerolinecolor: '#475569',
+      title: { text: `Dec (${unit})` }, gridcolor: tc.grid, zerolinecolor: tc.zerolineStrong,
       range: [-data.range, data.range],
     },
     shapes: data.shapes,

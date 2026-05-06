@@ -8,6 +8,14 @@
   "noLogHint": "将 guide log 拖入「打开日志」面板即可开始。",
   "language": "语言",
   "languageTooltip": "切换界面语言。天文摄影术语 (RA、Dec、RMS 等) 保持英文。",
+  "theme": "主题",
+  "themeTooltip": "切换视觉主题。轨迹颜色 (RA 蓝、Dec 红、Mass 黄、SNR 白) 在所有主题中保持一致。",
+  "themes": {
+    "default": "深色",
+    "paper": "纸白",
+    "highContrast": "高对比度",
+    "night": "夜间模式"
+  },
   "dropZone": {
     "title": "将 PHD2 guide log 拖到此处",
     "tooltip": "将 PHD2 guide log 文件拖到此处。日志在本地解析,不会上传任何内容。",
