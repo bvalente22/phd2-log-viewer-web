@@ -274,14 +274,10 @@ function buildTraces(
   return out;
 }
 
-const DITHER_BORDER = 'rgba(168, 85, 247, 0.7)';
-const INFO_BORDER = 'rgba(250, 204, 21, 0.55)';
-
 /**
  * Convert laid-out events into Plotly annotation specs. yref:'paper' keeps
  * the labels glued to the bottom of the plot regardless of Y zoom; yshift
- * stacks higher rows upward (row=0 is the bottom row). Border color matches
- * the existing dotted line for that event so the visual link is obvious.
+ * stacks higher rows upward (row=0 is the bottom row).
  *
  * 14 px row spacing is intentional: the desktop used 16 px against a larger
  * DC font; the web font is 10 px, so 14 px keeps rows compact with ~4 px of
@@ -289,9 +285,13 @@ const INFO_BORDER = 'rgba(250, 204, 21, 0.55)';
  */
 function buildEventAnnotations(
   laidOut: ReturnType<typeof layoutInlineEvents>,
-  bgcolor: string,
+  _bgcolor: string,
   fgcolor: string,
 ): Partial<Annotations>[] {
+  // Render as plain text labels — no border, no fill. The dotted
+  // vertical line behind each label (drawn in buildShapes) already
+  // encodes the event type (purple = DITHER, yellow = INFO). Bare
+  // text reads cleaner over the chart than a stack of pill bubbles.
   return laidOut.map((ev) => ({
     x: ev.timeSec,
     xref: 'x',
@@ -302,10 +302,6 @@ function buildEventAnnotations(
     yshift: ev.row * 14,
     text: ev.text,
     showarrow: false,
-    bgcolor,
-    bordercolor: ev.isDither ? DITHER_BORDER : INFO_BORDER,
-    borderwidth: 1,
-    borderpad: 2,
     font: { size: 10, color: fgcolor },
   }));
 }

@@ -14,6 +14,7 @@ import { RecentsDropdown } from '../components/RecentsDropdown';
 import { LogsFolderPane } from '../components/LogsFolderPane';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { ThemePicker } from '../components/ThemePicker';
+import { GAResultsPanel } from '../components/GAResultsPanel';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { useKeyboardShortcuts } from '../state/useKeyboard';
@@ -92,6 +93,7 @@ export function ViewerPage() {
           <>
             <GraphToolbar />
             {sectionHdr && <SectionHeader hdr={sectionHdr} kind="GUIDING" />}
+            <GAResultsPanel />
             <GraphContextMenu>
               <div className="flex-1 overflow-hidden">
                 {graphMode === 'TIME' ? <GuideGraph /> : <ScatterView />}
