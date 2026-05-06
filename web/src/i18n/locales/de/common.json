@@ -8,6 +8,14 @@
   "noLogHint": "Ziehe ein Guide-Log in den Bereich „Log öffnen“, um zu beginnen.",
   "language": "Sprache",
   "languageTooltip": "Oberflächensprache wechseln. Astrofotografie-Begriffe (RA, Dec, RMS usw.) bleiben auf Englisch.",
+  "theme": "Thema",
+  "themeTooltip": "Visuelles Thema wechseln. Spurfarben (RA blau, Dec rot, Mass gelb, SNR weiß) bleiben in allen Themen konstant.",
+  "themes": {
+    "default": "Dunkel",
+    "paper": "Papierweiß",
+    "highContrast": "Hoher Kontrast",
+    "night": "Nachtmodus"
+  },
   "dropZone": {
     "title": "PHD2-Guidelog hier ablegen",
     "tooltip": "PHD2-Guidelog-Datei hier ablegen. Das Log wird lokal verarbeitet; nichts wird hochgeladen.",

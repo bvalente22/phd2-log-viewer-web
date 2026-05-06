@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { DEFAULT_THEME, type ThemeId } from '../themes';
 
 export type CoordMode = 'RA_DEC' | 'DX_DY';
 export type Device = 'MOUNT' | 'AO';
@@ -50,6 +51,13 @@ interface ViewState {
    * it back on from the toolbar when they want a navigator.
    */
   showRangeSlider: boolean;
+  /**
+   * Active visual theme. Drives both the page chrome (via a
+   * `data-theme=...` attribute set on <html>; CSS in index.css overrides
+   * Tailwind's slate-* surface classes for non-default themes) and the
+   * Plotly chart layout colors (read off `themes.ts` at render time).
+   */
+  theme: ThemeId;
 
   setCoordMode: (m: CoordMode) => void;
   setDevice: (d: Device) => void;
@@ -59,6 +67,7 @@ interface ViewState {
   setAutoScaleY: (b: boolean) => void;
   setScaleLocked: (b: boolean, range?: [number, number]) => void;
   setShowRangeSlider: (b: boolean) => void;
+  setTheme: (t: ThemeId) => void;
   toggleTrace: (k: keyof TraceVisibility) => void;
 
   ensureMask: (sessionIdx: number, entryCount: number) => Uint8Array;
@@ -85,6 +94,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   traces: { ra: true, dec: true, raPulses: true, decPulses: true, raLimits: false, decLimits: false, mass: false, snr: false, events: false },
   exclusions: new Map(),
   showRangeSlider: false,
+  theme: DEFAULT_THEME,
 
   setCoordMode: (m) => set({ coordMode: m }),
   setDevice: (d) => set({ device: d }),
@@ -94,6 +104,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   setAutoScaleY: (b) => set({ autoScaleY: b }),
   setScaleLocked: (b, range) => set({ scaleLocked: b, lockedYRange: b && range ? range : null }),
   setShowRangeSlider: (b) => set({ showRangeSlider: b }),
+  setTheme: (t) => set({ theme: t }),
   toggleTrace: (k) => set((s) => ({ traces: { ...s.traces, [k]: !s.traces[k] } })),
 
   ensureMask: (sessionIdx, entryCount) => {
@@ -166,5 +177,6 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
     autoScaleY: s.autoScaleY,
     traces: s.traces,
     showRangeSlider: s.showRangeSlider,
+    theme: s.theme,
   }),
 }));

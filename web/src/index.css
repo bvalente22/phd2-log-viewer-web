@@ -4,3 +4,100 @@
 
 html, body, #root { height: 100%; }
 body { @apply bg-slate-950 text-slate-100; }
+
+/*
+ * Theme overrides. The default theme is the slate dark look applied by
+ * Tailwind classes throughout the app — no override block here. For
+ * non-default themes, the active theme writes itself onto <html> as
+ * `data-theme="paper"` (etc.); the rules below have higher specificity
+ * (0,2,0) than the bare Tailwind utility classes (0,1,0) so they win
+ * without `!important`.
+ *
+ * Trace colors (RA blue, Dec red, Mass yellow, SNR white, dither purple,
+ * info yellow, exclusion orange) are intentionally NOT overridden — they
+ * encode meaning. Theme switching only changes surface colors (page bg,
+ * cards, text, borders) and Plotly's plot/grid backgrounds (handled in
+ * themes.ts, applied per-chart in their layout configs).
+ *
+ * Color palette references — kept inline so anyone reading this file can
+ * see the relationships at a glance:
+ *   slate-50  #f8fafc   slate-500 #64748b
+ *   slate-100 #f1f5f9   slate-600 #475569
+ *   slate-200 #e2e8f0   slate-700 #334155
+ *   slate-300 #cbd5e1   slate-800 #1e293b
+ *   slate-400 #94a3b8   slate-900 #0f172a
+ *                       slate-950 #020617
+ */
+
+/* ===== PAPER WHITE ============================================== */
+[data-theme="paper"] body { background-color: #ffffff; color: #0f172a; }
+[data-theme="paper"] .bg-slate-950 { background-color: #ffffff; }
+[data-theme="paper"] .bg-slate-900 { background-color: #ffffff; }
+[data-theme="paper"] .bg-slate-900\/40 { background-color: rgba(248, 250, 252, 0.6); }
+[data-theme="paper"] .bg-slate-900\/85 { background-color: rgba(255, 255, 255, 0.92); }
+[data-theme="paper"] .bg-slate-800 { background-color: #f1f5f9; }
+[data-theme="paper"] .bg-slate-700 { background-color: #e2e8f0; }
+/* bg-slate-100 (SNR active chip) is intentionally NOT overridden in any
+   theme — it represents the "white" guide-star trace. Leaving it as the
+   Tailwind default keeps the active chip recognisable across themes. */
+[data-theme="paper"] .text-slate-100 { color: #0f172a; }
+[data-theme="paper"] .text-slate-200 { color: #1e293b; }
+[data-theme="paper"] .text-slate-300 { color: #334155; }
+[data-theme="paper"] .text-slate-400 { color: #475569; }
+[data-theme="paper"] .text-slate-500 { color: #64748b; }
+[data-theme="paper"] .text-slate-600 { color: #94a3b8; }
+[data-theme="paper"] .text-slate-700 { color: #cbd5e1; }
+[data-theme="paper"] .text-slate-900 { color: #0f172a; }
+[data-theme="paper"] .border-slate-600 { border-color: #cbd5e1; }
+[data-theme="paper"] .border-slate-700 { border-color: #cbd5e1; }
+[data-theme="paper"] .border-slate-800 { border-color: #e2e8f0; }
+[data-theme="paper"] .border-slate-800\/70 { border-color: rgba(226, 232, 240, 0.85); }
+/* Sky-700 active chip stays vivid against white; lift inactive chip
+   contrast so disabled buttons remain readable. */
+[data-theme="paper"] .hover\:bg-slate-700:hover { background-color: #cbd5e1; }
+
+/* ===== HIGH CONTRAST =========================================== */
+[data-theme="high-contrast"] body { background-color: #000000; color: #ffffff; }
+[data-theme="high-contrast"] .bg-slate-950 { background-color: #000000; }
+[data-theme="high-contrast"] .bg-slate-900 { background-color: #0a0a0a; }
+[data-theme="high-contrast"] .bg-slate-900\/40 { background-color: rgba(20, 20, 20, 0.7); }
+[data-theme="high-contrast"] .bg-slate-900\/85 { background-color: rgba(0, 0, 0, 0.92); }
+[data-theme="high-contrast"] .bg-slate-800 { background-color: #1f1f1f; }
+[data-theme="high-contrast"] .bg-slate-700 { background-color: #2f2f2f; }
+[data-theme="high-contrast"] .text-slate-100 { color: #ffffff; }
+[data-theme="high-contrast"] .text-slate-200 { color: #ffffff; }
+[data-theme="high-contrast"] .text-slate-300 { color: #f0f0f0; }
+[data-theme="high-contrast"] .text-slate-400 { color: #d0d0d0; }
+[data-theme="high-contrast"] .text-slate-500 { color: #b0b0b0; }
+[data-theme="high-contrast"] .text-slate-600 { color: #a0a0a0; }
+[data-theme="high-contrast"] .text-slate-700 { color: #909090; }
+[data-theme="high-contrast"] .text-slate-900 { color: #000000; }
+[data-theme="high-contrast"] .border-slate-600 { border-color: #ffffff; }
+[data-theme="high-contrast"] .border-slate-700 { border-color: #ffffff; }
+[data-theme="high-contrast"] .border-slate-800 { border-color: #ffffff; }
+[data-theme="high-contrast"] .border-slate-800\/70 { border-color: #d0d0d0; }
+[data-theme="high-contrast"] .hover\:bg-slate-700:hover { background-color: #404040; }
+
+/* ===== NIGHT MODE ============================================== */
+/* Astronomer dark-adaptation palette: deep crimson surfaces, dim red
+   text. Trace colors aren't muted — they still encode meaning by hue. */
+[data-theme="night"] body { background-color: #1a0606; color: #ff8080; }
+[data-theme="night"] .bg-slate-950 { background-color: #0d0303; }
+[data-theme="night"] .bg-slate-900 { background-color: #1a0606; }
+[data-theme="night"] .bg-slate-900\/40 { background-color: rgba(26, 6, 6, 0.7); }
+[data-theme="night"] .bg-slate-900\/85 { background-color: rgba(26, 6, 6, 0.92); }
+[data-theme="night"] .bg-slate-800 { background-color: #3a1414; }
+[data-theme="night"] .bg-slate-700 { background-color: #5a2020; }
+[data-theme="night"] .text-slate-100 { color: #ff8080; }
+[data-theme="night"] .text-slate-200 { color: #ff7070; }
+[data-theme="night"] .text-slate-300 { color: #e85a5a; }
+[data-theme="night"] .text-slate-400 { color: #c04848; }
+[data-theme="night"] .text-slate-500 { color: #a03838; }
+[data-theme="night"] .text-slate-600 { color: #802828; }
+[data-theme="night"] .text-slate-700 { color: #602020; }
+[data-theme="night"] .text-slate-900 { color: #ff8080; }
+[data-theme="night"] .border-slate-600 { border-color: #401818; }
+[data-theme="night"] .border-slate-700 { border-color: #401818; }
+[data-theme="night"] .border-slate-800 { border-color: #2a0e0e; }
+[data-theme="night"] .border-slate-800\/70 { border-color: rgba(42, 14, 14, 0.85); }
+[data-theme="night"] .hover\:bg-slate-700:hover { background-color: #501c1c; }

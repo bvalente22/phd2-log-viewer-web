@@ -8,6 +8,14 @@
   "noLogHint": "Drop a guide log into the Open log pane to begin.",
   "language": "Language",
   "languageTooltip": "Switch the interface language. Astrophotography terms (RA, Dec, RMS, etc.) stay in English.",
+  "theme": "Theme",
+  "themeTooltip": "Switch the visual theme. Trace colors (RA blue, Dec red, Mass yellow, SNR white) stay constant across all themes.",
+  "themes": {
+    "default": "Dark",
+    "paper": "Paper white",
+    "highContrast": "High contrast",
+    "night": "Night mode"
+  },
   "dropZone": {
     "title": "Drop a PHD2 guide log here",
     "tooltip": "Drop a PHD2 guide log file here. The log is parsed locally; nothing is uploaded.",

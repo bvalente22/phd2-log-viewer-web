@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next';
 import Plot from 'react-plotly.js';
 import type { Data, Layout, Shape } from 'plotly.js';
 import { useLogStore } from '../state/logStore';
+import { useViewStore } from '../state/viewStore';
 import { fmtInteger } from '../i18n/format';
 import type { Calibration, CalibrationEntry, CalDirection } from '../parser';
+import { themeOf } from '../themes';
 
 const RA_COLOR = '#60a5fa';
 const RA_DARK = '#1d4ed8';
@@ -106,6 +108,7 @@ export function CalibrationPlot() {
   const { t } = useTranslation('stats');
   const log = useLogStore((s) => s.log);
   const sectionIdx = useLogStore((s) => s.selectedSection);
+  const themeId = useViewStore((s) => s.theme);
 
   const data = useMemo(() => {
     if (!log || sectionIdx < 0) return null;
@@ -126,21 +129,22 @@ export function CalibrationPlot() {
   const ys = data.cal.entries.map((e) => e.dy);
   const maxAbs = Math.max(5, ...xs.map(Math.abs), ...ys.map(Math.abs)) * 1.15;
 
+  const tc = themeOf(themeId).plot;
   const layout: Partial<Layout> = {
     autosize: true,
     margin: { l: 50, r: 30, t: 30, b: 40 },
-    paper_bgcolor: '#0f172a',
-    plot_bgcolor: '#0f172a',
-    font: { color: '#cbd5e1', size: 11 },
+    paper_bgcolor: tc.paper,
+    plot_bgcolor: tc.plot,
+    font: { color: tc.font, size: 11 },
     xaxis: {
       title: { text: 'dx (px)' },
-      gridcolor: '#1e293b', zerolinecolor: '#475569',
+      gridcolor: tc.grid, zerolinecolor: tc.zerolineStrong,
       range: [-maxAbs, maxAbs],
       scaleanchor: 'y', scaleratio: 1,
     },
     yaxis: {
       title: { text: 'dy (px)' },
-      gridcolor: '#1e293b', zerolinecolor: '#475569',
+      gridcolor: tc.grid, zerolinecolor: tc.zerolineStrong,
       range: [-maxAbs, maxAbs],
     },
     shapes: data.shapes,
