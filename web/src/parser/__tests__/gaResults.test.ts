@@ -99,18 +99,49 @@ describe('extractGAResults', () => {
     expect(runs[0].recommendations).toEqual(['Improve focus']);
   });
 
-  it('ignores GA Result lines that fall outside an open run', () => {
+  it('keeps a stray GA Result line as its own run when no MountGuidingEnabled markers precede it', () => {
+    // Some logs (truncated, or PHD2 versions that emit GA output without
+    // toggling guiding) emit GA Results without a preceding
+    // `MountGuidingEnabled = false`. We permissively keep them so the
+    // user still sees the recommendation.
     const s = sessionWithInfos([
-      // GA Result without a preceding `MountGuidingEnabled = false` is
-      // malformed and should be discarded rather than crashing or
-      // attaching to the next run.
       { idx: 0, info: 'GA Result - Recommendation: stray' },
       { idx: 5, info: 'Guiding parameter change, MountGuidingEnabled = false' },
-      { idx: 6, info: 'GA Result - Recommendation: real one' },
+      { idx: 6, info: 'GA Result - Recommendation: second run' },
       { idx: 7, info: 'Guiding parameter change, MountGuidingEnabled = true' },
     ]);
     const runs = extractGAResults(s);
+    expect(runs).toHaveLength(2);
+    expect(runs[0].recommendations).toEqual(['stray']);
+    expect(runs[1].recommendations).toEqual(['second run']);
+  });
+
+  it('handles the PHD2 layout where GA Result lines follow MountGuidingEnabled=true (sample log 2026-05-03)', () => {
+    // Real-world layout from PHD2_GuideLog_2026-05-03_203012.txt:
+    // the "true" marker is emitted BEFORE the GA Result block so the
+    // assistant's measurements arrive after guiding has resumed. Our
+    // extractor should still group them into one run, with startIdx
+    // anchored at the original `false` marker and endIdx at the
+    // `true` marker.
+    const s = sessionWithInfos([
+      { idx: 0,   info: 'Guiding parameter change, MountGuidingEnabled = false' },
+      { idx: 100, info: 'Guiding parameter change, MountGuidingEnabled = true' },
+      { idx: 100, info: 'GA Result - SNR=207.0, Samples=318' },
+      { idx: 100, info: 'GA Result - RA Peak= 3.11 px' },
+      { idx: 100, info: 'GA Result - Recommendation: Try setting RA min-move to 0.68' },
+      { idx: 100, info: 'GA Result - Recommendation: Try setting Dec min-move to 1.05' },
+    ]);
+    const runs = extractGAResults(s);
     expect(runs).toHaveLength(1);
-    expect(runs[0].recommendations).toEqual(['real one']);
+    expect(runs[0].startIdx).toBe(0);
+    expect(runs[0].endIdx).toBe(100);
+    expect(runs[0].metrics).toEqual([
+      'SNR=207.0, Samples=318',
+      'RA Peak= 3.11 px',
+    ]);
+    expect(runs[0].recommendations).toEqual([
+      'Try setting RA min-move to 0.68',
+      'Try setting Dec min-move to 1.05',
+    ]);
   });
 });

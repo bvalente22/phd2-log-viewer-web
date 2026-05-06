@@ -54,54 +54,86 @@ const stripGaPrefix = (info: InfoEntry): string | null =>
   info.info.startsWith(GA_PREFIX) ? info.info.slice(GA_PREFIX.length) : null;
 
 /**
- * Walk the session's info events in order, opening a run on each
- * `MountGuidingEnabled = false` and closing it on the next
- * `MountGuidingEnabled = true`. GA Result lines that fall inside the
- * open window get attached to that run. Empty runs (no GA Result
- * lines between the on/off pair, e.g. when the user toggled guiding
- * for some other reason) are filtered out.
+ * Walk the session's info events in order, grouping every "GA Result"
+ * line into a run. PHD2 logs come in two layouts depending on version
+ * and configuration:
  *
- * If guiding never resumes before the session ends, the trailing run
- * is still emitted with `endIdx = null` — the user might want to read
- * recommendations even when they cut the session short after the
- * assistant finished.
+ *   1) Older / typical layout — GA Result lines BETWEEN the
+ *      MountGuidingEnabled markers:
+ *        MountGuidingEnabled = false
+ *        GA Result - SNR=...
+ *        GA Result - Recommendation: ...
+ *        MountGuidingEnabled = true
+ *
+ *   2) Newer layout — GA Result lines emitted AFTER
+ *      `MountGuidingEnabled = true`:
+ *        MountGuidingEnabled = false
+ *        MountGuidingEnabled = true
+ *        GA Result - SNR=...
+ *        GA Result - Recommendation: ...
+ *
+ * Both forms are valid PHD2 output. We track the most recent
+ * `MountGuidingEnabled = false` (`lastDisableIdx`) and the most recent
+ * `MountGuidingEnabled = true` (`lastEnableIdx`) and snap them in as
+ * the run's start / end when we see the first GA Result line.
+ *
+ * A new run is closed and pushed when we hit the next
+ * `MountGuidingEnabled = false` (boundary between assistant runs)
+ * or when we run out of infos. Empty runs (false/true toggle without
+ * any GA Result lines, e.g. user toggling guiding for some unrelated
+ * reason) are filtered out.
  */
 export function extractGAResults(session: GuideSession): GARecommendationRun[] {
   const runs: GARecommendationRun[] = [];
   let current: GARecommendationRun | null = null;
+  let lastDisableIdx: number | undefined = undefined;
+  let lastEnableIdx: number | undefined = undefined;
+
+  const closeIfFilled = () => {
+    if (current && (current.recommendations.length > 0 || current.metrics.length > 0)) {
+      runs.push(current);
+    }
+    current = null;
+  };
 
   for (const info of session.infos) {
     if (info.info.includes(ENABLED_FALSE)) {
-      // Defensive: if a previous run was still open and had any
-      // content, push it before starting a new one. (Shouldn't happen
-      // in well-formed logs but it's cheap to handle.)
-      if (current && (current.recommendations.length > 0 || current.metrics.length > 0)) {
-        runs.push(current);
-      }
-      current = {
-        startIdx: info.idx,
-        endIdx: null,
-        startTime: startTime(session, info.idx),
-        endTime: undefined,
-        recommendations: [],
-        metrics: [],
-      };
+      // Boundary between assistant runs. Close any pending run and
+      // reset the markers — anything that came before doesn't belong
+      // to whatever run starts here.
+      closeIfFilled();
+      lastDisableIdx = info.idx;
+      lastEnableIdx = undefined;
       continue;
     }
     if (info.info.includes(ENABLED_TRUE)) {
+      lastEnableIdx = info.idx;
+      // If a run was already opened by a preceding GA Result line
+      // (layout 1), record the end now. If GA Results haven't started
+      // yet (layout 2), the value is held and snapped in when the
+      // first GA Result line creates the run.
       if (current) {
         current.endIdx = info.idx;
         current.endTime = startTime(session, info.idx);
-        if (current.recommendations.length > 0 || current.metrics.length > 0) {
-          runs.push(current);
-        }
-        current = null;
       }
       continue;
     }
-    if (!current) continue;
+
     const tail = stripGaPrefix(info);
     if (tail === null) continue;
+
+    if (current === null) {
+      const startIdx = lastDisableIdx ?? info.idx;
+      current = {
+        startIdx,
+        endIdx: lastEnableIdx ?? null,
+        startTime: startTime(session, startIdx),
+        endTime: lastEnableIdx !== undefined ? startTime(session, lastEnableIdx) : undefined,
+        recommendations: [],
+        metrics: [],
+      };
+    }
+
     if (tail.startsWith(REC_PREFIX)) {
       current.recommendations.push(tail.slice(REC_PREFIX.length));
     } else {
@@ -109,10 +141,7 @@ export function extractGAResults(session: GuideSession): GARecommendationRun[] {
     }
   }
 
-  // Trailing open run (guiding never resumed).
-  if (current && (current.recommendations.length > 0 || current.metrics.length > 0)) {
-    runs.push(current);
-  }
+  closeIfFilled();
 
   return runs;
 }
