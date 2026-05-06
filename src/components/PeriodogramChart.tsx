@@ -6,6 +6,8 @@ import Plotly from 'plotly.js/dist/plotly';
 import type { Data, Layout, Shape } from 'plotly.js';
 import type { GARun } from '../parser/analyze';
 import { useChartGestures } from './useChartGestures';
+import { useViewStore } from '../state/viewStore';
+import { themeOf } from '../themes';
 
 const PEAK_PX = 8;
 const FFT_COLOR = '#a3e635';
@@ -34,6 +36,7 @@ export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
   const { t: tChart } = useTranslation('chart');
   const plotId = useId().replace(/:/g, '_');
   const [hover, setHover] = useState<string | null>(null);
+  const themeId = useViewStore((s) => s.theme);
 
   const k = scaleMode === 'ARCSEC' ? garun.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
@@ -136,19 +139,20 @@ export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
   // Quiet the unused-variable warning for `unit/k` when scaleMode is PIXELS.
   useEffect(() => { void unit; void k; }, [unit, k]);
 
+  const tc = themeOf(themeId).plot;
   const layout: Partial<Layout> = {
     autosize: true,
     margin: { l: 60, r: 30, t: 10, b: 40 },
-    paper_bgcolor: '#0f172a',
-    plot_bgcolor: '#0f172a',
-    font: { color: '#cbd5e1', size: 11 },
+    paper_bgcolor: tc.paper,
+    plot_bgcolor: tc.plot,
+    font: { color: tc.font, size: 11 },
     xaxis: {
-      title: { text: tChart('axes.period') }, gridcolor: '#1e293b', zerolinecolor: '#334155',
+      title: { text: tChart('axes.period') }, gridcolor: tc.grid, zerolinecolor: tc.zeroline,
       type: 'log', range: xLogRange, fixedrange: false,
     },
     yaxis: {
       title: { text: unit === '″' ? tChart('axes.amplitudeArcsec') : tChart('axes.amplitudePixels') },
-      gridcolor: '#1e293b', zerolinecolor: '#334155',
+      gridcolor: tc.grid, zerolinecolor: tc.zeroline,
       autorange: true, fixedrange: true,
     },
     showlegend: false,

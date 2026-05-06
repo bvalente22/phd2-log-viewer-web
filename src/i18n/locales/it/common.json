@@ -8,6 +8,14 @@
   "noLogHint": "Trascina un guide log nel pannello «Apri log» per iniziare.",
   "language": "Lingua",
   "languageTooltip": "Cambia la lingua dell'interfaccia. I termini di astrofotografia (RA, Dec, RMS, ecc.) restano in inglese.",
+  "theme": "Tema",
+  "themeTooltip": "Cambia il tema visivo. I colori delle tracce (RA blu, Dec rosso, Mass giallo, SNR bianco) restano costanti in tutti i temi.",
+  "themes": {
+    "default": "Scuro",
+    "paper": "Carta bianca",
+    "highContrast": "Alto contrasto",
+    "night": "Modalità notte"
+  },
   "dropZone": {
     "title": "Trascina qui un guide log PHD2",
     "tooltip": "Trascina qui un file di guide log PHD2. Il log viene elaborato localmente; nulla viene caricato.",

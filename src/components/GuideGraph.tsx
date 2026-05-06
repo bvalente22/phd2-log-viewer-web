@@ -12,13 +12,16 @@ import type { GuideSession } from '../parser';
 import { useChartGestures } from './useChartGestures';
 import { layoutInlineEvents } from './eventLayout';
 import { computeSettlingMask } from '../parser/settling';
+import { themeOf } from '../themes';
 
 const RA_COLOR = '#60a5fa';
 const DEC_COLOR = '#f87171';
 const PULSE_RA = '#3b82f6';
 const PULSE_DEC = '#dc2626';
-const MASS_COLOR = '#facc15';
-const SNR_COLOR = '#e2e8f0';
+// Mass and SNR colors are theme-aware — see themes.ts (`traceMass`,
+// `traceSnr`). They're injected into buildTraces by GuideGraph at
+// render time. RA / Dec / pulse colors stay constant since they're
+// already saturated enough to read on every theme background.
 
 // Plotly config never changes per render — hoisting it as a stable module
 // reference avoids a `Plotly.react` reconcile pass each time React rerenders
@@ -122,6 +125,8 @@ function buildTraces(
   coordMode: ReturnType<typeof useViewStore.getState>['coordMode'],
   device: ReturnType<typeof useViewStore.getState>['device'],
   hasAo: boolean,
+  massColor: string,
+  snrColor: string,
 ): Data[] {
   // When AO data is present in the session, filter entries to the chosen
   // device. Mount-only sessions skip this filter (every entry is MOUNT).
@@ -212,7 +217,7 @@ function buildTraces(
       customdata: visibleEntries.map((e) => e.mass),
       type: 'scattergl', mode: 'lines',
       yaxis: 'y2',
-      name: 'Mass', line: { color: MASS_COLOR, width: 1 },
+      name: 'Mass', line: { color: massColor, width: 1 },
       hovertemplate: 'Mass: %{customdata}<extra></extra>',
     } as Data);
   }
@@ -223,7 +228,7 @@ function buildTraces(
       customdata: visibleEntries.map((e) => e.snr),
       type: 'scattergl', mode: 'lines',
       yaxis: 'y2',
-      name: 'SNR', line: { color: SNR_COLOR, width: 1 },
+      name: 'SNR', line: { color: snrColor, width: 1 },
       hovertemplate: 'SNR: %{customdata:.1f}<extra></extra>',
     } as Data);
   }
@@ -273,6 +278,8 @@ const INFO_BORDER = 'rgba(250, 204, 21, 0.55)';
  */
 function buildEventAnnotations(
   laidOut: ReturnType<typeof layoutInlineEvents>,
+  bgcolor: string,
+  fgcolor: string,
 ): Partial<Annotations>[] {
   return laidOut.map((ev) => ({
     x: ev.timeSec,
@@ -284,11 +291,11 @@ function buildEventAnnotations(
     yshift: ev.row * 14,
     text: ev.text,
     showarrow: false,
-    bgcolor: 'rgba(15,23,42,0.85)',
+    bgcolor,
     bordercolor: ev.isDither ? DITHER_BORDER : INFO_BORDER,
     borderwidth: 1,
     borderpad: 2,
-    font: { size: 10, color: 'rgb(226,232,240)' },
+    font: { size: 10, color: fgcolor },
   }));
 }
 
@@ -392,6 +399,7 @@ export function GuideGraph() {
   const scaleLocked = useViewStore((s) => s.scaleLocked);
   const autoScaleY = useViewStore((s) => s.autoScaleY);
   const showRangeSlider = useViewStore((s) => s.showRangeSlider);
+  const themeId = useViewStore((s) => s.theme);
   const excludeRange = useViewStore((s) => s.excludeRange);
   const includeRange = useViewStore((s) => s.includeRange);
 
@@ -533,11 +541,11 @@ export function GuideGraph() {
       hasAo,
       yMax,
       xExtent,
-      traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo),
+      traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo, themeOf(themeId).plot.traceMass, themeOf(themeId).plot.traceSnr),
       shapes: buildShapes(session, mask, traces, scaleMode),
       eventInputs,
     };
-  }, [log, sectionIdx, exclusions, scaleMode, traces, coordMode, device, autoScaleY]);
+  }, [log, sectionIdx, exclusions, scaleMode, traces, coordMode, device, autoScaleY, themeId]);
 
   useEffect(() => {
     dataRef.current = data ? { session: data.session, sessionIdx: data.sessionIdx } : null;
@@ -566,8 +574,9 @@ export function GuideGraph() {
     // Assume a ~1000 px chart for first paint; relayout will correct it.
     const pxPerSecond = 1000 / span;
     const laid = layoutInlineEvents(data.eventInputs, pxPerSecond, measure);
-    return buildEventAnnotations(laid);
-  }, [data]);
+    const tc = themeOf(themeId).plot;
+    return buildEventAnnotations(laid, tc.annotationBg, tc.annotationFg);
+  }, [data, themeId]);
 
   useEffect(() => {
     refreshAnnotationsRef.current = () => {
@@ -587,9 +596,10 @@ export function GuideGraph() {
       const pxPerSecond = widthPx / span;
       const measure = measureTextPxRef.current!;
       const laid = layoutInlineEvents(data.eventInputs, pxPerSecond, measure);
-      void Plotly.relayout(plotId, { annotations: buildEventAnnotations(laid) });
+      const tc = themeOf(themeId).plot;
+      void Plotly.relayout(plotId, { annotations: buildEventAnnotations(laid, tc.annotationBg, tc.annotationFg) });
     };
-  }, [data, plotId]);
+  }, [data, plotId, themeId]);
 
   // Mouse-wheel X zoom is handled by Plotly's built-in scrollZoom (config),
   // constrained to the X axis by setting yaxis.fixedrange:true on the layout.
@@ -810,14 +820,15 @@ export function GuideGraph() {
     const showStarBand = traces.mass || traces.snr;
     const guideDomain: [number, number] = showStarBand ? [0, 0.65] : [0, 1];
     const starDomain: [number, number] = [0.7, 1];
+    const tc = themeOf(themeId).plot;
     return {
       autosize: true,
       margin: { l: 60, r: 60, t: 20, b: 40 },
-      paper_bgcolor: '#0f172a',
-      plot_bgcolor: '#0f172a',
-      font: { color: '#cbd5e1', size: 11 },
+      paper_bgcolor: tc.paper,
+      plot_bgcolor: tc.plot,
+      font: { color: tc.font, size: 11 },
       xaxis: {
-        title: { text: tChart('axes.time') }, gridcolor: '#1e293b', zerolinecolor: '#334155',
+        title: { text: tChart('axes.time') }, gridcolor: tc.grid, zerolinecolor: tc.zeroline,
         // X is unfixed so Plotly's built-in scrollZoom (config below) can zoom
         // it via the wheel; Plotly handles cursor-anchored zoom correctly. Drag
         // gestures are owned by our custom handlers (Plotly dragmode:false),
@@ -836,14 +847,14 @@ export function GuideGraph() {
         rangeslider: {
           visible: showRangeSlider,
           thickness: 0.06,
-          bgcolor: '#020617',
-          bordercolor: '#1e293b',
+          bgcolor: tc.paper,
+          bordercolor: tc.grid,
           borderwidth: 1,
         },
       },
       yaxis: {
-        title: { text: yTitle }, gridcolor: '#1e293b',
-        zerolinecolor: '#64748b', zerolinewidth: 1,
+        title: { text: yTitle }, gridcolor: tc.grid,
+        zerolinecolor: tc.zerolineStrong, zerolinewidth: 1,
         // Y stays fixed so scrollZoom only ever affects X. Our drag handler
         // calls Plotly.relayout({yaxis.range:...}) directly, which bypasses
         // fixedrange.
@@ -887,7 +898,7 @@ export function GuideGraph() {
       // sessionIdx is the right granularity (a new section = new chart).
       uirevision: data.sessionIdx,
     };
-  }, [data, showRangeSlider, scaleLocked, initialAnnotations, tChart, yTitle, traces.mass, traces.snr]);
+  }, [data, showRangeSlider, scaleLocked, initialAnnotations, tChart, yTitle, traces.mass, traces.snr, themeId]);
 
   if (!data || !layout) {
     return <div className="flex h-full items-center justify-center text-slate-500">{tSections('list.selectGuiding')}</div>;

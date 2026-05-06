@@ -1,0 +1,142 @@
+/**
+ * Theme system. Four themes: `default` (slate dark), `paper` (white +
+ * dark text), `high-contrast` (pure black + pure white + bright lines),
+ * and `night` (dim crimson surfaces, low blue-light for dark-adapted
+ * astrophotographers using the viewer at the eyepiece). Each theme
+ * exposes:
+ *   - id           the value persisted in viewStore.theme
+ *   - dataAttr     the `data-theme="..."` value placed on <html>; the
+ *                  matching CSS in index.css overrides Tailwind's
+ *                  hardcoded slate-* surface classes for non-default
+ *                  themes (specificity: `[data-theme=...] .bg-slate-X`
+ *                  beats `.bg-slate-X` without !important).
+ *   - plot         Plotly layout overrides (paper_bgcolor, plot_bgcolor,
+ *                  gridcolor, zerolinecolor, font color). Trace colors
+ *                  themselves (RA blue, Dec red, Mass yellow, SNR white)
+ *                  stay constant across themes — they encode meaning.
+ *
+ * Adding a new theme: append an entry, add a matching `[data-theme=...]`
+ * block in index.css, add the i18n label key, done.
+ */
+
+export type ThemeId = 'default' | 'paper' | 'high-contrast' | 'night';
+
+export interface PlotThemeColors {
+  paper: string;
+  plot: string;
+  font: string;
+  grid: string;
+  zeroline: string;
+  /** Color of the bold "0" zero-line through the y-axis. */
+  zerolineStrong: string;
+  /** Inline-event annotation pill background (Settling/DITHER labels). */
+  annotationBg: string;
+  /** Inline-event annotation text color. */
+  annotationFg: string;
+  /**
+   * Mass and SNR trace colors are theme-aware — yellow and near-white
+   * are dark-bg-coded and disappear on the Paper-white plot. RA blue
+   * and Dec red are saturated enough to stay constant across themes.
+   */
+  traceMass: string;
+  traceSnr: string;
+}
+
+export interface Theme {
+  id: ThemeId;
+  /** i18n key under common.themes (e.g. 'default' → common:themes.default). */
+  i18nKey: string;
+  /** Value placed on <html data-theme="..."> at runtime. */
+  dataAttr: ThemeId;
+  plot: PlotThemeColors;
+}
+
+export const THEMES: Record<ThemeId, Theme> = {
+  // The original dark slate look — kept untouched so no migration is
+  // needed for existing users. CSS in index.css applies no overrides
+  // when this theme is active; Tailwind's slate-* classes win as-is.
+  default: {
+    id: 'default',
+    i18nKey: 'default',
+    dataAttr: 'default',
+    plot: {
+      paper: '#0f172a',
+      plot: '#0f172a',
+      font: '#cbd5e1',
+      grid: '#1e293b',
+      zeroline: '#334155',
+      zerolineStrong: '#64748b',
+      annotationBg: 'rgba(15,23,42,0.85)',
+      annotationFg: 'rgb(226,232,240)',
+      traceMass: '#facc15',
+      traceSnr: '#e2e8f0',
+    },
+  },
+  // White background, dark text — for daylight use or printing. Plot
+  // bg matches the page bg so the chart blends in cleanly.
+  paper: {
+    id: 'paper',
+    i18nKey: 'paper',
+    dataAttr: 'paper',
+    plot: {
+      paper: '#ffffff',
+      plot: '#ffffff',
+      font: '#1e293b',
+      grid: '#e2e8f0',
+      zeroline: '#cbd5e1',
+      zerolineStrong: '#94a3b8',
+      annotationBg: 'rgba(255,255,255,0.92)',
+      annotationFg: '#1e293b',
+      // On white: deep amber-orange replaces bright yellow; dark slate
+      // replaces near-white. Both still read as "Mass" (warm) and "SNR"
+      // (neutral) but with enough contrast against the page.
+      traceMass: '#b45309',
+      traceSnr: '#475569',
+    },
+  },
+  // Pure-black + pure-white + high-saturation gridlines for users with
+  // low vision or in glare-heavy conditions.
+  'high-contrast': {
+    id: 'high-contrast',
+    i18nKey: 'highContrast',
+    dataAttr: 'high-contrast',
+    plot: {
+      paper: '#000000',
+      plot: '#000000',
+      font: '#ffffff',
+      grid: '#404040',
+      zeroline: '#808080',
+      zerolineStrong: '#d0d0d0',
+      annotationBg: 'rgba(0,0,0,0.92)',
+      annotationFg: '#ffffff',
+      traceMass: '#facc15',
+      traceSnr: '#ffffff',
+    },
+  },
+  // Astronomer night mode: very dark crimson surfaces and dim red text
+  // to preserve dark adaptation at the eyepiece. Trace colors aren't
+  // monochromatic because RA/Dec/Mass/SNR carry meaning by hue, but the
+  // page chrome and plot background are red-shifted.
+  night: {
+    id: 'night',
+    i18nKey: 'night',
+    dataAttr: 'night',
+    plot: {
+      paper: '#1a0606',
+      plot: '#1a0606',
+      font: '#ff8080',
+      grid: '#3a1010',
+      zeroline: '#5a1818',
+      zerolineStrong: '#a04040',
+      annotationBg: 'rgba(26,6,6,0.92)',
+      annotationFg: '#ff8080',
+      traceMass: '#facc15',
+      traceSnr: '#e2e8f0',
+    },
+  },
+};
+
+export const DEFAULT_THEME: ThemeId = 'default';
+
+/** Cheap accessor used by chart components that already select theme from viewStore. */
+export const themeOf = (id: ThemeId): Theme => THEMES[id] ?? THEMES.default;

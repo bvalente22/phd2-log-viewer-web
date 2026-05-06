@@ -6,6 +6,8 @@ import Plotly from 'plotly.js/dist/plotly';
 import type { Data, Layout, Shape } from 'plotly.js';
 import type { GARun } from '../parser/analyze';
 import { useChartGestures } from './useChartGestures';
+import { useViewStore } from '../state/viewStore';
+import { themeOf } from '../themes';
 
 const RA_COLOR = '#60a5fa';
 const DEC_COLOR = '#f87171';
@@ -42,6 +44,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
   const { t: tChart } = useTranslation('chart');
   const plotId = useId().replace(/:/g, '_');
   const [hover, setHover] = useState<string | null>(null);
+  const themeId = useViewStore((s) => s.theme);
 
   const k = scaleMode === 'ARCSEC' ? garun.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
@@ -121,17 +124,18 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
     drawCursor(x);
   }, [garun, scaleMode, drawCursor]);
 
+  const tc = themeOf(themeId).plot;
   const layout: Partial<Layout> = {
     autosize: true,
     margin: { l: 60, r: 30, t: 10, b: 30 },
-    paper_bgcolor: '#0f172a',
-    plot_bgcolor: '#0f172a',
-    font: { color: '#cbd5e1', size: 11 },
+    paper_bgcolor: tc.paper,
+    plot_bgcolor: tc.plot,
+    font: { color: tc.font, size: 11 },
     xaxis: {
-      title: { text: tChart('axes.time') }, gridcolor: '#1e293b', zerolinecolor: '#334155',
+      title: { text: tChart('axes.time') }, gridcolor: tc.grid, zerolinecolor: tc.zeroline,
       fixedrange: false, range: xExtent,
     },
-    yaxis: { title: { text: unit }, gridcolor: '#1e293b', zerolinecolor: '#64748b', zerolinewidth: 1, fixedrange: true, range: yRange },
+    yaxis: { title: { text: unit }, gridcolor: tc.grid, zerolinecolor: tc.zerolineStrong, zerolinewidth: 1, fixedrange: true, range: yRange },
     showlegend: true,
     legend: { orientation: 'h', y: 1.1 },
     dragmode: false,
