@@ -200,9 +200,20 @@ function buildTraces(
     } as Data);
   }
   if (traces.decPulses) {
+    // Dec pulse height is NEGATED to match the Dec error trace, which
+    // itself is negated in display so that "north up" matches the user's
+    // mental picture (LogViewFrame.cpp:1750 plots `-decraw`). Without
+    // this negation the pulse bars grow opposite to the error they're
+    // correcting; with it, a positive decdur (north correction) lands
+    // on the same side of the 0 line as a positive Dec error excursion,
+    // matching LogViewFrame.cpp:1667 (`int height = -(int)(e.decdur * yRate * vscale);`).
+    // RA pulses are not negated for the same reason RA error is not
+    // negated — RA convention shares a sign-frame with the camera.
+    // Hovertemplate still shows the raw decdur sign so the user can
+    // read "+1234 ms (north)" or "-987 ms (south)" unaltered.
     out.push({
       x: t,
-      y: visibleEntries.map((e) => e.decdur * pulseScale),
+      y: visibleEntries.map((e) => -e.decdur * pulseScale),
       customdata: visibleEntries.map((e) => e.decdur),
       type: 'bar',
       name: 'Dec pulse',
