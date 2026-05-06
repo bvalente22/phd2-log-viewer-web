@@ -128,8 +128,6 @@ export function GraphToolbar() {
   const session = sec && sec.type === 'GUIDING' ? log!.sessions[sec.idx] : null;
   const sessionIdx = sec && sec.type === 'GUIDING' ? sec.idx : -1;
   const mask = sessionIdx >= 0 ? exclusions.get(sessionIdx) : undefined;
-  const excludedCount = mask ? mask.reduce((a, b) => a + b, 0) : 0;
-  const totalCount = session?.entries.length ?? 0;
 
   // The Mount/AO toggle is only meaningful when this session has AO entries.
   // Mirrors the desktop UI which disables the AO option for mount-only logs.
@@ -302,22 +300,14 @@ export function GraphToolbar() {
           {t('export.csv')}
         </button>
       </div>
-      {/* Row 3 — INFO: exclusion counter and gesture hint on their own
-          dedicated row. Pulled out of row 2 so flex-wrap on a narrow
-          viewport can never push the gesture-hint text down onto the
-          legend's line. */}
-      <div className="flex w-full flex-wrap items-center gap-3 px-3 pb-1 text-slate-400">
-        <span title={t('exclusions.tooltip')}>
-          {totalCount > 0 ? (
-            <>
-              <span className={excludedCount > 0 ? 'text-amber-400' : ''}>
-                {excludedCount}
-              </span>
-              <span className="text-slate-600">{t('exclusions.labelTotal', { total: totalCount })}</span>
-            </>
-          ) : null}
-        </span>
-        <span className="ms-auto text-slate-600">
+      {/* Row 3 — gesture hint, right-aligned. The excluded-frame
+          counter that used to live here was redundant with the
+          "Excluded N" stat in StatsGrid below the chart, and added
+          visual noise when guiding sessions had no exclusions
+          (always 0 / total). Removing it keeps the strip a single
+          informational hint. */}
+      <div className="flex w-full flex-wrap items-center justify-end gap-3 px-3 pb-1 text-slate-400">
+        <span className="text-slate-600">
           {t('gestureHint')}
         </span>
       </div>
