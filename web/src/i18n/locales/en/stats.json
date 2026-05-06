@@ -57,5 +57,14 @@
     "msSuffix": "ms"
   },
   "copyTooltip": "{{label}}: {{value}} — click to copy",
-  "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}. Click to copy."
+  "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}. Click to copy.",
+  "ga": {
+    "summary": "Guiding Assistant ({{count}})",
+    "summaryTooltip": "PHD2 Guiding Assistant runs detected in this session — click to expand or collapse the recommendation panel",
+    "runTitle": "Run",
+    "runDuration": "{{duration}}",
+    "runUnclosed": "guiding never resumed",
+    "metrics": "Raw metrics ({{count}})",
+    "metricsTooltip": "The non-recommendation \"GA Result\" lines from the log: SNR, RMS, RA/Dec peaks, drift rates, backlash estimate, polar-alignment error"
+  }
 }

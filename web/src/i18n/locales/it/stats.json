@@ -57,5 +57,14 @@
     "msSuffix": "ms"
   },
   "copyTooltip": "{{label}}: {{value}} — clic per copiare",
-  "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}. Clic per copiare."
+  "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}. Clic per copiare.",
+  "ga": {
+    "summary": "Guiding Assistant ({{count}})",
+    "summaryTooltip": "Esecuzioni del PHD2 Guiding Assistant rilevate in questa sessione — clic per espandere o comprimere il pannello dei consigli",
+    "runTitle": "Esecuzione",
+    "runDuration": "{{duration}}",
+    "runUnclosed": "il guidaggio non è ripreso",
+    "metrics": "Metriche grezze ({{count}})",
+    "metricsTooltip": "Le righe «GA Result» del log che non sono raccomandazioni: SNR, RMS, picchi RA/Dec, tassi di drift, stima del backlash, errore di allineamento polare"
+  }
 }
