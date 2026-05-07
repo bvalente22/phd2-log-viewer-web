@@ -15,34 +15,45 @@ const dropFixture = async (page: import('@playwright/test').Page) => {
   });
 };
 
+/**
+ * Annotation count baseline:
+ *   - 2 cardinal labels (GuideNorth/GuideEast — added in commit 8ca3743,
+ *     drawn whenever the corresponding RA/Dec trace is visible).
+ *   - +4 INFO event annotations from the synthetic fixture when the
+ *     Events toggle is on (2 SETTLING STATE CHANGE + 2 MountGuidingEnabled).
+ */
+const CARDINAL_COUNT = 2;
+const INFO_COUNT = 4;
+
 test.describe('Inline event labels', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
     await page.evaluate(() => localStorage.clear());
     await page.reload();
     await dropFixture(page);
-    await page.getByText('Guide ·', { exact: false }).first().click();
+    // Scope to the sidebar — once a section is selected the SectionSummary
+    // strip in main also shows "Guide · …", which multi-matches.
+    await page.locator('aside').getByText('Guide ·', { exact: false }).first().click();
     await expect(page.locator('.js-plotly-plot')).toBeVisible();
   });
 
-  test('default off — no inline event annotations rendered', async ({ page }) => {
-    await expect(page.locator('.js-plotly-plot .annotation-text')).toHaveCount(0);
+  test('default off — only cardinal labels render', async ({ page }) => {
+    await expect(page.locator('.js-plotly-plot .annotation-text')).toHaveCount(CARDINAL_COUNT);
+    await expect(page.locator('.js-plotly-plot .annotation-text', { hasText: 'GuideNorth' })).toBeVisible();
+    await expect(page.locator('.js-plotly-plot .annotation-text', { hasText: 'GuideEast' })).toBeVisible();
   });
 
-  test('toggling Events on adds annotations and toggling off removes them', async ({ page }) => {
+  test('toggling Events on adds INFO annotations and toggling off removes them', async ({ page }) => {
     const eventsChip = page.getByRole('button', { name: 'Events', exact: true });
     await expect(eventsChip).toBeVisible();
 
     await eventsChip.click();
-    // Synthetic fixture has 4 INFO events. Each produces its own annotation
-    // even when stacked into rows.
-    await expect(page.locator('.js-plotly-plot .annotation-text')).toHaveCount(4);
-
-    // At least one annotation contains the synthetic fixture's known text.
+    await expect(page.locator('.js-plotly-plot .annotation-text')).toHaveCount(CARDINAL_COUNT + INFO_COUNT);
+    // At least one INFO annotation contains the synthetic fixture's known text.
     await expect(page.locator('.js-plotly-plot .annotation-text', { hasText: 'state=1' })).toBeVisible();
 
     await eventsChip.click();
-    await expect(page.locator('.js-plotly-plot .annotation-text')).toHaveCount(0);
+    await expect(page.locator('.js-plotly-plot .annotation-text')).toHaveCount(CARDINAL_COUNT);
   });
 
   test('Events chip is disabled in scatter view', async ({ page }) => {
