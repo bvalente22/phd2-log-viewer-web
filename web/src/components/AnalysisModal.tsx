@@ -3,8 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { useAnalysisStore, type AnalysisKind } from '../state/analysisStore';
 import { DriftChart } from './DriftChart';
 import { PeriodogramChart } from './PeriodogramChart';
+import { SpikeChart } from './SpikeChart';
 import { fmtNumber } from '../i18n/format';
 import type { GARun } from '../parser/analyze';
+import { pickTopSpikePeriods, type SpikeRun } from '../parser/spikeAnalysis';
+import { Spline } from '../parser/spline';
 
 const formatClockUTC = (ms: number | null, dt: number): string => {
   if (ms === null) return '—';
@@ -35,6 +38,30 @@ function topPeaks(garun: GARun, n: number, maxPeriodSec: number): { period: numb
 }
 
 /**
+ * Adapter: shape a SpikeRun so it satisfies the GARun interface used by
+ * PeriodogramChart. The chart only reads .fftPeriod / .fftAmplitude /
+ * .fftSpline / .pixelScale; we fill the rest with placeholders so the
+ * type-checker is happy without dragging the spike-specific fields into
+ * the chart's prop surface. PeriodogramChart's color/label paths handle
+ * `kind === 'spike'` directly.
+ */
+function spikeAsGARun(run: SpikeRun): GARun {
+  return {
+    starts: run.starts,
+    pixelScale: run.pixelScale,
+    range: { begin: 0, end: run.t.length },
+    undoRaCorrections: false,
+    driftRa: 0, driftDec: 0,
+    t: run.t,
+    rac: run.values, decc: run.values,
+    fftPeriod: run.fftPeriod,
+    fftAmplitude: run.fftAmplitude,
+    fftAmpMax: run.fftAmpMax,
+    fftSpline: run.fftSpline as unknown as Spline,
+  } as GARun;
+}
+
+/**
  * Full-screen analysis overlay. Mounts at the page root so it overlays
  * everything; renders nothing when the analysisStore says state==='closed'.
  *
@@ -55,32 +82,50 @@ export function AnalysisModal() {
     return () => window.removeEventListener('keydown', onKey);
   }, [s]);
 
-  const peaks = useMemo(
-    () => (s.state === 'open' ? topPeaks(s.garun, 3, s.maxPeriodSec) : []),
-    [s],
-  );
+  const peaks = useMemo(() => {
+    if (s.state !== 'open') return [];
+    if (s.kind === 'spike') return [];
+    return topPeaks(s.garun, 3, s.maxPeriodSec);
+  }, [s]);
+
+  const spikePeriods = useMemo(() => {
+    if (s.state !== 'open') return [];
+    if (s.kind !== 'spike' || !s.spikeRun) return [];
+    return pickTopSpikePeriods(s.spikeRun, 3, {
+      minPeriodSec: s.spikeMinPeriodSec ?? undefined,
+    });
+  }, [s]);
 
   if (s.state === 'closed') return null;
 
-  const { garun, garunOther, kind, showRa, showDec, scaleMode, maxPeriodSec, yMaxLockPx, yMaxViewPx } = s;
-  // Max amplitude across BOTH visible periodogram traces, in raw pixel
-  // units. Passed to toggleYLock so locking captures whatever the user
-  // is looking at (active + counterpart) — the headline goal of the
-  // lock is comparing the two side-by-side at the same scale.
+  const {
+    garun, garunOther, kind, showRa, showDec, scaleMode, maxPeriodSec, yMaxLockPx, yMaxViewPx,
+    spikeSource, spikeRun, spikeAxis, spikeK, spikeMinPeriodSec,
+  } = s;
+  // The active dataset PeriodogramChart should render. In spike mode we
+  // adapt the SpikeRun; otherwise it's the regular GARun pair.
+  const activePerioRun: GARun = kind === 'spike' && spikeRun
+    ? spikeAsGARun(spikeRun)
+    : garun;
+  // Counterpart only applies to the residual ↔ raw-RA pair.
+  const activePerioOther = kind === 'spike' ? null : garunOther;
+
+  // Y-lock fallback max — pulls from whichever periodogram is active.
   let observedMaxPx = 0;
-  for (let i = 0; i < garun.fftAmplitude.length; i++) {
-    if (garun.fftAmplitude[i] > observedMaxPx) observedMaxPx = garun.fftAmplitude[i];
+  for (let i = 0; i < activePerioRun.fftAmplitude.length; i++) {
+    if (activePerioRun.fftAmplitude[i] > observedMaxPx) observedMaxPx = activePerioRun.fftAmplitude[i];
   }
-  if (garunOther) {
-    for (let i = 0; i < garunOther.fftAmplitude.length; i++) {
-      if (garunOther.fftAmplitude[i] > observedMaxPx) observedMaxPx = garunOther.fftAmplitude[i];
+  if (activePerioOther) {
+    for (let i = 0; i < activePerioOther.fftAmplitude.length; i++) {
+      if (activePerioOther.fftAmplitude[i] > observedMaxPx) observedMaxPx = activePerioOther.fftAmplitude[i];
     }
   }
+
   const startClock = formatClockUTC(garun.starts, garun.t[0] ?? 0);
   const endClock = formatClockUTC(garun.starts, garun.t[garun.t.length - 1] ?? 0);
-  // Title is now mode-agnostic: it just describes the dataset (frame
-  // count + clock range, or unguided frame range). The mode itself is
-  // surfaced as the heading "ANALYSIS: <mode>" — see header below.
+  // Title is mode-agnostic: it just describes the dataset (frame count
+  // + clock range, or unguided frame range). The mode itself is
+  // surfaced as the heading "ANALYSIS: <mode>".
   const title = kind === 'unguided'
     ? t('title.unguided', { begin: garun.range.begin, end: garun.range.end })
     : t('title.default', { frames: garun.t.length, start: startClock, end: endClock });
@@ -88,19 +133,29 @@ export function AnalysisModal() {
     ? t('mode.unguided')
     : kind === 'all-raw-ra'
     ? t('mode.rawRa')
+    : kind === 'spike'
+    ? t('mode.spike')
     : t('mode.selected');
-  // Mode tabs only make sense for 'all' / 'all-raw-ra'. Unguided has no
-  // equivalent flipped mode, and `garunOther` is null in that case.
-  const showModeTabs = kind !== 'unguided' && !!garunOther;
+  // 'all' / 'all-raw-ra' tabs always appear when their counterpart is
+  // available. Spike tab appears whenever the modal was opened with a
+  // spikeSource (i.e. for kind 'all' / 'all-raw-ra'; not for 'unguided').
+  const showResidualTabs = kind !== 'unguided' && !!garunOther;
+  const showSpikeTab = kind !== 'unguided' && !!spikeSource;
+  const showAnyTabs = showResidualTabs || showSpikeTab;
 
   const ToggleChip = ({
-    label, active, onClick, title: tip,
-  }: { label: string; active: boolean; onClick: () => void; title?: string }) => (
+    label, active, onClick, title: tip, disabled,
+  }: { label: string; active: boolean; onClick: () => void; title?: string; disabled?: boolean }) => (
     <button
       onClick={onClick}
       title={tip}
+      disabled={disabled}
       className={`rounded px-2 py-0.5 text-xs transition-colors ${
-        active ? 'bg-sky-700 text-white hover:bg-sky-600' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+        disabled
+          ? 'cursor-not-allowed bg-slate-900 text-slate-600'
+          : active
+          ? 'bg-sky-700 text-white hover:bg-sky-600'
+          : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
       }`}
     >
       {label}
@@ -139,16 +194,13 @@ export function AnalysisModal() {
   };
 
   return (
-    // Fully opaque (not /95) so the underlying viewer doesn't bleed through —
-    // the user explicitly requested that the analysis screen show only the
-    // analysis, hiding the regular chart entirely.
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-950 text-slate-100">
-      {/* Wheat / amber-toned banner — complementary to the sky-blue accents
-          used everywhere else in the app, so the modal context is visually
-          unmistakable without clashing. The leading pill reads
-          "ANALYSIS: <mode>" so the active mode is unambiguous; the tabs
-          to its right let the user flip 'residual error' ↔ 'raw RA'
-          without going back to the context menu. */}
+      {/* Wheat / amber-toned banner — complementary to the sky-blue
+          accents used everywhere else in the app, so the modal context
+          is visually unmistakable. The leading pill reads
+          "ANALYSIS: <mode>"; the tabs to its right let the user flip
+          between residual error / raw RA / spikes without going back
+          to the chart context menu. */}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-amber-700 bg-amber-200 px-4 py-3 text-amber-950">
         <div className="flex flex-wrap items-center gap-3">
           <span
@@ -157,22 +209,20 @@ export function AnalysisModal() {
           >
             {t('label')}: {modeLabel}
           </span>
-          {showModeTabs && (
+          {showAnyTabs && (
             <div className="flex items-center gap-1" role="tablist" aria-label={t('mode.tabsLabel')}>
-              <ModeTab
-                target="all"
-                current={kind}
-                label={t('mode.selected')}
-                onClick={() => s.setKind('all')}
-                tip={t('mode.selectedTooltip')}
-              />
-              <ModeTab
-                target="all-raw-ra"
-                current={kind}
-                label={t('mode.rawRa')}
-                onClick={() => s.setKind('all-raw-ra')}
-                tip={t('mode.rawRaTooltip')}
-              />
+              {showResidualTabs && (
+                <>
+                  <ModeTab target="all" current={kind} label={t('mode.selected')}
+                    onClick={() => s.setKind('all')} tip={t('mode.selectedTooltip')} />
+                  <ModeTab target="all-raw-ra" current={kind} label={t('mode.rawRa')}
+                    onClick={() => s.setKind('all-raw-ra')} tip={t('mode.rawRaTooltip')} />
+                </>
+              )}
+              {showSpikeTab && (
+                <ModeTab target="spike" current={kind} label={t('mode.spike')}
+                  onClick={() => s.setKind('spike')} tip={t('mode.spikeTooltip')} />
+              )}
             </div>
           )}
           <h2 className="text-sm font-medium" title={t('titleTooltip')}>
@@ -190,15 +240,47 @@ export function AnalysisModal() {
         </button>
       </header>
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-1 text-xs">
-        <span className="me-1 text-slate-500" title={t('showTooltip')}>{t('show')}:</span>
-        <ToggleChip label="RA" active={showRa} onClick={() => s.setShowRa(!showRa)} title={t('raDriftTooltip')} />
-        <ToggleChip label="Dec" active={showDec} onClick={() => s.setShowDec(!showDec)} title={t('decDriftTooltip')} />
+        {kind === 'spike' ? (
+          // Spike mode: RA/Dec become an axis selector (mutex). The
+          // sigma slider tunes k; the min-period input filters the
+          // top-3 list to drop e.g. PHD2's algorithmic-echo peak.
+          <>
+            <span className="me-1 text-slate-500" title={t('spike.axisTooltip')}>{t('spike.axis')}:</span>
+            <ToggleChip label="RA" active={spikeAxis === 'ra'} onClick={() => s.setSpikeAxis('ra')} title={t('spike.axisRaTooltip')} />
+            <ToggleChip label="Dec" active={spikeAxis === 'dec'} onClick={() => s.setSpikeAxis('dec')} title={t('spike.axisDecTooltip')} />
+            <span className="ms-3 me-1 text-slate-500" title={t('spike.kTooltip')}>{t('spike.k')}:</span>
+            <input
+              type="range" min={1} max={6} step={0.5}
+              value={spikeK}
+              onChange={(e) => s.setSpikeK(Number(e.target.value))}
+              className="h-1 w-32 accent-amber-500"
+              title={t('spike.kSliderTooltip')}
+            />
+            <span className="font-mono text-amber-300">k={spikeK.toFixed(1)}σ</span>
+            <span className="ms-3 me-1 text-slate-500" title={t('spike.minPeriodTooltip')}>{t('spike.minPeriod')}:</span>
+            <input
+              type="number" min={0} step={5}
+              value={spikeMinPeriodSec ?? 0}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                s.setSpikeMinPeriod(Number.isFinite(v) && v > 0 ? v : null);
+              }}
+              className="w-20 rounded border border-slate-700 bg-slate-900 px-2 py-0.5 font-mono text-slate-200"
+              title={t('spike.minPeriodInputTooltip')}
+            />
+            <span className="text-slate-500">{t('spike.minPeriodSuffix')}</span>
+          </>
+        ) : (
+          <>
+            <span className="me-1 text-slate-500" title={t('showTooltip')}>{t('show')}:</span>
+            <ToggleChip label="RA" active={showRa} onClick={() => s.setShowRa(!showRa)} title={t('raDriftTooltip')} />
+            <ToggleChip label="Dec" active={showDec} onClick={() => s.setShowDec(!showDec)} title={t('decDriftTooltip')} />
+          </>
+        )}
         <span className="ms-3 me-1 text-slate-500" title={t('scaleTooltip')}>{t('scale')}:</span>
         <ToggleChip label="arc-sec" active={scaleMode === 'ARCSEC'} onClick={() => s.setScaleMode('ARCSEC')} title={t('arcsecTooltip')} />
         <ToggleChip label="pixels" active={scaleMode === 'PIXELS'} onClick={() => s.setScaleMode('PIXELS')} title={t('pixelsTooltip')} />
-        {/* Periodogram-only Y-axis lock. Reuses the chart toolbar's
-            🔒/🔓 wording so the affordance reads consistently across
-            the app. */}
+        {/* Periodogram-only Y-axis lock. */}
         <span className="ms-3 me-1 text-slate-500" title={t('yLockTooltip')}>{t('yLock')}:</span>
         <ToggleChip
           label={yMaxLockPx !== null ? t('yLockOn') : t('yLockOff')}
@@ -209,10 +291,6 @@ export function AnalysisModal() {
         <button
           type="button"
           onClick={s.resetYZoom}
-          // Disabled when there's nothing to reset: no manual zoom and
-          // no lock means the chart is already on autorange. The lock
-          // case is special — we disable here so users don't think
-          // "reset" overrides the lock; they have to release first.
           disabled={yMaxLockPx !== null || yMaxViewPx === null}
           className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-900 disabled:text-slate-600"
           title={t('resetYTooltip')}
@@ -225,12 +303,16 @@ export function AnalysisModal() {
       </div>
       <div className="flex flex-1 flex-col overflow-hidden">
         <div className="flex-1 border-b border-slate-800">
-          <DriftChart garun={garun} showRa={showRa} showDec={showDec} scaleMode={scaleMode} />
+          {kind === 'spike' && spikeRun ? (
+            <SpikeChart run={spikeRun} scaleMode={scaleMode} />
+          ) : (
+            <DriftChart garun={garun} showRa={showRa} showDec={showDec} scaleMode={scaleMode} />
+          )}
         </div>
         <div className="flex-1">
           <PeriodogramChart
-            garun={garun}
-            garunOther={garunOther}
+            garun={activePerioRun}
+            garunOther={activePerioOther}
             kind={kind}
             scaleMode={scaleMode}
             yMaxLockPx={yMaxLockPx}
@@ -238,33 +320,71 @@ export function AnalysisModal() {
           />
         </div>
       </div>
-      {/* Top-3 peaks summary. Reads the same FFT result the periodogram is
-          drawing — caller can spot the dominant periodic-error contributors
-          at a glance without hovering. The "max period" filter excludes very
-          long periods (>10 minutes by default) which are usually drift
-          artefacts rather than real PE components. */}
+      {/* Bottom panel — top-3 peaks for residual / raw-RA / unguided
+          modes, top-3 spike periods + spike-event metadata for spike
+          mode. The "max period" filter only applies to the regular
+          peaks view; spike mode uses its own min-period filter from
+          the toolbar above. */}
       <div className="border-t-2 border-amber-800 bg-slate-900/70 px-4 py-2 text-xs">
         <div className="mb-1 flex items-center gap-3">
           <span className="font-semibold uppercase tracking-wider text-slate-400">
-            {t('topPeaks')}
+            {kind === 'spike' ? t('spike.topPeriods') : t('topPeaks')}
           </span>
-          <label className="flex items-center gap-1 text-slate-400" title={t('maxPeriodTooltip')}>
-            <span>{t('maxPeriod')}</span>
-            <input
-              type="number"
-              min={10}
-              step={10}
-              value={maxPeriodSec}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (Number.isFinite(v) && v > 0) s.setMaxPeriodSec(v);
-              }}
-              className="w-20 rounded border border-slate-700 bg-slate-900 px-2 py-0.5 font-mono text-slate-200"
-            />
-            <span>{t('maxPeriodSuffix')}</span>
-          </label>
+          {kind !== 'spike' && (
+            <label className="flex items-center gap-1 text-slate-400" title={t('maxPeriodTooltip')}>
+              <span>{t('maxPeriod')}</span>
+              <input
+                type="number"
+                min={10}
+                step={10}
+                value={maxPeriodSec}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (Number.isFinite(v) && v > 0) s.setMaxPeriodSec(v);
+                }}
+                className="w-20 rounded border border-slate-700 bg-slate-900 px-2 py-0.5 font-mono text-slate-200"
+              />
+              <span>{t('maxPeriodSuffix')}</span>
+            </label>
+          )}
+          {kind === 'spike' && spikeRun && (
+            <span className="text-slate-500" title={t('spike.runStatsTooltip')}>
+              {t('spike.runStats', {
+                count: spikeRun.events.length,
+                sigma: fmtNumber(spikeRun.sigma * (scaleMode === 'ARCSEC' ? spikeRun.pixelScale : 1), 2),
+                unit: scaleMode === 'ARCSEC' ? '″' : 'px',
+              })}
+            </span>
+          )}
         </div>
-        {peaks.length === 0 ? (
+        {kind === 'spike' ? (
+          spikePeriods.length === 0 ? (
+            <div className="text-slate-500">{t('spike.noPeriods')}</div>
+          ) : (
+            <div className="grid grid-cols-1 gap-1 sm:grid-cols-3">
+              {spikePeriods.map((p, i) => {
+                const aArc = p.amplitude * (spikeRun?.pixelScale ?? 1);
+                const aPx = p.amplitude;
+                return (
+                  <div
+                    key={i}
+                    className="rounded border border-amber-700/50 bg-slate-900 px-3 py-1 font-mono text-slate-200"
+                    title={t('spike.periodTitle', {
+                      index: i + 1,
+                      period: fmtNumber(p.period, 1),
+                      aligned: p.alignedEvents,
+                    })}
+                  >
+                    <div className="text-[10px] uppercase tracking-wider text-amber-300">{t('peakIndex', { index: i + 1 })}</div>
+                    <div>{t('period')}: {fmtNumber(p.period, 1)}s</div>
+                    <div>{t('amplitude')}: {fmtNumber(aArc, 3)}″ ({fmtNumber(aPx, 3)}px)</div>
+                    <div>{t('spike.alignedEvents', { count: p.alignedEvents })}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : peaks.length === 0 ? (
           <div className="text-slate-500">
             {t('noPeaks', { seconds: maxPeriodSec })}
           </div>
