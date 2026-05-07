@@ -559,6 +559,16 @@ export function GuideGraph() {
   }
 
   const refreshAnnotationsRef = useRef<() => void>(() => {});
+  /**
+   * True between pointerdown and pointerup of an active drag. Used by
+   * `onRelayout` below to skip the inline-event annotation re-layout
+   * (an SVG layer pass) on every rAF tick of a drag — that work is
+   * expensive on logs with many DITHER/INFO events and the labels
+   * barely move pixel-wise between consecutive ticks. The single
+   * settle pass on release (fired by `onDragStateChange(false)` in the
+   * useChartGestures call below) restores the correct stacking.
+   */
+  const dragActiveRef = useRef(false);
 
   const includeRangeRef = useRef(includeRange);
   const excludeRangeRef = useRef(excludeRange);
@@ -858,6 +868,13 @@ export function GuideGraph() {
           dts: entries.map((e) => e.dt),
         };
       },
+      onDragStateChange: (active) => {
+        dragActiveRef.current = active;
+        // Single settle pass on release. Cheap to run unconditionally —
+        // it's the same work `onRelayout` would do, but exactly once
+        // instead of 60×/sec during the drag.
+        if (!active) refreshAnnotationsRef.current?.();
+      },
     },
     // Don't hide the rangeslider during drag — toggling its visibility
     // changes the plot area's pixel height, which makes the chart "jump"
@@ -936,12 +953,15 @@ export function GuideGraph() {
     // Inline-event labels stack by screen pixels, so the row layout depends
     // on the current x-zoom. Re-derive annotations only when an x-axis range
     // actually changed — never on an annotations-only relayout, which we
-    // ourselves trigger and would cause an infinite recursion.
+    // ourselves trigger and would cause an infinite recursion. Also skip
+    // mid-drag: the chart relayouts at ~60Hz during a drag and the labels
+    // barely move pixel-wise between ticks. `onDragStateChange(false)` in
+    // useChartGestures fires a single settle pass on release.
     const xRangeChanged =
       typeof ev['xaxis.range[0]'] === 'number' ||
       typeof ev['xaxis.range[1]'] === 'number' ||
       ev['xaxis.autorange'] === true;
-    if (xRangeChanged) refreshAnnotationsRef.current?.();
+    if (xRangeChanged && !dragActiveRef.current) refreshAnnotationsRef.current?.();
   }, [scaleLocked]);
 
   // After the chart mounts and its real pixel width is available, redo the
