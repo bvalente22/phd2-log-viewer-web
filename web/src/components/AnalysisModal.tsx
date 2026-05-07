@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAnalysisStore } from '../state/analysisStore';
+import { useAnalysisStore, type AnalysisKind } from '../state/analysisStore';
 import { DriftChart } from './DriftChart';
 import { PeriodogramChart } from './PeriodogramChart';
 import { fmtNumber } from '../i18n/format';
@@ -62,17 +62,23 @@ export function AnalysisModal() {
 
   if (s.state === 'closed') return null;
 
-  const { garun, kind, showRa, showDec, scaleMode, maxPeriodSec } = s;
+  const { garun, kind, source, showRa, showDec, scaleMode, maxPeriodSec } = s;
   const startClock = formatClockUTC(garun.starts, garun.t[0] ?? 0);
   const endClock = formatClockUTC(garun.starts, garun.t[garun.t.length - 1] ?? 0);
-  let title: string;
-  if (kind === 'unguided') {
-    title = t('title.unguided', { begin: garun.range.begin, end: garun.range.end });
-  } else if (kind === 'all-raw-ra') {
-    title = t('title.rawRa', { frames: garun.t.length, start: startClock, end: endClock });
-  } else {
-    title = t('title.default', { frames: garun.t.length, start: startClock, end: endClock });
-  }
+  // Title is now mode-agnostic: it just describes the dataset (frame
+  // count + clock range, or unguided frame range). The mode itself is
+  // surfaced as the heading "ANALYSIS: <mode>" — see header below.
+  const title = kind === 'unguided'
+    ? t('title.unguided', { begin: garun.range.begin, end: garun.range.end })
+    : t('title.default', { frames: garun.t.length, start: startClock, end: endClock });
+  const modeLabel = kind === 'unguided'
+    ? t('mode.unguided')
+    : kind === 'all-raw-ra'
+    ? t('mode.rawRa')
+    : t('mode.selected');
+  // Mode tabs only make sense for 'all' / 'all-raw-ra'. Unguided has no
+  // equivalent flipped mode, and `source` is null in that case.
+  const showModeTabs = kind !== 'unguided' && !!source;
 
   const ToggleChip = ({
     label, active, onClick, title: tip,
@@ -88,6 +94,37 @@ export function AnalysisModal() {
     </button>
   );
 
+  // Mode tab — wears the same amber palette as the header so it visually
+  // belongs to the heading group, not to the chart toolbar below. Active
+  // tab is the saturated amber-700 fill (matches the ANALYSIS pill); the
+  // inactive tab is a hollow chip on the amber-200 banner background.
+  const ModeTab = ({
+    target, current, label, onClick, tip,
+  }: {
+    target: AnalysisKind;
+    current: AnalysisKind;
+    label: string;
+    onClick: () => void;
+    tip: string;
+  }) => {
+    const active = target === current;
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        title={tip}
+        aria-pressed={active}
+        className={`rounded px-2 py-0.5 text-xs font-semibold transition-colors ${
+          active
+            ? 'bg-amber-700 text-amber-50'
+            : 'bg-amber-50 text-amber-900 ring-1 ring-amber-600 hover:bg-white'
+        }`}
+      >
+        {label}
+      </button>
+    );
+  };
+
   return (
     // Fully opaque (not /95) so the underlying viewer doesn't bleed through —
     // the user explicitly requested that the analysis screen show only the
@@ -95,15 +132,36 @@ export function AnalysisModal() {
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-950 text-slate-100">
       {/* Wheat / amber-toned banner — complementary to the sky-blue accents
           used everywhere else in the app, so the modal context is visually
-          unmistakable without clashing. */}
-      <header className="flex items-center justify-between border-b-2 border-amber-700 bg-amber-200 px-4 py-3 text-amber-950">
-        <div className="flex items-center gap-3">
+          unmistakable without clashing. The leading pill reads
+          "ANALYSIS: <mode>" so the active mode is unambiguous; the tabs
+          to its right let the user flip 'selected frames' ↔ 'raw RA'
+          without going back to the context menu. */}
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-amber-700 bg-amber-200 px-4 py-3 text-amber-950">
+        <div className="flex flex-wrap items-center gap-3">
           <span
             className="rounded bg-amber-700 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-amber-50"
-            title={t('labelTooltip')}
+            title={t('labelTooltip', { mode: modeLabel })}
           >
-            {t('label')}
+            {t('label')}: {modeLabel}
           </span>
+          {showModeTabs && (
+            <div className="flex items-center gap-1" role="tablist" aria-label={t('mode.tabsLabel')}>
+              <ModeTab
+                target="all"
+                current={kind}
+                label={t('mode.selected')}
+                onClick={() => s.setKind('all')}
+                tip={t('mode.selectedTooltip')}
+              />
+              <ModeTab
+                target="all-raw-ra"
+                current={kind}
+                label={t('mode.rawRa')}
+                onClick={() => s.setKind('all-raw-ra')}
+                tip={t('mode.rawRaTooltip')}
+              />
+            </div>
+          )}
           <h2 className="text-sm font-medium" title={t('titleTooltip')}>
             {title}
           </h2>

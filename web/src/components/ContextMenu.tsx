@@ -92,7 +92,13 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
     const r = range ?? { begin: 0, end: session.entries.length };
     try {
       const garun = analyze(session, { range: r, undoRaCorrections, mask: sessionMask });
-      openAnalysis({ garun, kind, initialScaleMode: scaleModeForAnalysis });
+      // For 'all' / 'all-raw-ra' we hand the modal the source params so
+      // it can re-run analyze() when the user clicks the mode tab.
+      // 'unguided' has no in-modal flip equivalent, so we omit `source`.
+      const source = kind === 'unguided'
+        ? undefined
+        : { session, range: r, mask: sessionMask };
+      openAnalysis({ garun, kind, initialScaleMode: scaleModeForAnalysis, source });
     } catch (err) {
       // canAnalyze gates the call site, but stay defensive — if analyze
       // throws (insufficient entries after edge-case filtering), surface
@@ -158,19 +164,15 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
             {t('contextMenu.resetZoom')}
           </Item>
           <RCM.Separator className="my-1 h-px bg-slate-700" />
+          {/* Single Analysis entry. Defaults to mode='all' (selected
+              frames); the user toggles to 'all-raw-ra' (RA corrections
+              removed) from inside the modal via the mode tabs. */}
           <Item
             disabled={!session || !canAnalyzeSession}
             onSelect={() => session && runAnalysis('all', false)}
-            title={t('contextMenu.analyzeSelectedTooltip')}
+            title={t('contextMenu.analysisTooltip')}
           >
-            {t('contextMenu.analyzeSelected')}
-          </Item>
-          <Item
-            disabled={!session || !canAnalyzeSession}
-            onSelect={() => session && runAnalysis('all-raw-ra', true)}
-            title={t('contextMenu.analyzeRawRaTooltip')}
-          >
-            {t('contextMenu.analyzeRawRa')}
+            {t('contextMenu.analysis')}
           </Item>
           {isUnguided && (
             <Item
