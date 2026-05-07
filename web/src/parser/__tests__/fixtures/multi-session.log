@@ -1,0 +1,54 @@
+PHD2 version 2.6.11, Log version 2.5. Log enabled at 2024-01-15 22:00:00
+Guiding Begins at 2024-01-15 22:00:05
+Mount = "Test Mount", xAngle = 0.0, xRate = 5.0, yAngle = 1.5708, yRate = 5.0, guiding enabled
+Max RA duration = 2000, Max DEC duration = 2000
+Pixel scale = 1.50 arc-sec/px, Binning = 1
+RA = 5.0 hr, Dec = 30.0 deg, Hour angle = 0.0 hr
+X guide algorithm = Hysteresis, Minimum move = 0.10
+Y guide algorithm = Resist Switch, Minimum move = 0.20
+Frame,Time,mount,dx,dy,RARawDistance,DECRawDistance,RAGuideDistance,DECGuideDistance,RADuration,RADirection,DECDuration,DECDirection,XStep,YStep,StarMass,SNR,ErrorCode,Info
+1,1.000,"Mount",0.10,0.05,0.10,0.05,0.10,0.05,100,W,50,N,,,1500,15.5,0
+2,2.000,"Mount",-0.05,0.10,-0.05,0.10,-0.05,0.10,50,E,100,N,,,1500,15.0,0
+3,3.000,"Mount",0.20,-0.10,0.20,-0.10,0.20,-0.10,200,W,100,S,,,1500,14.5,0
+4,4.000,"Mount",0.05,0.00,0.05,0.00,0.05,0.00,50,W,0,N,,,1500,15.0,0
+5,5.000,"Mount",-0.10,0.05,-0.10,0.05,-0.10,0.05,100,E,50,N,,,1500,15.5,0
+6,6.000,"Mount",0.08,-0.04,0.08,-0.04,0.08,-0.04,80,W,40,N,,,1500,15.5,0
+7,7.000,"Mount",-0.06,0.07,-0.06,0.07,-0.06,0.07,60,E,70,N,,,1500,15.5,0
+8,8.000,"Mount",0.05,-0.02,0.05,-0.02,0.05,-0.02,50,W,20,S,,,1500,15.5,0
+INFO: MountGuidingEnabled = false
+9,9.000,"Mount",-0.20,0.10,-0.20,0.10,0.00,0.00,0,E,0,N,,,1500,15.5,0
+10,10.000,"Mount",-0.30,0.12,-0.30,0.12,0.00,0.00,0,E,0,N,,,1500,15.5,0
+11,11.000,"Mount",-0.40,0.15,-0.40,0.15,0.00,0.00,0,E,0,N,,,1500,15.5,0
+12,12.000,"Mount",-0.50,0.18,-0.50,0.18,0.00,0.00,0,E,0,N,,,1500,15.5,0
+13,13.000,"Mount",-0.60,0.20,-0.60,0.20,0.00,0.00,0,E,0,N,,,1500,15.5,0
+14,14.000,"Mount",-0.70,0.22,-0.70,0.22,0.00,0.00,0,E,0,N,,,1500,15.5,0
+15,15.000,"Mount",-0.80,0.24,-0.80,0.24,0.00,0.00,0,E,0,N,,,1500,15.5,0
+INFO: GA Result - SNR=296.3, Samples=52, Elapsed Time=218s, RA HPF-RMS= 0.10 px (0.15 arc-sec), Dec HPF-RMS= 0.08 px (0.12 arc-sec)
+INFO: GA Result - Recommendation: Reduce RA min-move to 0.05
+INFO: GA Result - Recommendation: Increase Dec min-move to 0.30
+INFO: MountGuidingEnabled = true
+16,16.000,"Mount",-0.05,0.05,-0.05,0.05,0.00,0.00,50,W,50,S,,,1500,15.5,0
+17,17.000,"Mount",0.08,-0.04,0.08,-0.04,0.08,-0.04,80,W,40,N,,,1500,15.5,0
+18,18.000,"Mount",-0.06,0.07,-0.06,0.07,-0.06,0.07,60,E,70,N,,,1500,15.5,0
+19,19.000,"Mount",0.05,-0.02,0.05,-0.02,0.05,-0.02,50,W,20,S,,,1500,15.5,0
+Guiding Ends at 2024-01-15 22:05:30
+
+Guiding Begins at 2024-01-15 22:10:00
+Mount = "Test Mount", xAngle = 0.0, xRate = 5.0, yAngle = 1.5708, yRate = 5.0, guiding enabled
+Max RA duration = 2000, Max DEC duration = 2000
+Pixel scale = 1.50 arc-sec/px, Binning = 1
+RA = 5.0 hr, Dec = 30.0 deg, Hour angle = 0.0 hr
+X guide algorithm = Hysteresis, Minimum move = 0.10
+Y guide algorithm = Resist Switch, Minimum move = 0.20
+Frame,Time,mount,dx,dy,RARawDistance,DECRawDistance,RAGuideDistance,DECGuideDistance,RADuration,RADirection,DECDuration,DECDirection,XStep,YStep,StarMass,SNR,ErrorCode,Info
+1,1.000,"Mount",0.10,0.05,0.10,0.05,0.10,0.05,100,W,50,N,,,1500,15.5,0
+2,2.000,"Mount",-0.05,0.10,-0.05,0.10,-0.05,0.10,50,E,100,N,,,1500,15.0,0
+3,3.000,"Mount",0.20,-0.10,0.20,-0.10,0.20,-0.10,200,W,100,S,,,1500,14.5,0
+4,4.000,"Mount",0.05,0.00,0.05,0.00,0.05,0.00,50,W,0,N,,,1500,15.0,0
+5,5.000,"Mount",-0.10,0.05,-0.10,0.05,-0.10,0.05,100,E,50,N,,,1500,15.5,0
+6,6.000,"Mount",0.08,-0.04,0.08,-0.04,0.08,-0.04,80,W,40,N,,,1500,15.5,0
+7,7.000,"Mount",-0.06,0.07,-0.06,0.07,-0.06,0.07,60,E,70,N,,,1500,15.5,0
+8,8.000,"Mount",0.05,-0.02,0.05,-0.02,0.05,-0.02,50,W,20,S,,,1500,15.5,0
+9,9.000,"Mount",-0.10,0.04,-0.10,0.04,-0.10,0.04,100,E,40,N,,,1500,15.5,0
+10,10.000,"Mount",0.07,-0.03,0.07,-0.03,0.07,-0.03,70,W,30,S,,,1500,15.5,0
+Guiding Ends at 2024-01-15 22:10:30

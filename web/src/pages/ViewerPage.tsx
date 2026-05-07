@@ -79,7 +79,13 @@ export function ViewerPage() {
           {log && (
             <>
               <span className="mx-2 text-slate-700">|</span>
-              <span className="text-slate-400">{meta?.name}</span>
+              {/* Filename can be 30+ chars on real PHD2 logs; the
+                  smaller text-xs + lighter slate-400 keeps it readable
+                  without forcing the header to wrap on narrow viewports.
+                  The full name also lives in the SectionSummary strip. */}
+              <span className="break-all text-xs font-normal text-slate-400" title={meta?.name}>
+                {meta?.name}
+              </span>
               <span className="ms-2 text-xs text-slate-500">{t('phdVersion', { version: log.phdVersion })}</span>
             </>
           )}
