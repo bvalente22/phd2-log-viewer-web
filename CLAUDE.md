@@ -6,7 +6,7 @@ Project-specific operating rules for Claude Code in this repository.
 
 - Single canonical repo: `https://github.com/bvalente22/phd2-log-viewer-web` (set as `origin`).
 - One `.git`, one timeline. The previous setup had a separate `web/.git` subclone that drifted into a parallel timeline; that workflow is retired. Do not reintroduce a nested `.git` under `web/`.
-- The active web app lives under `web/`. The repo root also contains the original C++ desktop sources (`LogViewFrame.cpp`, `AnalysisWin.cpp`, `logparser.cpp`, etc.), `phd2log/`, `sample data/`, and supporting artifacts. They share one history.
+- The web app lives under `web/`. After the 2026-05-07 history scrub, the C++ desktop sources, debian packaging, CMake build infra, and 3rdparty MSVC artifacts are no longer in the repo or its history. `sample data/` is intentionally gitignored.
 
 ## Git workflow — non-negotiable
 
@@ -23,9 +23,23 @@ git checkout -b <branch-name>           # always work on a feature branch
 git push -u origin <branch-name>
 git merge-base --is-ancestor origin/main HEAD || { echo "DIVERGED — stop"; exit 1; }
 gh pr create --title "..." --body "..."
+# verify locally:
+cd web && npx tsc --noEmit && npx vitest run
+# if clean, auto-merge per the policy below:
+gh pr merge <num> --squash --delete-branch
+git checkout main && git pull --ff-only
+# restart dev server if it was running, so the merged change is on screen
 ```
 
-After the user merges the PR on GitHub, `git checkout main && git pull --ff-only` to update local.
+## Auto-merge policy
+
+Claude is the author *and* the only reviewer of every PR in this repo, so requiring explicit per-PR authorization to merge would just make the user a bottleneck. The standing policy is:
+
+- **Coding PRs** — UI changes, refactors, perf work, bug fixes, tests, i18n strings, comments, docs *inside* the web app. Auto-merge as soon as `tsc --noEmit` + `vitest run` are clean. After merge: `git pull --ff-only` on `main`, restart the dev server if it was running, confirm the merged state.
+- **Non-coding PRs that need user eyes** — license / copyright changes, security policy, dependency upgrades, infrastructure / CI / hooks, anything that deletes data, anything that touches `CLAUDE.md` or memory files. **Do NOT auto-merge.** Open the PR, surface the diff, wait.
+- **Rule changes** (force-push, history rewrites, deletes on protected branches) — still need the per-action authorization called out below. The auto-merge policy does not loosen those.
+
+If a PR sits at the boundary between coding and policy ("this also bumps a dep" / "this rewrites a generated file") — surface it, don't auto-merge.
 
 ## Things to never do without explicit user authorization
 
@@ -33,3 +47,4 @@ After the user merges the PR on GitHub, `git checkout main && git pull --ff-only
 - `git push origin --delete main`
 - Anything in the "no history rewrites" list above
 - Deleting branches that have unmerged commits the user may want
+- Merging a PR that touches `CLAUDE.md`, memory files, or licensing
