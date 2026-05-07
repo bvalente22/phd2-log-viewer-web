@@ -44,6 +44,20 @@ interface OpenState {
    */
   yMaxViewPx: number | null;
   /**
+   * Drift chart's current X-axis range (seconds). Tracked here so hover-
+   * induced React re-renders can feed it back into the layout instead of
+   * clobbering the user's pan with the original autorange-derived
+   * `xExtent`. Null = fall back to data-derived default.
+   */
+  driftXRangeView: [number, number] | null;
+  /**
+   * Periodogram's current X-axis range in **log10 space** (Plotly's
+   * native unit for log-scale axes). Tracked for the same reason the
+   * drift X is tracked — hover re-renders must not snap pan back to the
+   * data-derived default. Persists across mode swaps too.
+   */
+  periodXRangeViewLog: [number, number] | null;
+  /**
    * Top-N peaks summary excludes any period above this threshold (seconds).
    * Default 600s — typical PE periods are well below 10 minutes; longer
    * "peaks" are usually drift artifacts that would dominate the summary
@@ -97,6 +111,10 @@ interface Actions {
    * Y axis around. No-op when locked (the lock pins the value).
    */
   resetYZoom: () => void;
+  /** Update the drift chart's tracked X range (seconds). */
+  setDriftXRange: (range: [number, number] | null) => void;
+  /** Update the periodogram's tracked X range (log10 space). */
+  setPeriodXRangeLog: (range: [number, number] | null) => void;
 }
 
 const DEFAULT_MAX_PERIOD_SEC = 600;
@@ -120,6 +138,8 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       scaleMode: initialScaleMode,
       yMaxLockPx: null,
       yMaxViewPx: null,
+      driftXRangeView: null,
+      periodXRangeViewLog: null,
       maxPeriodSec: DEFAULT_MAX_PERIOD_SEC,
     } as OpenState),
   close: () => set({ state: 'closed' } as ClosedState),
@@ -163,5 +183,15 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     if (cur.yMaxLockPx !== null) return;
     if (cur.yMaxViewPx === null) return;
     set({ ...cur, yMaxViewPx: null });
+  },
+  setDriftXRange: (range) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    set({ ...cur, driftXRangeView: range });
+  },
+  setPeriodXRangeLog: (range) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    set({ ...cur, periodXRangeViewLog: range });
   },
 }));

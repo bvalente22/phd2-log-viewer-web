@@ -6,6 +6,7 @@ import Plotly from 'plotly.js/dist/plotly';
 import type { Data, Layout, Shape } from 'plotly.js';
 import type { GARun } from '../parser/analyze';
 import { useChartGestures } from './useChartGestures';
+import { useAnalysisStore } from '../state/analysisStore';
 import { useViewStore } from '../state/viewStore';
 import { themeOf } from '../themes';
 
@@ -45,6 +46,15 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
   const plotId = useId().replace(/:/g, '_');
   const [hover, setHover] = useState<string | null>(null);
   const themeId = useViewStore((s) => s.theme);
+  // X range tracking persists drag-pans across hover-induced re-renders.
+  // Without this, every plotly_hover triggers setHover → React re-render
+  // → Plotly.react sees `xaxis.range = xExtent` (the data-derived
+  // default below) → snaps the user's pan back. Plotly's plotly_relayout
+  // is the canonical source of truth — we mirror it into the store.
+  const driftXRangeView = useAnalysisStore((s) =>
+    s.state === 'open' ? s.driftXRangeView : null,
+  );
+  const setDriftXRange = useAnalysisStore((s) => s.setDriftXRange);
 
   const k = scaleMode === 'ARCSEC' ? garun.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
@@ -114,6 +124,31 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
     void Plotly.relayout(plotId, { shapes: [] });
   }, [plotId]);
 
+  // Capture every Plotly relayout that touches xaxis. Plotly emits the
+  // range in two formats depending on origin:
+  //   - decomposed: 'xaxis.range[0]' / '[1]' (interactive zoom)
+  //   - composed:   'xaxis.range' as [low, high] (programmatic relayout,
+  //     which is what useChartGestures uses)
+  // Handle both so drag-pan lands in the store.
+  const onRelayout = useCallback((ev: Readonly<Record<string, unknown>>) => {
+    let lo: number | undefined;
+    let hi: number | undefined;
+    const x0 = ev['xaxis.range[0]'];
+    const x1 = ev['xaxis.range[1]'];
+    const xrange = ev['xaxis.range'];
+    if (typeof x0 === 'number' && typeof x1 === 'number') {
+      lo = x0; hi = x1;
+    } else if (Array.isArray(xrange) && xrange.length >= 2) {
+      const a = xrange[0]; const b = xrange[1];
+      if (typeof a === 'number' && typeof b === 'number') { lo = a; hi = b; }
+    }
+    if (lo !== undefined && hi !== undefined && Number.isFinite(lo) && Number.isFinite(hi)) {
+      setDriftXRange([lo, hi]);
+    } else if (ev['xaxis.autorange'] === true) {
+      setDriftXRange(null);
+    }
+  }, [setDriftXRange]);
+
   const onHover = useCallback((ev: PlotlyHoverEvent) => {
     const x = ev.points?.[0]?.x;
     const y = ev.points?.[0]?.y;
@@ -133,7 +168,10 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
     font: { color: tc.font, size: 11 },
     xaxis: {
       title: { text: tChart('axes.time') }, gridcolor: tc.grid, zerolinecolor: tc.zeroline,
-      fixedrange: false, range: xExtent,
+      fixedrange: false,
+      // Tracked range wins over the data-derived default. Persists pan
+      // across hover-induced re-renders and across mode swaps.
+      range: driftXRangeView ?? xExtent,
     },
     yaxis: { title: { text: unit }, gridcolor: tc.grid, zerolinecolor: tc.zerolineStrong, zerolinewidth: 1, fixedrange: true, range: yRange },
     showlegend: true,
@@ -154,6 +192,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
           useResizeHandler
           onHover={onHover as never}
           onUnhover={() => { setHover(null); clearCursor(); }}
+          onRelayout={onRelayout as never}
         />
       </div>
       <div className="border-t border-slate-800 bg-slate-900/40 px-3 py-1 font-mono text-[11px] text-slate-300 min-h-[24px]">
