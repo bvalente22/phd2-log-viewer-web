@@ -1,3 +1,8 @@
 tmp
 TAGS
 .playwright-mcp/
+
+# Real PHD2 guide logs used as fixtures during local development. Kept on
+# disk for manual testing but never committed — they're large and
+# user-specific.
+sample data/
