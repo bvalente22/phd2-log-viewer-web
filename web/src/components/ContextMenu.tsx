@@ -92,13 +92,16 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
     const r = range ?? { begin: 0, end: session.entries.length };
     try {
       const garun = analyze(session, { range: r, undoRaCorrections, mask: sessionMask });
-      // For 'all' / 'all-raw-ra' we hand the modal the source params so
-      // it can re-run analyze() when the user clicks the mode tab.
-      // 'unguided' has no in-modal flip equivalent, so we omit `source`.
-      const source = kind === 'unguided'
-        ? undefined
-        : { session, range: r, mask: sessionMask };
-      openAnalysis({ garun, kind, initialScaleMode: scaleModeForAnalysis, source });
+      // Pre-compute the counterpart for the switchable kinds so the
+      // periodogram can render both at once and the mode tabs swap
+      // instantly. analyze() is fast (sub-millisecond on typical
+      // sessions) so the eager second pass is invisible to the user.
+      // 'unguided' has no flipped counterpart.
+      let garunOther: typeof garun | null = null;
+      if (kind === 'all' || kind === 'all-raw-ra') {
+        garunOther = analyze(session, { range: r, undoRaCorrections: !undoRaCorrections, mask: sessionMask });
+      }
+      openAnalysis({ garun, garunOther, kind, initialScaleMode: scaleModeForAnalysis });
     } catch (err) {
       // canAnalyze gates the call site, but stay defensive — if analyze
       // throws (insufficient entries after edge-case filtering), surface

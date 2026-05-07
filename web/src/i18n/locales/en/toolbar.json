@@ -111,7 +111,7 @@
     "resetZoom": "Reset zoom",
     "resetZoomTooltip": "Auto-fit the X and Y axes to the full data range",
     "analysis": "Analysis",
-    "analysisTooltip": "Open the Analysis modal: drift-corrected timeline + FFT periodogram for the included, non-excluded frames in this section. Inside the modal you can switch between 'Selected frames' (residual error after PHD2 corrections) and 'Raw RA' (RA corrections re-added) without leaving the analysis view.",
+    "analysisTooltip": "Open the Analysis modal: drift-corrected timeline + FFT periodogram for the included, non-excluded frames in this section. Inside the modal you can switch between 'Residual error' (what's left after PHD2 corrections) and 'Raw RA' (RA corrections re-added) without leaving the analysis view, and lock the periodogram Y-axis to compare peak amplitudes at the same scale.",
     "analyzeUnguided": "Analyze unguided section",
     "analyzeUnguidedTooltip": "Analyze the unguided window under the cursor (or the first one in the session if you right-clicked elsewhere)"
   }
