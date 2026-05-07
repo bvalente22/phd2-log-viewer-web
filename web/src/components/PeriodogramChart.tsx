@@ -80,6 +80,15 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
   const [hover, setHover] = useState<string | null>(null);
   const themeId = useViewStore((s) => s.theme);
   const setYMaxView = useAnalysisStore((s) => s.setYMaxView);
+  // Periodogram X is log-scale; we track the user's pan in log10 space
+  // (Plotly's native unit for log axes) so re-applies match exactly.
+  // Like the Y-view tracking and the drift X tracking, this prevents
+  // hover-induced React re-renders from snapping the user's pan back
+  // to the data-derived default.
+  const periodXRangeViewLog = useAnalysisStore((s) =>
+    s.state === 'open' ? s.periodXRangeViewLog : null,
+  );
+  const setPeriodXRangeLog = useAnalysisStore((s) => s.setPeriodXRangeLog);
 
   const k = scaleMode === 'ARCSEC' ? garun.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
@@ -218,20 +227,47 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
   // Quiet the unused-variable warning for `unit/k` when scaleMode is PIXELS.
   useEffect(() => { void unit; void k; }, [unit, k]);
 
-  // Capture every y-axis change Plotly emits — autorange settles on
-  // first render, drag-zoom from useChartGestures, scrollZoom on x
-  // (which leaves y alone but still fires), etc. The store ignores
-  // updates while locked. The /k normalization keeps the stored value
-  // in canonical pixel units so it survives ARCSEC ↔ PIXELS toggles.
+  // Capture every Plotly relayout that touches the axes. Plotly emits
+  // ranges in two formats depending on the change source:
+  //   - decomposed: 'yaxis.range[0]' / '[1]' (interactive zoom)
+  //   - composed:   'yaxis.range' as [low, high] (programmatic
+  //     Plotly.relayout — what useChartGestures uses)
+  // Handle both for both axes. The /k normalization keeps Y stored in
+  // canonical pixel units so it survives ARCSEC ↔ PIXELS toggles. X
+  // is in log10 space, no scale factor.
   const onRelayout = useCallback((ev: Readonly<Record<string, unknown>>) => {
+    // Y-axis (max only — periodogram is bottom-anchored at 0)
+    let yMax: number | undefined;
     const yr1 = ev['yaxis.range[1]'];
-    const autorange = ev['yaxis.autorange'];
-    if (typeof yr1 === 'number' && Number.isFinite(yr1) && yr1 > 0) {
-      setYMaxView(yr1 / k);
-    } else if (autorange === true) {
+    const yrange = ev['yaxis.range'];
+    if (typeof yr1 === 'number') {
+      yMax = yr1;
+    } else if (Array.isArray(yrange) && yrange.length >= 2 && typeof yrange[1] === 'number') {
+      yMax = yrange[1];
+    }
+    if (yMax !== undefined && Number.isFinite(yMax) && yMax > 0) {
+      setYMaxView(yMax / k);
+    } else if (ev['yaxis.autorange'] === true) {
       setYMaxView(null);
     }
-  }, [k, setYMaxView]);
+    // X-axis (full range, log10 space)
+    let xLo: number | undefined;
+    let xHi: number | undefined;
+    const x0 = ev['xaxis.range[0]'];
+    const x1 = ev['xaxis.range[1]'];
+    const xrange = ev['xaxis.range'];
+    if (typeof x0 === 'number' && typeof x1 === 'number') {
+      xLo = x0; xHi = x1;
+    } else if (Array.isArray(xrange) && xrange.length >= 2) {
+      const a = xrange[0]; const b = xrange[1];
+      if (typeof a === 'number' && typeof b === 'number') { xLo = a; xHi = b; }
+    }
+    if (xLo !== undefined && xHi !== undefined && Number.isFinite(xLo) && Number.isFinite(xHi)) {
+      setPeriodXRangeLog([xLo, xHi]);
+    } else if (ev['xaxis.autorange'] === true) {
+      setPeriodXRangeLog(null);
+    }
+  }, [k, setYMaxView, setPeriodXRangeLog]);
 
   const tc = themeOf(themeId).plot;
   // Y-axis range source priority:
@@ -254,7 +290,11 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     font: { color: tc.font, size: 11 },
     xaxis: {
       title: { text: tChart('axes.period') }, gridcolor: tc.grid, zerolinecolor: tc.zeroline,
-      type: 'log', range: xLogRange, fixedrange: false,
+      type: 'log',
+      // Tracked range wins over the data-derived default. Persists
+      // pan across hover-induced re-renders and across mode swaps.
+      range: periodXRangeViewLog ?? xLogRange,
+      fixedrange: false,
     },
     yaxis: {
       title: { text: unit === '″' ? tChart('axes.amplitudeArcsec') : tChart('axes.amplitudePixels') },
