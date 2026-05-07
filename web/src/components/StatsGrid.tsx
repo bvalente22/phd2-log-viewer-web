@@ -34,10 +34,13 @@ export function StatsGrid() {
   // RMS comes first in the Total row so the combined RMS lines up
   // visually with the per-axis RMS values that lead the RA / Dec rows
   // — the headline guiding metric reads top-to-bottom in a single
-  // column. duration / included / excluded / pae trail it in the
-  // same order they had before.
+  // column. The cell label uses the bare "RMS" key (same width as the
+  // RA / Dec rows) so the values themselves land in the same column;
+  // the row label "Total" already provides the disambiguation.
+  // duration / included / excluded / pae trail behind in their
+  // previous order.
   const common: [string, string][] = [
-    [t('guide.rmsTotal'), v(s.rmsTotal)],
+    [t('guide.rms'), v(s.rmsTotal)],
     [t('guide.duration'), `${fmtRoundedInt(s.durationSec)} ${t('guide.secondsSuffix')}`],
     [t('guide.included'), fmtInteger(s.includedCount)],
     [t('guide.excluded'), fmtInteger(s.excludedCount)],
