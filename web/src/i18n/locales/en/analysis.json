@@ -1,14 +1,21 @@
 {
-  "label": "Analysis",
-  "labelTooltip": "You are in the Analysis modal — click 'Close' or press Esc to return",
+  "label": "ANALYSIS",
+  "labelTooltip": "Active analysis mode: {{mode}}. Click 'Close' or press Esc to return to the chart.",
   "close": "Close",
   "closeTooltip": "Close the analysis view (Esc)",
   "esc": "Esc",
-  "titleTooltip": "Source range and analysis mode for this run",
+  "titleTooltip": "Source range covered by this analysis run",
   "title": {
-    "unguided": "unguided section · frames {{begin}}-{{end}}",
-    "rawRa": "RA corrections removed · {{frames}} frames · {{start}} — {{end}}",
+    "unguided": "frames {{begin}}-{{end}}",
     "default": "{{frames}} frames · {{start}} — {{end}}"
+  },
+  "mode": {
+    "selected": "Selected frames",
+    "rawRa": "Raw RA",
+    "unguided": "Unguided section",
+    "tabsLabel": "Analysis mode",
+    "selectedTooltip": "Analyze every included, non-excluded frame as recorded — RA / Dec are the residual error after PHD2's corrections.",
+    "rawRaTooltip": "Same range, but with PHD2's RA correction pulses re-added to the raw error. Shows what tracking would have looked like unguided in RA, while Dec keeps its corrections."
   },
   "show": "show",
   "showTooltip": "Toggle individual drift traces",

@@ -110,10 +110,8 @@
     "resetSectionTooltip": "Reset this section's exclusions to its loaded state",
     "resetZoom": "Reset zoom",
     "resetZoomTooltip": "Auto-fit the X and Y axes to the full data range",
-    "analyzeSelected": "Analyze selected frames",
-    "analyzeSelectedTooltip": "Analyze every included, non-excluded frame: drift-corrected timeline + FFT periodogram",
-    "analyzeRawRa": "Analyze selected, raw RA",
-    "analyzeRawRaTooltip": "Same range, but with RA corrections re-added — shows what tracking would have looked like unguided",
+    "analysis": "Analysis",
+    "analysisTooltip": "Open the Analysis modal: drift-corrected timeline + FFT periodogram for the included, non-excluded frames in this section. Inside the modal you can switch between 'Selected frames' (residual error after PHD2 corrections) and 'Raw RA' (RA corrections re-added) without leaving the analysis view.",
     "analyzeUnguided": "Analyze unguided section",
     "analyzeUnguidedTooltip": "Analyze the unguided window under the cursor (or the first one in the session if you right-clicked elsewhere)"
   }
