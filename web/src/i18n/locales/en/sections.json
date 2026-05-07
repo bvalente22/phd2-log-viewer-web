@@ -9,6 +9,7 @@
     "calibrationTooltip": "Calibration · {{date}} · {{count}} steps",
     "guideIconTooltip": "Guide session",
     "calibrationIconTooltip": "Calibration section",
+    "gaTooltip": "Guiding Assistant ran during this session — open the section to see its recommendations.",
     "selectGuiding": "Select a guiding section."
   },
   "header": {

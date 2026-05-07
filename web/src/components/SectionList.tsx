@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
 import { fmtInteger, fmtRoundedInt } from '../i18n/format';
+import { extractGAResults } from '../parser/gaResults';
 
 const GuideIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -36,6 +37,7 @@ export function SectionList() {
     <ul>
       {log.sections.map((sec, i) => {
         const isCal = sec.type === 'CALIBRATION';
+        const session = isCal ? null : log.sessions[sec.idx];
         const item = isCal ? log.calibrations[sec.idx] : log.sessions[sec.idx];
         const label = isCal
           ? t('list.calLabel', { date: item.date })
@@ -47,31 +49,56 @@ export function SectionList() {
               seconds: fmtRoundedInt(log.sessions[sec.idx].duration),
             });
         const isSelected = selected === i;
-        const tip = isCal
+        // GA badge: a session counts as having a Guiding Assistant run
+        // when extractGAResults returns at least one recommendation/metric
+        // run. Calibration sections never have GA (PHD2 only emits GA
+        // events during guiding sessions).
+        const hasGa = session ? extractGAResults(session).length > 0 : false;
+        const baseTip = isCal
           ? t('list.calibrationTooltip', { date: item.date, count: fmtInteger(log.calibrations[sec.idx].entries.length) })
           : t('list.guideSessionTooltip', {
               date: item.date,
               frames: fmtInteger(log.sessions[sec.idx].entries.length),
               seconds: fmtRoundedInt(log.sessions[sec.idx].duration),
             });
+        const tip = hasGa ? `${baseTip} · ${t('list.gaTooltip')}` : baseTip;
         return (
           <li key={i}>
             <button
-              className={`flex w-full items-center gap-3 px-3 py-2 text-start text-sm hover:bg-slate-800 ${
+              // Full label is allowed to wrap onto a second line so the
+              // user can read "Guide · 2024-01-15 22:05:00" complete in
+              // a 260px-wide sidebar instead of getting truncated. Sub-
+              // line stays compact.
+              className={`flex w-full items-start gap-2 px-3 py-1.5 text-start text-xs hover:bg-slate-800 ${
                 isSelected ? 'bg-slate-800 text-sky-300' : 'text-slate-200'
               }`}
               onClick={() => select(i)}
               title={tip}
             >
               <span
-                className={isCal ? 'text-amber-400' : 'text-sky-400'}
+                className={`mt-0.5 flex-shrink-0 ${isCal ? 'text-amber-400' : 'text-sky-400'}`}
                 title={isCal ? t('list.calibrationIconTooltip') : t('list.guideIconTooltip')}
               >
                 {isCal ? <CalibrationIcon /> : <GuideIcon />}
               </span>
               <span className="flex-1 min-w-0">
-                <div className="truncate font-medium">{label}</div>
-                <div className="truncate text-xs text-slate-400">{sub}</div>
+                <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                  <span className="break-words font-normal">{label}</span>
+                  {hasGa && (
+                    <span
+                      // Bordered "GA" pill — small but high-contrast so it
+                      // reads at a glance. Amber to match the analysis-
+                      // modal banner where the user opens the GA panel.
+                      // text-[9px] keeps it on the same line as the label
+                      // without overpowering it.
+                      className="inline-flex items-center rounded border border-amber-500/70 bg-amber-500/15 px-1 py-0 text-[9px] font-semibold uppercase leading-tight tracking-wide text-amber-300"
+                      title={t('list.gaTooltip')}
+                    >
+                      GA
+                    </span>
+                  )}
+                </span>
+                <span className="block text-[10px] font-normal text-slate-400">{sub}</span>
               </span>
             </button>
           </li>
