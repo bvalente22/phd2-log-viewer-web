@@ -25,15 +25,24 @@ interface OpenState {
   scaleMode: 'PIXELS' | 'ARCSEC';
   /**
    * Periodogram Y-axis lock value, in raw pixel-amplitude units (the same
-   * units `GARun.fftAmplitude` is stored in). Null = unlocked, periodogram
-   * uses Plotly autorange. Number = locked at this max so subsequent
-   * data swaps (mode switch via the tabs, ARCSEC ↔ PIXELS rescale) keep
-   * the same Y range — the lock is *the* mechanism for comparing peak
-   * amplitudes across modes at the same scale. Stored in pixel units so
-   * we can apply the active scale factor at render time without losing
-   * precision.
+   * units `GARun.fftAmplitude` is stored in). Null = unlocked. Number =
+   * locked at this max — the chart pins its Y range to [0, yMaxLockPx*k]
+   * regardless of mode swaps or ARCSEC↔PIXELS rescales. Stored in pixel
+   * units so we can apply the active scale factor at render time without
+   * losing precision.
    */
   yMaxLockPx: number | null;
+  /**
+   * The current rendered Y-axis max, in raw pixel-amplitude units. Tracks
+   * whatever Plotly is showing — autorange's chosen max on first settle,
+   * the user's drag-zoom value after a manual gesture, etc. Persisted in
+   * the store (rather than left to Plotly's internal state) so mode swaps
+   * via the tabs don't reset to autorange — the user's zoom carries
+   * across the swap, which is the whole point of the comparison view.
+   * When `yMaxLockPx` is non-null, the lock takes precedence and updates
+   * to this field are ignored.
+   */
+  yMaxViewPx: number | null;
   /**
    * Top-N peaks summary excludes any period above this threshold (seconds).
    * Default 600s — typical PE periods are well below 10 minutes; longer
@@ -68,11 +77,26 @@ interface Actions {
   setKind: (kind: AnalysisKind) => void;
   /**
    * Toggle the periodogram Y-axis lock. Pass the current observed max
-   * amplitude (in pixel units, across both visible traces) when turning
-   * the lock ON; the value is ignored when the lock is currently ON
-   * (next call clears it).
+   * amplitude (in pixel units, across both visible traces) as a fallback
+   * — used only when the user toggles ON without ever having interacted
+   * with the chart, in which case `yMaxViewPx` is null and we fall back
+   * to the data max.
    */
-  toggleYLock: (currentMaxPx: number) => void;
+  toggleYLock: (fallbackMaxPx: number) => void;
+  /**
+   * Capture the current rendered Y-axis max into `yMaxViewPx`. Called
+   * by the periodogram on every plotly_relayout that touches the y range
+   * (autorange settles, drag-zoom from useChartGestures, etc.). No-op
+   * when `yMaxLockPx` is non-null — the lock pins the value and we don't
+   * want autorange or stray events to overwrite the locked zoom.
+   */
+  setYMaxView: (maxPx: number | null) => void;
+  /**
+   * Drop the user's manual zoom and return the periodogram to autorange.
+   * Useful as a "reset zoom" affordance once the user has dragged the
+   * Y axis around. No-op when locked (the lock pins the value).
+   */
+  resetYZoom: () => void;
 }
 
 const DEFAULT_MAX_PERIOD_SEC = 600;
@@ -95,6 +119,7 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       showDec: true,
       scaleMode: initialScaleMode,
       yMaxLockPx: null,
+      yMaxViewPx: null,
       maxPeriodSec: DEFAULT_MAX_PERIOD_SEC,
     } as OpenState),
   close: () => set({ state: 'closed' } as ClosedState),
@@ -111,9 +136,32 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     // The precomputed counterpart IS the requested kind's garun.
     set({ ...cur, garun: cur.garunOther, garunOther: cur.garun, kind });
   },
-  toggleYLock: (currentMaxPx) => {
+  toggleYLock: (fallbackMaxPx) => {
     const cur = get();
     if (cur.state !== 'open') return;
-    set({ ...cur, yMaxLockPx: cur.yMaxLockPx === null ? currentMaxPx : null });
+    if (cur.yMaxLockPx !== null) {
+      // Already locked → release. Leave yMaxViewPx alone so the chart
+      // returns to whatever the user was zoomed to before the lock.
+      set({ ...cur, yMaxLockPx: null });
+    } else {
+      // Lock at the user's current zoom if known, otherwise at the data
+      // max passed in by the modal. Either gives the user a stable
+      // baseline for cross-mode comparison.
+      set({ ...cur, yMaxLockPx: cur.yMaxViewPx ?? fallbackMaxPx });
+    }
+  },
+  setYMaxView: (maxPx) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (cur.yMaxLockPx !== null) return; // lock pins the value; ignore.
+    if (cur.yMaxViewPx === maxPx) return; // no-op
+    set({ ...cur, yMaxViewPx: maxPx });
+  },
+  resetYZoom: () => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (cur.yMaxLockPx !== null) return;
+    if (cur.yMaxViewPx === null) return;
+    set({ ...cur, yMaxViewPx: null });
   },
 }));

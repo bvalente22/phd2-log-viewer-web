@@ -5,7 +5,7 @@ import Plot from 'react-plotly.js';
 import Plotly from 'plotly.js/dist/plotly';
 import type { Data, Layout, Shape } from 'plotly.js';
 import type { GARun } from '../parser/analyze';
-import type { AnalysisKind } from '../state/analysisStore';
+import { useAnalysisStore, type AnalysisKind } from '../state/analysisStore';
 import { useChartGestures } from './useChartGestures';
 import { useViewStore } from '../state/viewStore';
 import { themeOf } from '../themes';
@@ -35,10 +35,14 @@ interface PeriodogramChartProps {
   garunOther: GARun | null;
   kind: AnalysisKind;
   scaleMode: 'PIXELS' | 'ARCSEC';
-  /** When non-null, the periodogram Y-axis is fixed at [0, yMaxLockPx*k*1.05]
+  /** When non-null, the periodogram Y-axis is fixed at [0, yMaxLockPx*k]
    *  in display units. The store records the lock value in raw pixel units
    *  so toggling between ARCSEC ↔ PIXELS doesn't shift the visible range. */
   yMaxLockPx: number | null;
+  /** Current rendered Y-axis max (raw pixel units), driven by user
+   *  gestures and persisted in the analysisStore so mode swaps don't
+   *  reset the zoom. Null = fall back to Plotly autorange. */
+  yMaxViewPx: number | null;
 }
 
 /** Pick the per-kind color for a periodogram trace. */
@@ -69,12 +73,13 @@ const otherKindOf = (kind: AnalysisKind): AnalysisKind | null => {
  * can compare residual-error vs raw-RA peaks at the same scale.
  * Hover snap-to-peak still operates on the active trace only.
  */
-export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockPx }: PeriodogramChartProps) {
+export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockPx, yMaxViewPx }: PeriodogramChartProps) {
   const { t } = useTranslation('analysis');
   const { t: tChart } = useTranslation('chart');
   const plotId = useId().replace(/:/g, '_');
   const [hover, setHover] = useState<string | null>(null);
   const themeId = useViewStore((s) => s.theme);
+  const setYMaxView = useAnalysisStore((s) => s.setYMaxView);
 
   const k = scaleMode === 'ARCSEC' ? garun.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
@@ -130,7 +135,17 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     return [Math.log10(min), Math.log10(max)];
   }, [garun]);
 
-  useChartGestures(plotId, {}, { enableModifierSelect: false });
+  useChartGestures(plotId, {}, {
+    enableModifierSelect: false,
+    // Periodogram amplitude is always >= 0 — bottom-anchored zoom
+    // keeps y0 at 0 and scales only the upper bound, which matches the
+    // user's mental model ("zoom into the peaks, leave the baseline").
+    yZoomAnchor: 'bottom',
+    // When the lock is on, drag must not move the Y axis; X pan still
+    // works. Without this gate, drag would issue a Plotly.relayout that
+    // briefly fights the locked range until the next React re-render.
+    disableYZoom: yMaxLockPx !== null,
+  });
 
   /**
    * Find the closest local-max peak in the periodogram within ±PEAK_PX of the
@@ -203,15 +218,33 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
   // Quiet the unused-variable warning for `unit/k` when scaleMode is PIXELS.
   useEffect(() => { void unit; void k; }, [unit, k]);
 
+  // Capture every y-axis change Plotly emits — autorange settles on
+  // first render, drag-zoom from useChartGestures, scrollZoom on x
+  // (which leaves y alone but still fires), etc. The store ignores
+  // updates while locked. The /k normalization keeps the stored value
+  // in canonical pixel units so it survives ARCSEC ↔ PIXELS toggles.
+  const onRelayout = useCallback((ev: Readonly<Record<string, unknown>>) => {
+    const yr1 = ev['yaxis.range[1]'];
+    const autorange = ev['yaxis.autorange'];
+    if (typeof yr1 === 'number' && Number.isFinite(yr1) && yr1 > 0) {
+      setYMaxView(yr1 / k);
+    } else if (autorange === true) {
+      setYMaxView(null);
+    }
+  }, [k, setYMaxView]);
+
   const tc = themeOf(themeId).plot;
-  // Y-axis: lock-aware. When yMaxLockPx is set, fix the range to the
-  // locked max scaled into display units (with 5% headroom so peaks
-  // don't kiss the top edge). Otherwise let Plotly autorange.
-  const yAxisCfg: Partial<Layout['yaxis']> = yMaxLockPx !== null
-    ? {
-        range: [0, yMaxLockPx * k * 1.05],
-        autorange: false,
-      }
+  // Y-axis range source priority:
+  //   1. yMaxLockPx (explicit user lock — pin it, no headroom needed,
+  //      the value already came from a real rendered max).
+  //   2. yMaxViewPx (most recent rendered max, captured via
+  //      onRelayout above — preserves drag-zoom across mode swaps).
+  //   3. autorange (first-paint fallback before any relayout fires).
+  // Both lock and view are stored in raw pixel units, so we apply the
+  // active scale factor here.
+  const yMaxApplied = yMaxLockPx ?? yMaxViewPx;
+  const yAxisCfg: Partial<Layout['yaxis']> = yMaxApplied !== null
+    ? { range: [0, yMaxApplied * k], autorange: false }
     : { autorange: true };
   const layout: Partial<Layout> = {
     autosize: true,
@@ -227,6 +260,10 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       title: { text: unit === '″' ? tChart('axes.amplitudeArcsec') : tChart('axes.amplitudePixels') },
       gridcolor: tc.grid, zerolinecolor: tc.zeroline,
       ...yAxisCfg,
+      // fixedrange disables ALL Plotly-native Y interactions (scroll,
+      // pinch). Drag-Y is provided by useChartGestures with bottom
+      // anchor; when the user locks, we additionally pass disableYZoom
+      // so even that gesture is gated.
       fixedrange: true,
     },
     showlegend: !!garunOther, // legend is meaningful when comparing two traces
@@ -250,6 +287,7 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
           useResizeHandler
           onHover={onHover as never}
           onUnhover={() => { setHover(null); clearCursor(); }}
+          onRelayout={onRelayout as never}
         />
       </div>
       <div className="border-t border-slate-800 bg-slate-900/40 px-3 py-1 font-mono text-[11px] text-slate-300 min-h-[24px] whitespace-pre-wrap">
