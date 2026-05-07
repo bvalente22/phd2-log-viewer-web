@@ -17,6 +17,10 @@
     "tooltip": "Click to expand the full header captured by PHD2 for this section (equipment, mount, algorithms, target coords)",
     "linesCount": "{{count}} lines"
   },
+  "summary": {
+    "position": "({{index}} of {{total}})",
+    "tooltip": "Active log: {{filename}}  ·  Active section: {{label}}"
+  },
   "recents": {
     "title": "Recent",
     "remove": "Remove",
