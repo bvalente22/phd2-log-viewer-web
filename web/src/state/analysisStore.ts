@@ -1,15 +1,32 @@
 import { create } from 'zustand';
 import type { GARun } from '../parser/analyze';
+import { analyzeSpikes, type SpikeAxis, type SpikeRun } from '../parser/spikeAnalysis';
+import type { GuideSession } from '../parser/types';
 
-export type AnalysisKind = 'all' | 'all-raw-ra' | 'unguided';
+export type AnalysisKind = 'all' | 'all-raw-ra' | 'unguided' | 'spike';
 
 interface ClosedState {
   state: 'closed';
 }
 
+/**
+ * Source params kept around for spike-mode recompute. The k slider and
+ * RA/Dec axis switch both need to re-run analyzeSpikes on the same
+ * underlying data, so we hold the session ref + range + mask. Lazy-
+ * filled when the user enters spike mode for the first time so we don't
+ * pay the analyze cost for users who never open the spike tab.
+ */
+interface SpikeSource {
+  session: GuideSession;
+  range: { begin: number; end: number };
+  mask: Uint8Array | undefined;
+}
+
 interface OpenState {
   state: 'open';
-  /** The active mode's analysis result. */
+  /** The active mode's GA-style analysis result. Stays populated even
+   *  while spike mode is active so a subsequent return to residual /
+   *  raw-RA doesn't pay a re-compute. */
   garun: GARun;
   /**
    * The other switchable mode's analysis result, kept around so the
@@ -64,6 +81,24 @@ interface OpenState {
    * if not filtered.
    */
   maxPeriodSec: number;
+  /**
+   * Spike Analysis state. Populated lazily when the user first switches
+   * to kind='spike'. The source ref is kept so the k slider and RA/Dec
+   * axis switch can re-run analyzeSpikes against the same data.
+   */
+  spikeSource: SpikeSource | null;
+  spikeRun: SpikeRun | null;
+  /** Active axis for spike analysis. */
+  spikeAxis: SpikeAxis;
+  /** Sigma multiplier (k). UI exposes a slider over [1, 6]. */
+  spikeK: number;
+  /**
+   * Optional minimum-period filter for the top-3 spike periods list,
+   * in seconds. Useful for excluding PHD2's algorithmic-echo peak (~10-
+   * 20s) so the user-facing top-3 surfaces only meaningful periodic
+   * behavior. Null = no filter.
+   */
+  spikeMinPeriodSec: number | null;
 }
 
 type AnalysisStateUnion = ClosedState | OpenState;
@@ -76,6 +111,10 @@ interface Actions {
     garunOther?: GARun | null;
     kind: AnalysisKind;
     initialScaleMode: 'PIXELS' | 'ARCSEC';
+    /** Source params for the spike recompute path. Required to enable
+     *  the spike tab; optional to allow callers (e.g. unguided runs) to
+     *  open the modal without spike support. */
+    spikeSource?: SpikeSource;
   }) => void;
   close: () => void;
   setShowRa: (b: boolean) => void;
@@ -83,10 +122,10 @@ interface Actions {
   setScaleMode: (m: 'PIXELS' | 'ARCSEC') => void;
   setMaxPeriodSec: (s: number) => void;
   /**
-   * Switch between 'all' and 'all-raw-ra'. Swaps the active garun with
-   * the precomputed counterpart — instant, no re-run. No-ops when
-   * `garunOther` is null (e.g. unguided runs) or the requested kind
-   * matches the current one.
+   * Switch between any two modes. 'all' ↔ 'all-raw-ra' swaps the
+   * precomputed garun pair; switching INTO 'spike' lazily computes the
+   * SpikeRun (or reuses an existing one). Switching back to 'all' from
+   * 'spike' is a free state change — the GA garun stays around.
    */
   setKind: (kind: AnalysisKind) => void;
   /**
@@ -115,9 +154,17 @@ interface Actions {
   setDriftXRange: (range: [number, number] | null) => void;
   /** Update the periodogram's tracked X range (log10 space). */
   setPeriodXRangeLog: (range: [number, number] | null) => void;
+  /** Switch which axis spike analysis is computed against. Triggers a
+   *  re-run of analyzeSpikes against the saved source. */
+  setSpikeAxis: (axis: SpikeAxis) => void;
+  /** Update the sigma multiplier and re-run analyzeSpikes. */
+  setSpikeK: (k: number) => void;
+  /** Optional minimum-period filter for the top-3 list. Null clears it. */
+  setSpikeMinPeriod: (sec: number | null) => void;
 }
 
 const DEFAULT_MAX_PERIOD_SEC = 600;
+const DEFAULT_SPIKE_K = 3;
 
 /**
  * Tracks whether the Analysis modal is open and what GARun result it's
@@ -127,7 +174,7 @@ const DEFAULT_MAX_PERIOD_SEC = 600;
  */
 export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) => ({
   state: 'closed',
-  open: ({ garun, garunOther, kind, initialScaleMode }) =>
+  open: ({ garun, garunOther, kind, initialScaleMode, spikeSource }) =>
     set({
       state: 'open',
       garun,
@@ -141,6 +188,11 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       driftXRangeView: null,
       periodXRangeViewLog: null,
       maxPeriodSec: DEFAULT_MAX_PERIOD_SEC,
+      spikeSource: spikeSource ?? null,
+      spikeRun: null,
+      spikeAxis: 'ra',
+      spikeK: DEFAULT_SPIKE_K,
+      spikeMinPeriodSec: null,
     } as OpenState),
   close: () => set({ state: 'closed' } as ClosedState),
   setShowRa: (b) => set((s) => (s.state === 'open' ? { ...s, showRa: b } : s)),
@@ -151,10 +203,45 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     const cur = get();
     if (cur.state !== 'open') return;
     if (cur.kind === kind) return;
-    if (!cur.garunOther) return;
-    if (kind !== 'all' && kind !== 'all-raw-ra') return;
-    // The precomputed counterpart IS the requested kind's garun.
-    set({ ...cur, garun: cur.garunOther, garunOther: cur.garun, kind });
+    // 'all' ↔ 'all-raw-ra': O(1) swap of the precomputed garun pair.
+    if (kind === 'all' || kind === 'all-raw-ra') {
+      if (!cur.garunOther) return;
+      // Only swap if the requested kind is the counterpart; otherwise the
+      // garun fields would get out of sync with `kind`.
+      const swapEligible = (cur.kind === 'all' && kind === 'all-raw-ra')
+        || (cur.kind === 'all-raw-ra' && kind === 'all');
+      if (!swapEligible) {
+        // From 'spike' or 'unguided' back to a precomputed kind — only
+        // valid if the existing garun matches the requested kind. Compare
+        // by undoRaCorrections flag.
+        if (kind === 'all' && cur.garun.undoRaCorrections === false) {
+          set({ ...cur, kind });
+        } else if (kind === 'all-raw-ra' && cur.garun.undoRaCorrections === true) {
+          set({ ...cur, kind });
+        } else if (cur.garunOther && (
+          (kind === 'all' && cur.garunOther.undoRaCorrections === false)
+          || (kind === 'all-raw-ra' && cur.garunOther.undoRaCorrections === true)
+        )) {
+          set({ ...cur, garun: cur.garunOther, garunOther: cur.garun, kind });
+        }
+        return;
+      }
+      set({ ...cur, garun: cur.garunOther, garunOther: cur.garun, kind });
+      return;
+    }
+    // 'spike': lazily compute SpikeRun if not already cached.
+    if (kind === 'spike') {
+      if (!cur.spikeSource) return; // caller didn't provide source
+      const run = analyzeSpikes(cur.spikeSource.session, {
+        range: cur.spikeSource.range,
+        mask: cur.spikeSource.mask,
+        axis: cur.spikeAxis,
+        k: cur.spikeK,
+      });
+      set({ ...cur, kind, spikeRun: run });
+      return;
+    }
+    // 'unguided' isn't reachable from setKind — it's set at open() time.
   },
   toggleYLock: (fallbackMaxPx) => {
     const cur = get();
@@ -193,5 +280,44 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     const cur = get();
     if (cur.state !== 'open') return;
     set({ ...cur, periodXRangeViewLog: range });
+  },
+  setSpikeAxis: (axis) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (cur.spikeAxis === axis) return;
+    if (!cur.spikeSource) {
+      set({ ...cur, spikeAxis: axis });
+      return;
+    }
+    const run = analyzeSpikes(cur.spikeSource.session, {
+      range: cur.spikeSource.range,
+      mask: cur.spikeSource.mask,
+      axis,
+      k: cur.spikeK,
+    });
+    // Reset Y-axis tracking on axis flip — the value scale (RA vs Dec)
+    // can differ wildly and the previous zoom would be meaningless.
+    set({ ...cur, spikeAxis: axis, spikeRun: run, yMaxLockPx: null, yMaxViewPx: null, periodXRangeViewLog: null });
+  },
+  setSpikeK: (k) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (cur.spikeK === k) return;
+    if (!cur.spikeSource) {
+      set({ ...cur, spikeK: k });
+      return;
+    }
+    const run = analyzeSpikes(cur.spikeSource.session, {
+      range: cur.spikeSource.range,
+      mask: cur.spikeSource.mask,
+      axis: cur.spikeAxis,
+      k,
+    });
+    set({ ...cur, spikeK: k, spikeRun: run });
+  },
+  setSpikeMinPeriod: (sec) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    set({ ...cur, spikeMinPeriodSec: sec });
   },
 }));
