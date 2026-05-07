@@ -131,6 +131,37 @@ const valuePair = (
   return { x: -e.dx, y: -e.dy };
 };
 
+/**
+ * Pack a per-frame pulse series into a single scattergl line trace where
+ * each pulse is a vertical segment from (t, 0) to (t, topY), separated
+ * from its neighbors by `null` entries that break the line.
+ *
+ * Why this shape: the older `type: 'bar'` rendering was the dominant
+ * cost during drag-zoom on multi-thousand-point logs — every relayout
+ * re-emitted thousands of SVG `<rect>` elements. A single scattergl
+ * trace is GPU-rasterized in one draw call, so render cost is decoupled
+ * from N. We duplicate the raw signed `radur` / `decdur` value at both
+ * endpoints so the hover tooltip shows the same number wherever the
+ * cursor lands on a bar.
+ */
+function buildPulseSegments(
+  ts: number[],
+  topYs: number[],
+  rawValues: number[],
+): { x: (number | null)[]; y: (number | null)[]; customdata: (number | null)[] } {
+  const N = ts.length;
+  const x: (number | null)[] = new Array(N * 3);
+  const y: (number | null)[] = new Array(N * 3);
+  const customdata: (number | null)[] = new Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const j = i * 3;
+    x[j]     = ts[i];      y[j]     = 0;          customdata[j]     = rawValues[i];
+    x[j + 1] = ts[i];      y[j + 1] = topYs[i];   customdata[j + 1] = rawValues[i];
+    x[j + 2] = null;       y[j + 2] = null;       customdata[j + 2] = null;
+  }
+  return { x, y, customdata };
+}
+
 function buildTraces(
   s: GuideSession,
   traces: Traces,
@@ -213,14 +244,26 @@ function buildTraces(
     // user invert the bar direction when their calibration polarity
     // doesn't match this convention; the customdata stays unsigned-from-
     // log so the tooltip readout is still authoritative.
+    //
+    // Rendering: scattergl line segments from (t, 0) → (t, sign*v*scale),
+    // separated by nulls. WebGL-rasterized; was `type: 'bar'` (SVG) until
+    // 2026-05-07 — bars were the dominant cost during drag-zoom because
+    // every relayout re-emitted thousands of <rect> elements. See
+    // buildPulseSegments above.
     const raSign = flipRaPulses ? 1 : -1;
+    const raRaw = visibleEntries.map((e) => e.radur);
+    const raTop = raRaw.map((v) => raSign * v * pulseScale);
+    const raSegs = buildPulseSegments(t, raTop, raRaw);
     out.push({
-      x: t,
-      y: visibleEntries.map((e) => raSign * e.radur * pulseScale),
-      customdata: visibleEntries.map((e) => e.radur),
-      type: 'bar',
+      x: raSegs.x,
+      y: raSegs.y,
+      customdata: raSegs.customdata,
+      type: 'scattergl',
+      mode: 'lines',
       name: 'RA pulse',
-      marker: { color: PULSE_RA, opacity: 0.55 },
+      line: { color: PULSE_RA, width: 2 },
+      opacity: 0.55,
+      connectgaps: false,
       hovertemplate: 'RA pulse: %{customdata} ms<extra></extra>',
     } as Data);
   }
@@ -235,14 +278,23 @@ function buildTraces(
     // the historical `-decraw` negation in valuePair (see comment there).
     // `flipDecPulses` inverts that sign for mounts whose calibration
     // polarity makes North-correction commands read as below-zero bars.
+    //
+    // Rendering note same as RA pulses above: scattergl line segments
+    // (WebGL) replaced the SVG bars on 2026-05-07 for drag perf.
     const decSign = flipDecPulses ? -1 : 1;
+    const decRaw = visibleEntries.map((e) => e.decdur);
+    const decTop = decRaw.map((v) => decSign * v * pulseScale);
+    const decSegs = buildPulseSegments(t, decTop, decRaw);
     out.push({
-      x: t,
-      y: visibleEntries.map((e) => decSign * e.decdur * pulseScale),
-      customdata: visibleEntries.map((e) => e.decdur),
-      type: 'bar',
+      x: decSegs.x,
+      y: decSegs.y,
+      customdata: decSegs.customdata,
+      type: 'scattergl',
+      mode: 'lines',
       name: 'Dec pulse',
-      marker: { color: PULSE_DEC, opacity: 0.55 },
+      line: { color: PULSE_DEC, width: 2 },
+      opacity: 0.55,
+      connectgaps: false,
       hovertemplate: 'Dec pulse: %{customdata} ms<extra></extra>',
     } as Data);
   }
