@@ -31,11 +31,16 @@ export function StatsGrid() {
   const v = (px: number) => `${fmt(arcsec ? px * k : px)} ${unit}`;
   const drift = (px: number) => `${fmt(arcsec ? px * k : px)} ${unit}${t('guide.perMinSuffix')}`;
 
+  // RMS comes first in the Total row so the combined RMS lines up
+  // visually with the per-axis RMS values that lead the RA / Dec rows
+  // — the headline guiding metric reads top-to-bottom in a single
+  // column. duration / included / excluded / pae trail it in the
+  // same order they had before.
   const common: [string, string][] = [
+    [t('guide.rmsTotal'), v(s.rmsTotal)],
     [t('guide.duration'), `${fmtRoundedInt(s.durationSec)} ${t('guide.secondsSuffix')}`],
     [t('guide.included'), fmtInteger(s.includedCount)],
     [t('guide.excluded'), fmtInteger(s.excludedCount)],
-    [t('guide.rmsTotal'), v(s.rmsTotal)],
     [t('guide.pae'), `${fmt(s.paeArcMin, 2)}′`],
   ];
   const raRow: [string, string][] = [
