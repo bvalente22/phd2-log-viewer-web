@@ -37,6 +37,22 @@ export interface ChartGestureCallbacks {
 export interface ChartGestureOptions {
   enableModifierSelect?: boolean; // default true
   hideRangeSliderDuringDrag?: boolean; // default false
+  /**
+   * Anchor for the drag-driven Y zoom.
+   * 'center' (default) — symmetrically scale around the current y-range
+   *   midpoint. Matches the desktop's behavior on the main chart, where
+   *   y is signed and centering on zero by accident is the natural ask.
+   * 'bottom' — keep y0 fixed at startYRange[0] (typically 0) and only
+   *   scale y1. Use for charts whose lower bound is semantically the
+   *   baseline (e.g. periodogram amplitude — always >= 0).
+   */
+  yZoomAnchor?: 'center' | 'bottom';
+  /**
+   * Skip the Y-axis update entirely on drag. Drag still pans X; the Y
+   * range is left alone. Use when the chart pins its Y range from an
+   * external lock (e.g. AnalysisModal's "Y locked" toggle).
+   */
+  disableYZoom?: boolean;
 }
 
 /**
@@ -57,6 +73,19 @@ export function useChartGestures(
 ) {
   const enableModifierSelect = opts.enableModifierSelect ?? true;
   const hideSlider = opts.hideRangeSliderDuringDrag ?? false;
+  // yZoomAnchor and disableYZoom can flip while a drag is mid-flight
+  // (e.g. user clicks the Y-lock toggle). Routing them through a ref
+  // — same pattern as `cbRef` for callbacks — lets the listener pick
+  // up the new value on the next pointermove without re-installing
+  // handlers (which would clobber `kind` and break the active drag).
+  const optsRef = useRef({
+    yZoomAnchor: opts.yZoomAnchor ?? 'center',
+    disableYZoom: opts.disableYZoom ?? false,
+  });
+  optsRef.current = {
+    yZoomAnchor: opts.yZoomAnchor ?? 'center',
+    disableYZoom: opts.disableYZoom ?? false,
+  };
 
   // Keep callbacks in a ref so the effect below isn't torn down and rebuilt
   // on every parent render (callbacks is typically a fresh object literal in
@@ -204,22 +233,36 @@ export function useChartGestures(
         // /200 divisor controls sensitivity; a 200 px drag doubles/halves.
         const dy = e.clientY - startClientY;
         const factor = Math.exp(dy / 200);
-        const oldYSpan = startYRange[1] - startYRange[0];
-        const newYSpan = oldYSpan * factor;
-        const yCenter = (startYRange[0] + startYRange[1]) / 2;
-        const newY0 = yCenter - newYSpan / 2;
-        const newY1 = yCenter + newYSpan / 2;
         const dx = e.clientX - startClientX;
         const xSpan = startXRange[1] - startXRange[0];
         const dxData = (dx / xa._length) * xSpan;
         const newX0 = startXRange[0] - dxData;
         const newX1 = startXRange[1] - dxData;
-        queueRelayout({
-          'yaxis.range': [newY0, newY1],
+        const { yZoomAnchor: anchor, disableYZoom } = optsRef.current;
+        const patch: Record<string, [number, number]> = {
           'xaxis.range': [newX0, newX1],
-        });
+        };
+        if (!disableYZoom) {
+          let newY0: number;
+          let newY1: number;
+          if (anchor === 'bottom') {
+            // Bottom-anchored zoom keeps y0 at its starting value
+            // (typically 0 — the periodogram baseline) and only the top
+            // moves. Drag up → factor<1 → newY1 shrinks → zoom in.
+            newY0 = startYRange[0];
+            newY1 = startYRange[0] + (startYRange[1] - startYRange[0]) * factor;
+          } else {
+            const oldYSpan = startYRange[1] - startYRange[0];
+            const newYSpan = oldYSpan * factor;
+            const yCenter = (startYRange[0] + startYRange[1]) / 2;
+            newY0 = yCenter - newYSpan / 2;
+            newY1 = yCenter + newYSpan / 2;
+          }
+          patch['yaxis.range'] = [newY0, newY1];
+          cbRef.current.onRangeChange?.('y', [newY0, newY1]);
+        }
+        queueRelayout(patch);
         cbRef.current.onRangeChange?.('x', [newX0, newX1]);
-        cbRef.current.onRangeChange?.('y', [newY0, newY1]);
         return;
       }
       const rect = div.getBoundingClientRect();

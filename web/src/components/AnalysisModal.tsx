@@ -62,7 +62,7 @@ export function AnalysisModal() {
 
   if (s.state === 'closed') return null;
 
-  const { garun, garunOther, kind, showRa, showDec, scaleMode, maxPeriodSec, yMaxLockPx } = s;
+  const { garun, garunOther, kind, showRa, showDec, scaleMode, maxPeriodSec, yMaxLockPx, yMaxViewPx } = s;
   // Max amplitude across BOTH visible periodogram traces, in raw pixel
   // units. Passed to toggleYLock so locking captures whatever the user
   // is looking at (active + counterpart) — the headline goal of the
@@ -206,6 +206,19 @@ export function AnalysisModal() {
           onClick={() => s.toggleYLock(observedMaxPx)}
           title={yMaxLockPx !== null ? t('yLockClearTooltip') : t('yLockSetTooltip')}
         />
+        <button
+          type="button"
+          onClick={s.resetYZoom}
+          // Disabled when there's nothing to reset: no manual zoom and
+          // no lock means the chart is already on autorange. The lock
+          // case is special — we disable here so users don't think
+          // "reset" overrides the lock; they have to release first.
+          disabled={yMaxLockPx !== null || yMaxViewPx === null}
+          className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 transition-colors hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-900 disabled:text-slate-600"
+          title={t('resetYTooltip')}
+        >
+          {t('resetY')}
+        </button>
         <span className="ms-auto text-slate-600">
           {t('gestureHint')}
         </span>
@@ -221,6 +234,7 @@ export function AnalysisModal() {
             kind={kind}
             scaleMode={scaleMode}
             yMaxLockPx={yMaxLockPx}
+            yMaxViewPx={yMaxViewPx}
           />
         </div>
       </div>
