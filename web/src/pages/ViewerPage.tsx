@@ -28,6 +28,8 @@ export function ViewerPage() {
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const graphMode = useViewStore((s) => s.graphMode);
   const theme = useViewStore((s) => s.theme);
+  const sidebarCollapsed = useViewStore((s) => s.sidebarCollapsed);
+  const setSidebarCollapsed = useViewStore((s) => s.setSidebarCollapsed);
 
   // Apply the active theme to <html> as a data attribute. CSS in
   // index.css selectors `[data-theme="paper"] .bg-slate-900 { ... }`
@@ -55,9 +57,18 @@ export function ViewerPage() {
       : log.calibrations[sec.idx]?.hdr
     : null;
 
+  // Grid template flips between expanded sidebar (260px) and a thin
+  // 32px rail that holds only the expand toggle. Keeping the rail
+  // visible (rather than fully hiding the sidebar) guarantees the
+  // user can always see how to bring the sidebar back.
+  const sidebarWidth = sidebarCollapsed ? '32px' : '260px';
+
   return (
     <>
-      <div className="grid h-full grid-cols-[260px_1fr] grid-rows-[auto_1fr]">
+      <div
+        className="grid h-full grid-rows-[auto_1fr]"
+        style={{ gridTemplateColumns: `${sidebarWidth} 1fr` }}
+      >
         <header className="col-span-2 flex items-center justify-between border-b border-slate-800 px-4 py-2">
         <h1 className="text-sm font-medium">
           {t('appName')}
@@ -78,13 +89,63 @@ export function ViewerPage() {
         </div>
       </header>
       {/* Sidebar spans the full content height so its scrollable section list
-          extends to the bottom of the page, independent of the stats footer. */}
-      <aside className="flex flex-col overflow-hidden border-e border-slate-800">
-        <LogsFolderPane />
-        <RecentsDropdown />
-        <div className="flex-1 overflow-y-auto">
-          <SectionList />
-        </div>
+          extends to the bottom of the page, independent of the stats footer.
+          Collapses to a 32px rail whose only content is the expand toggle —
+          the rail stays visible so the user always knows where to click to
+          bring the sidebar back. */}
+      <aside className="relative flex flex-col overflow-hidden border-e border-slate-800">
+        {sidebarCollapsed ? (
+          // Collapsed: the entire rail is the expand button, painted in
+          // a warm amber that complements the cool slate/blue chrome so
+          // the call-to-action is impossible to miss. Filling the full
+          // height (vs. a small icon) maximizes the click target; the
+          // chevron points right toward where the sidebar reappears.
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed(false)}
+            title={t('sidebar.expandTooltip')}
+            aria-label={t('sidebar.expand')}
+            className="group flex h-full w-full flex-col items-center justify-center gap-3 bg-amber-500 text-slate-900 hover:bg-amber-400"
+          >
+            <span className="text-xl font-semibold leading-none transition-transform group-hover:translate-x-0.5">›</span>
+            {/* Vertical "Expand" hint reinforces the affordance. CSS
+                writing-mode rotates the text rather than relying on a
+                separate icon font. */}
+            <span
+              className="text-[10px] font-semibold uppercase tracking-widest"
+              style={{ writingMode: 'vertical-rl' }}
+            >
+              {t('sidebar.expand')}
+            </span>
+          </button>
+        ) : (
+          <>
+            {/* Top strip: collapse button on the right edge in the same
+                amber accent as the collapsed rail, so the user reads the
+                two states as the same control. The chevron points left
+                toward where the sidebar will tuck away. */}
+            <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/40 px-2 py-1">
+              <span className="text-[10px] uppercase tracking-widest text-slate-500">
+                {t('sidebar.title')}
+              </span>
+              <button
+                type="button"
+                onClick={() => setSidebarCollapsed(true)}
+                title={t('sidebar.collapseTooltip')}
+                aria-label={t('sidebar.collapse')}
+                className="group flex items-center gap-1 rounded bg-amber-500 px-2 py-0.5 text-xs font-semibold text-slate-900 hover:bg-amber-400"
+              >
+                <span className="leading-none transition-transform group-hover:-translate-x-0.5">‹</span>
+                <span>{t('sidebar.hide')}</span>
+              </button>
+            </div>
+            <LogsFolderPane />
+            <RecentsDropdown />
+            <div className="flex-1 overflow-y-auto">
+              <SectionList />
+            </div>
+          </>
+        )}
       </aside>
       {/* Main column owns the toolbar, chart, and stats stack. The stats
           appear directly under the graph area (not under the sidebar). */}
