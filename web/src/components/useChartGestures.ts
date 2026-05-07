@@ -23,6 +23,15 @@ export interface ChartGestureCallbacks {
   onRangeChange?: (axis: 'x' | 'y', range: [number, number]) => void;
   /** Provides frames + dt-mapping for the include/exclude callbacks. */
   rangeContext?: () => { frames: number[]; dts: number[] } | null;
+  /**
+   * Fires `true` on pointerdown that produces a drag (any kind), `false`
+   * on pointerup / pointercancel after the drag's final relayout has been
+   * dispatched. Lets parents skip per-frame work that doesn't have to run
+   * mid-drag (e.g. SVG annotation re-layout) and run a single settle pass
+   * on release. Always paired (every `true` is followed by exactly one
+   * `false`).
+   */
+  onDragStateChange?: (active: boolean) => void;
 }
 
 export interface ChartGestureOptions {
@@ -155,6 +164,7 @@ export function useChartGestures(
         overlay.style.width = '0px';
         overlay.style.background = isInclude ? INCLUDE_FILL : EXCLUDE_FILL;
         overlay.style.borderColor = isInclude ? INCLUDE_BORDER : EXCLUDE_BORDER;
+        cbRef.current.onDragStateChange?.(true);
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -176,6 +186,7 @@ export function useChartGestures(
         void Plotly.relayout(div, { 'xaxis.rangeslider.visible': false });
         sliderHidden = true;
       }
+      cbRef.current.onDragStateChange?.(true);
       // Stop propagation so Plotly's own mousedown handlers (hover, point
       // selection on scattergl traces) don't fight our drag.
       e.preventDefault();
@@ -280,6 +291,12 @@ export function useChartGestures(
 
       releaseCapture();
       kind = null;
+      // Fire AFTER kind is cleared so parents can run their settle pass
+      // (e.g. annotation re-layout) without the still-open mid-drag gate
+      // blocking it. The final Plotly.relayout above ran while the gate
+      // was still closed in the parent — that's fine, the parent picks
+      // up the new ranges via its own onRelayout listener.
+      cbRef.current.onDragStateChange?.(false);
     };
 
     const onCancel = (e: PointerEvent) => {
@@ -294,6 +311,7 @@ export function useChartGestures(
       }
       releaseCapture();
       kind = null;
+      cbRef.current.onDragStateChange?.(false);
     };
 
     // Capture-phase pointerdown so we beat any Plotly handlers attached on
