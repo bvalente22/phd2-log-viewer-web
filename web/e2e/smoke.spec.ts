@@ -26,9 +26,14 @@ test('drop-and-view smoke', async ({ page }) => {
     buffer: Buffer.from(text, 'utf-8'),
   });
 
-  // Section labels use "Guide · <date>" / "Cal · <date>".
-  await expect(page.getByText('Guide ·', { exact: false })).toBeVisible();
-  await page.getByText('Guide ·', { exact: false }).first().click();
+  // Section labels use "Guide · <date>" / "Cal · <date>". Scope to the
+  // sidebar — after section selection, the SectionSummary strip in main
+  // also shows "Guide · …", so an unscoped getByText would multi-match.
+  const sidebar = page.locator('aside');
+  await expect(sidebar.getByText('Guide ·', { exact: false }).first()).toBeVisible();
+  await sidebar.getByText('Guide ·', { exact: false }).first().click();
   await expect(page.locator('.js-plotly-plot')).toBeVisible();
-  await expect(page.getByText('RMS Total')).toBeVisible();
+  // The Total row in StatsGrid is labeled "Total" (the cell label "RMS"
+  // matches the per-axis rows; the row label disambiguates).
+  await expect(page.getByText('Total', { exact: true }).first()).toBeVisible();
 });
