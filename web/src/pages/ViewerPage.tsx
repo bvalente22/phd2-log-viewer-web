@@ -8,6 +8,7 @@ import { ScatterView } from '../components/ScatterView';
 import { CalibrationPlot } from '../components/CalibrationPlot';
 import { CalibrationStats } from '../components/CalibrationStats';
 import { SectionHeader } from '../components/SectionHeader';
+import { SectionSummary } from '../components/SectionSummary';
 import { GraphToolbar } from '../components/GraphToolbar';
 import { GraphContextMenu } from '../components/ContextMenu';
 import { RecentsDropdown } from '../components/RecentsDropdown';
@@ -154,6 +155,18 @@ export function ViewerPage() {
           <>
             <GraphToolbar />
             {sectionHdr && <SectionHeader hdr={sectionHdr} kind="GUIDING" />}
+            {/* Always-visible identification strip — sits below the
+                collapsible SectionHeader as a sibling so it stays put
+                whether the header is twirled open or closed. */}
+            {sec && log && (
+              <SectionSummary
+                filename={meta?.name}
+                kind="GUIDING"
+                date={log.sessions[sec.idx]?.date ?? ''}
+                sectionIndex={sectionIdx}
+                totalSections={log.sections.length}
+              />
+            )}
             <GAResultsPanel />
             <GraphContextMenu>
               <div className="flex-1 overflow-hidden">
@@ -168,6 +181,15 @@ export function ViewerPage() {
         {isCalibration && (
           <>
             {sectionHdr && <SectionHeader hdr={sectionHdr} kind="CALIBRATION" />}
+            {sec && log && (
+              <SectionSummary
+                filename={meta?.name}
+                kind="CALIBRATION"
+                date={log.calibrations[sec.idx]?.date ?? ''}
+                sectionIndex={sectionIdx}
+                totalSections={log.sections.length}
+              />
+            )}
             <div className="flex-1 overflow-hidden">
               <CalibrationPlot />
             </div>
