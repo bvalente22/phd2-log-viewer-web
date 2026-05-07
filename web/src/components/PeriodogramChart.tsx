@@ -18,6 +18,9 @@ const PEAK_PX = 8;
 const COLOR_RESIDUAL = '#a3e635';
 const COLOR_RAW_RA = '#f472b6';
 const COLOR_UNGUIDED = COLOR_RESIDUAL; // unguided has no comparison mode
+// Spike mode uses amber to match the SpikeChart marker color and the
+// analysis-modal banner accent — visual continuity across the modal.
+const COLOR_SPIKE = '#f59e0b';
 const CURSOR_COLOR = 'rgba(250, 204, 21, 0.7)';
 const INACTIVE_OPACITY = 0.28;
 
@@ -49,11 +52,12 @@ interface PeriodogramChartProps {
 const colorFor = (kind: AnalysisKind): string => {
   if (kind === 'all') return COLOR_RESIDUAL;
   if (kind === 'all-raw-ra') return COLOR_RAW_RA;
+  if (kind === 'spike') return COLOR_SPIKE;
   return COLOR_UNGUIDED;
 };
 
 /** Opposite of an AnalysisKind for the dual-trace render. Returns null
- *  for kinds that don't have a counterpart. */
+ *  for kinds that don't have a counterpart (unguided, spike). */
 const otherKindOf = (kind: AnalysisKind): AnalysisKind | null => {
   if (kind === 'all') return 'all-raw-ra';
   if (kind === 'all-raw-ra') return 'all';
@@ -96,6 +100,7 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
   const labelOf = useCallback((k0: AnalysisKind): string => {
     if (k0 === 'all') return t('mode.selected');
     if (k0 === 'all-raw-ra') return t('mode.rawRa');
+    if (k0 === 'spike') return t('mode.spike');
     return t('mode.unguided');
   }, [t]);
 
@@ -126,6 +131,8 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       fill: 'tozeroy',
       fillcolor: kind === 'all-raw-ra'
         ? 'rgba(244, 114, 182, 0.10)'
+        : kind === 'spike'
+        ? 'rgba(245, 158, 11, 0.10)'
         : 'rgba(163, 230, 53, 0.10)',
     } as Data);
     return out;

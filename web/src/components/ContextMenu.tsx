@@ -101,7 +101,15 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
       if (kind === 'all' || kind === 'all-raw-ra') {
         garunOther = analyze(session, { range: r, undoRaCorrections: !undoRaCorrections, mask: sessionMask });
       }
-      openAnalysis({ garun, garunOther, kind, initialScaleMode: scaleModeForAnalysis });
+      // Spike analysis runs lazily inside the modal (the user may never
+      // open the spike tab), so we just hand over the source params.
+      // analyzeSpikes is in the same ~1 ms range as analyze() so the
+      // first switch into the spike tab is also imperceptible.
+      openAnalysis({
+        garun, garunOther, kind,
+        initialScaleMode: scaleModeForAnalysis,
+        spikeSource: { session, range: r, mask: sessionMask },
+      });
     } catch (err) {
       // canAnalyze gates the call site, but stay defensive — if analyze
       // throws (insufficient entries after edge-case filtering), surface
