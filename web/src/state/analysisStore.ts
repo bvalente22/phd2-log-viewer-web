@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import { analyze, type GARun } from '../parser/analyze';
-import type { GuideSession } from '../parser/types';
+import type { GARun } from '../parser/analyze';
 
 export type AnalysisKind = 'all' | 'all-raw-ra' | 'unguided';
 
@@ -8,28 +7,33 @@ interface ClosedState {
   state: 'closed';
 }
 
-/**
- * Source parameters retained from the call that opened the modal so the
- * user can switch between analysis modes ('all' ↔ 'all-raw-ra') in-place
- * without going back to the chart context menu. `null` for `unguided`
- * runs because that mode pinpoints a specific unguided window — there's
- * no equivalent "raw" version to flip into.
- */
-interface AnalysisSource {
-  session: GuideSession;
-  range: { begin: number; end: number };
-  mask: Uint8Array | undefined;
-}
-
 interface OpenState {
   state: 'open';
+  /** The active mode's analysis result. */
   garun: GARun;
+  /**
+   * The other switchable mode's analysis result, kept around so the
+   * periodogram can render both at once and the mode tab can swap them
+   * instantly. Null for kind === 'unguided' (no comparison) and when
+   * the caller didn't provide a counterpart at open() time.
+   */
+  garunOther: GARun | null;
   kind: AnalysisKind;
-  source: AnalysisSource | null;
   showRa: boolean;
   showDec: boolean;
   /** Modal-local override of the global scale mode. */
   scaleMode: 'PIXELS' | 'ARCSEC';
+  /**
+   * Periodogram Y-axis lock value, in raw pixel-amplitude units (the same
+   * units `GARun.fftAmplitude` is stored in). Null = unlocked, periodogram
+   * uses Plotly autorange. Number = locked at this max so subsequent
+   * data swaps (mode switch via the tabs, ARCSEC ↔ PIXELS rescale) keep
+   * the same Y range — the lock is *the* mechanism for comparing peak
+   * amplitudes across modes at the same scale. Stored in pixel units so
+   * we can apply the active scale factor at render time without losing
+   * precision.
+   */
+  yMaxLockPx: number | null;
   /**
    * Top-N peaks summary excludes any period above this threshold (seconds).
    * Default 600s — typical PE periods are well below 10 minutes; longer
@@ -44,14 +48,11 @@ type AnalysisStateUnion = ClosedState | OpenState;
 interface Actions {
   open: (p: {
     garun: GARun;
+    /** Optional counterpart run; required for the in-modal mode tabs and
+     *  the dual-trace periodogram to work. Pass null / omit for 'unguided'. */
+    garunOther?: GARun | null;
     kind: AnalysisKind;
     initialScaleMode: 'PIXELS' | 'ARCSEC';
-    /**
-     * Source data for in-modal mode switching. Required for kind 'all' /
-     * 'all-raw-ra' — without it the mode tabs won't work. Optional for
-     * 'unguided' where the mode is fixed.
-     */
-    source?: AnalysisSource;
   }) => void;
   close: () => void;
   setShowRa: (b: boolean) => void;
@@ -59,12 +60,19 @@ interface Actions {
   setScaleMode: (m: 'PIXELS' | 'ARCSEC') => void;
   setMaxPeriodSec: (s: number) => void;
   /**
-   * Switch between 'all' and 'all-raw-ra' without leaving the modal. Re-
-   * runs `analyze()` against the saved source and replaces `garun`.
-   * No-ops when `source` is null (unguided runs) or when the requested
-   * kind matches the current one.
+   * Switch between 'all' and 'all-raw-ra'. Swaps the active garun with
+   * the precomputed counterpart — instant, no re-run. No-ops when
+   * `garunOther` is null (e.g. unguided runs) or the requested kind
+   * matches the current one.
    */
   setKind: (kind: AnalysisKind) => void;
+  /**
+   * Toggle the periodogram Y-axis lock. Pass the current observed max
+   * amplitude (in pixel units, across both visible traces) when turning
+   * the lock ON; the value is ignored when the lock is currently ON
+   * (next call clears it).
+   */
+  toggleYLock: (currentMaxPx: number) => void;
 }
 
 const DEFAULT_MAX_PERIOD_SEC = 600;
@@ -72,20 +80,21 @@ const DEFAULT_MAX_PERIOD_SEC = 600;
 /**
  * Tracks whether the Analysis modal is open and what GARun result it's
  * showing. Not persisted — closing forgets the state. Modal toolbar
- * controls (showRa, showDec, scaleMode, maxPeriodSec) live here so reopening
- * the modal starts from the global defaults again.
+ * controls (showRa, showDec, scaleMode, maxPeriodSec, yMaxLockPx) live
+ * here so reopening starts from the global defaults again.
  */
 export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) => ({
   state: 'closed',
-  open: ({ garun, kind, initialScaleMode, source }) =>
+  open: ({ garun, garunOther, kind, initialScaleMode }) =>
     set({
       state: 'open',
       garun,
+      garunOther: garunOther ?? null,
       kind,
-      source: source ?? null,
       showRa: true,
       showDec: true,
       scaleMode: initialScaleMode,
+      yMaxLockPx: null,
       maxPeriodSec: DEFAULT_MAX_PERIOD_SEC,
     } as OpenState),
   close: () => set({ state: 'closed' } as ClosedState),
@@ -97,23 +106,14 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     const cur = get();
     if (cur.state !== 'open') return;
     if (cur.kind === kind) return;
-    if (!cur.source) return;
-    // Only the 'all' ↔ 'all-raw-ra' transition is meaningful in-modal.
-    // Switching to 'unguided' from here doesn't make sense and we don't
-    // expose a tab for it; guard anyway.
+    if (!cur.garunOther) return;
     if (kind !== 'all' && kind !== 'all-raw-ra') return;
-    try {
-      const garun = analyze(cur.source.session, {
-        range: cur.source.range,
-        undoRaCorrections: kind === 'all-raw-ra',
-        mask: cur.source.mask,
-      });
-      set({ ...cur, garun, kind });
-    } catch (err) {
-      // canAnalyze gated the original open() call, so this should be
-      // unreachable in practice; surface for diagnosis if it ever isn't.
-      // eslint-disable-next-line no-console
-      console.error('analyze re-run on mode switch failed:', err);
-    }
+    // The precomputed counterpart IS the requested kind's garun.
+    set({ ...cur, garun: cur.garunOther, garunOther: cur.garun, kind });
+  },
+  toggleYLock: (currentMaxPx) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    set({ ...cur, yMaxLockPx: cur.yMaxLockPx === null ? currentMaxPx : null });
   },
 }));

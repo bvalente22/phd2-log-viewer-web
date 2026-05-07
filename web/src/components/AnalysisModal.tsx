@@ -62,7 +62,20 @@ export function AnalysisModal() {
 
   if (s.state === 'closed') return null;
 
-  const { garun, kind, source, showRa, showDec, scaleMode, maxPeriodSec } = s;
+  const { garun, garunOther, kind, showRa, showDec, scaleMode, maxPeriodSec, yMaxLockPx } = s;
+  // Max amplitude across BOTH visible periodogram traces, in raw pixel
+  // units. Passed to toggleYLock so locking captures whatever the user
+  // is looking at (active + counterpart) — the headline goal of the
+  // lock is comparing the two side-by-side at the same scale.
+  let observedMaxPx = 0;
+  for (let i = 0; i < garun.fftAmplitude.length; i++) {
+    if (garun.fftAmplitude[i] > observedMaxPx) observedMaxPx = garun.fftAmplitude[i];
+  }
+  if (garunOther) {
+    for (let i = 0; i < garunOther.fftAmplitude.length; i++) {
+      if (garunOther.fftAmplitude[i] > observedMaxPx) observedMaxPx = garunOther.fftAmplitude[i];
+    }
+  }
   const startClock = formatClockUTC(garun.starts, garun.t[0] ?? 0);
   const endClock = formatClockUTC(garun.starts, garun.t[garun.t.length - 1] ?? 0);
   // Title is now mode-agnostic: it just describes the dataset (frame
@@ -77,8 +90,8 @@ export function AnalysisModal() {
     ? t('mode.rawRa')
     : t('mode.selected');
   // Mode tabs only make sense for 'all' / 'all-raw-ra'. Unguided has no
-  // equivalent flipped mode, and `source` is null in that case.
-  const showModeTabs = kind !== 'unguided' && !!source;
+  // equivalent flipped mode, and `garunOther` is null in that case.
+  const showModeTabs = kind !== 'unguided' && !!garunOther;
 
   const ToggleChip = ({
     label, active, onClick, title: tip,
@@ -134,7 +147,7 @@ export function AnalysisModal() {
           used everywhere else in the app, so the modal context is visually
           unmistakable without clashing. The leading pill reads
           "ANALYSIS: <mode>" so the active mode is unambiguous; the tabs
-          to its right let the user flip 'selected frames' ↔ 'raw RA'
+          to its right let the user flip 'residual error' ↔ 'raw RA'
           without going back to the context menu. */}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-amber-700 bg-amber-200 px-4 py-3 text-amber-950">
         <div className="flex flex-wrap items-center gap-3">
@@ -183,6 +196,16 @@ export function AnalysisModal() {
         <span className="ms-3 me-1 text-slate-500" title={t('scaleTooltip')}>{t('scale')}:</span>
         <ToggleChip label="arc-sec" active={scaleMode === 'ARCSEC'} onClick={() => s.setScaleMode('ARCSEC')} title={t('arcsecTooltip')} />
         <ToggleChip label="pixels" active={scaleMode === 'PIXELS'} onClick={() => s.setScaleMode('PIXELS')} title={t('pixelsTooltip')} />
+        {/* Periodogram-only Y-axis lock. Reuses the chart toolbar's
+            🔒/🔓 wording so the affordance reads consistently across
+            the app. */}
+        <span className="ms-3 me-1 text-slate-500" title={t('yLockTooltip')}>{t('yLock')}:</span>
+        <ToggleChip
+          label={yMaxLockPx !== null ? t('yLockOn') : t('yLockOff')}
+          active={yMaxLockPx !== null}
+          onClick={() => s.toggleYLock(observedMaxPx)}
+          title={yMaxLockPx !== null ? t('yLockClearTooltip') : t('yLockSetTooltip')}
+        />
         <span className="ms-auto text-slate-600">
           {t('gestureHint')}
         </span>
@@ -192,7 +215,13 @@ export function AnalysisModal() {
           <DriftChart garun={garun} showRa={showRa} showDec={showDec} scaleMode={scaleMode} />
         </div>
         <div className="flex-1">
-          <PeriodogramChart garun={garun} scaleMode={scaleMode} />
+          <PeriodogramChart
+            garun={garun}
+            garunOther={garunOther}
+            kind={kind}
+            scaleMode={scaleMode}
+            yMaxLockPx={yMaxLockPx}
+          />
         </div>
       </div>
       {/* Top-3 peaks summary. Reads the same FFT result the periodogram is

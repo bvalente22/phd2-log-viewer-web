@@ -5,13 +5,21 @@ import Plot from 'react-plotly.js';
 import Plotly from 'plotly.js/dist/plotly';
 import type { Data, Layout, Shape } from 'plotly.js';
 import type { GARun } from '../parser/analyze';
+import type { AnalysisKind } from '../state/analysisStore';
 import { useChartGestures } from './useChartGestures';
 import { useViewStore } from '../state/viewStore';
 import { themeOf } from '../themes';
 
 const PEAK_PX = 8;
-const FFT_COLOR = '#a3e635';
+// Per-kind colors so the residual / raw-RA traces stay identifiable
+// even when the active/inactive state flips on a mode-tab click. Lime
+// for residual error (the original FFT color), pink for raw RA — high
+// contrast pair on every theme background.
+const COLOR_RESIDUAL = '#a3e635';
+const COLOR_RAW_RA = '#f472b6';
+const COLOR_UNGUIDED = COLOR_RESIDUAL; // unguided has no comparison mode
 const CURSOR_COLOR = 'rgba(250, 204, 21, 0.7)';
+const INACTIVE_OPACITY = 0.28;
 
 interface PlotDiv extends HTMLDivElement {
   _fullLayout?: {
@@ -21,8 +29,32 @@ interface PlotDiv extends HTMLDivElement {
 
 interface PeriodogramChartProps {
   garun: GARun;
+  /** Counterpart run (the inactive mode). Rendered at reduced opacity
+   *  underneath the active trace so amplitudes can be compared at a
+   *  glance. Null for 'unguided' or when no counterpart is provided. */
+  garunOther: GARun | null;
+  kind: AnalysisKind;
   scaleMode: 'PIXELS' | 'ARCSEC';
+  /** When non-null, the periodogram Y-axis is fixed at [0, yMaxLockPx*k*1.05]
+   *  in display units. The store records the lock value in raw pixel units
+   *  so toggling between ARCSEC ↔ PIXELS doesn't shift the visible range. */
+  yMaxLockPx: number | null;
 }
+
+/** Pick the per-kind color for a periodogram trace. */
+const colorFor = (kind: AnalysisKind): string => {
+  if (kind === 'all') return COLOR_RESIDUAL;
+  if (kind === 'all-raw-ra') return COLOR_RAW_RA;
+  return COLOR_UNGUIDED;
+};
+
+/** Opposite of an AnalysisKind for the dual-trace render. Returns null
+ *  for kinds that don't have a counterpart. */
+const otherKindOf = (kind: AnalysisKind): AnalysisKind | null => {
+  if (kind === 'all') return 'all-raw-ra';
+  if (kind === 'all-raw-ra') return 'all';
+  return null;
+};
 
 /**
  * Periodogram (period vs. amplitude). Mirrors PaintFFT in
@@ -31,8 +63,14 @@ interface PeriodogramChartProps {
  * amplitude (″/px), peak-to-peak, RMS — that the desktop puts in its
  * status bar. A dashed vertical cursor line snaps to the same peak so
  * the user sees exactly which period they're reading.
+ *
+ * When `garunOther` is present, the chart shows TWO traces overlapping —
+ * the active mode at full opacity, the counterpart faded — so the user
+ * can compare residual-error vs raw-RA peaks at the same scale.
+ * Hover snap-to-peak still operates on the active trace only.
  */
-export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
+export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockPx }: PeriodogramChartProps) {
+  const { t } = useTranslation('analysis');
   const { t: tChart } = useTranslation('chart');
   const plotId = useId().replace(/:/g, '_');
   const [hover, setHover] = useState<string | null>(null);
@@ -41,17 +79,43 @@ export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
   const k = scaleMode === 'ARCSEC' ? garun.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
 
-  const traces = useMemo<Data[]>(() => [
-    {
+  const labelOf = useCallback((k0: AnalysisKind): string => {
+    if (k0 === 'all') return t('mode.selected');
+    if (k0 === 'all-raw-ra') return t('mode.rawRa');
+    return t('mode.unguided');
+  }, [t]);
+
+  const traces = useMemo<Data[]>(() => {
+    const out: Data[] = [];
+    // Inactive (counterpart) drawn first so the active trace overlays it.
+    const otherKind = otherKindOf(kind);
+    if (garunOther && otherKind) {
+      out.push({
+        x: Array.from(garunOther.fftPeriod),
+        y: Array.from(garunOther.fftAmplitude).map((v) => v * k),
+        type: 'scatter', mode: 'lines',
+        name: labelOf(otherKind),
+        line: { color: colorFor(otherKind), width: 1.25 },
+        opacity: INACTIVE_OPACITY,
+        // No fill on the inactive trace — overlapping fills would obscure
+        // both. The thin colored line at low opacity is enough to read.
+        // hoveron 'fills' would also expand the hover region we don't want.
+        hoverinfo: 'skip',
+      } as Data);
+    }
+    out.push({
       x: Array.from(garun.fftPeriod),
       y: Array.from(garun.fftAmplitude).map((v) => v * k),
       type: 'scatter', mode: 'lines',
-      name: tChart('traces.amplitude'),
-      line: { color: FFT_COLOR, width: 1.5 },
+      name: labelOf(kind),
+      line: { color: colorFor(kind), width: 1.5 },
       fill: 'tozeroy',
-      fillcolor: 'rgba(163, 230, 53, 0.1)',
-    } as Data,
-  ], [garun, k]);
+      fillcolor: kind === 'all-raw-ra'
+        ? 'rgba(244, 114, 182, 0.10)'
+        : 'rgba(163, 230, 53, 0.10)',
+    } as Data);
+    return out;
+  }, [garun, garunOther, kind, k, labelOf]);
 
   // Plotly's xaxis.type:'log' wants the range in log10 space. Always provide
   // an explicit range to avoid the autorange-vs-first-scroll bug we saw in
@@ -140,6 +204,15 @@ export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
   useEffect(() => { void unit; void k; }, [unit, k]);
 
   const tc = themeOf(themeId).plot;
+  // Y-axis: lock-aware. When yMaxLockPx is set, fix the range to the
+  // locked max scaled into display units (with 5% headroom so peaks
+  // don't kiss the top edge). Otherwise let Plotly autorange.
+  const yAxisCfg: Partial<Layout['yaxis']> = yMaxLockPx !== null
+    ? {
+        range: [0, yMaxLockPx * k * 1.05],
+        autorange: false,
+      }
+    : { autorange: true };
   const layout: Partial<Layout> = {
     autosize: true,
     margin: { l: 60, r: 30, t: 10, b: 40 },
@@ -153,9 +226,14 @@ export function PeriodogramChart({ garun, scaleMode }: PeriodogramChartProps) {
     yaxis: {
       title: { text: unit === '″' ? tChart('axes.amplitudeArcsec') : tChart('axes.amplitudePixels') },
       gridcolor: tc.grid, zerolinecolor: tc.zeroline,
-      autorange: true, fixedrange: true,
+      ...yAxisCfg,
+      fixedrange: true,
     },
-    showlegend: false,
+    showlegend: !!garunOther, // legend is meaningful when comparing two traces
+    legend: {
+      orientation: 'h', x: 0, y: 1.02, yanchor: 'bottom', xanchor: 'left',
+      font: { size: 10 }, bgcolor: 'rgba(0,0,0,0)',
+    },
     dragmode: false,
     hovermode: 'x',
   };
