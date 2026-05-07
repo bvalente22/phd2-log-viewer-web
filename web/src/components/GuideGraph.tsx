@@ -141,6 +141,8 @@ function buildTraces(
   hasAo: boolean,
   massColor: string,
   snrColor: string,
+  flipRaPulses: boolean,
+  flipDecPulses: boolean,
 ): Data[] {
   // When AO data is present in the session, filter entries to the chosen
   // device. Mount-only sessions skip this filter (every entry is MOUNT).
@@ -207,10 +209,14 @@ function buildTraces(
     // from y0 in wxDC → positive radur (East) appears BELOW the 0 line.
     // Plotly's Y is up, so we negate to land East on the bottom too.
     // Hovertemplate keeps the raw signed `radur` so a positive value
-    // still reads as "East" / negative as "West".
+    // still reads as "East" / negative as "West". `flipRaPulses` lets the
+    // user invert the bar direction when their calibration polarity
+    // doesn't match this convention; the customdata stays unsigned-from-
+    // log so the tooltip readout is still authoritative.
+    const raSign = flipRaPulses ? 1 : -1;
     out.push({
       x: t,
-      y: visibleEntries.map((e) => -e.radur * pulseScale),
+      y: visibleEntries.map((e) => raSign * e.radur * pulseScale),
       customdata: visibleEntries.map((e) => e.radur),
       type: 'bar',
       name: 'RA pulse',
@@ -227,9 +233,12 @@ function buildTraces(
     // workaround; here we plot the signed value directly. The matching
     // Dec error trace also lands on this same side because we removed
     // the historical `-decraw` negation in valuePair (see comment there).
+    // `flipDecPulses` inverts that sign for mounts whose calibration
+    // polarity makes North-correction commands read as below-zero bars.
+    const decSign = flipDecPulses ? -1 : 1;
     out.push({
       x: t,
-      y: visibleEntries.map((e) => e.decdur * pulseScale),
+      y: visibleEntries.map((e) => decSign * e.decdur * pulseScale),
       customdata: visibleEntries.map((e) => e.decdur),
       type: 'bar',
       name: 'Dec pulse',
@@ -468,6 +477,8 @@ export function GuideGraph() {
   const scaleLocked = useViewStore((s) => s.scaleLocked);
   const autoScaleY = useViewStore((s) => s.autoScaleY);
   const showRangeSlider = useViewStore((s) => s.showRangeSlider);
+  const flipRaPulses = useViewStore((s) => s.flipRaPulses);
+  const flipDecPulses = useViewStore((s) => s.flipDecPulses);
   const themeId = useViewStore((s) => s.theme);
   const excludeRange = useViewStore((s) => s.excludeRange);
   const includeRange = useViewStore((s) => s.includeRange);
@@ -610,11 +621,11 @@ export function GuideGraph() {
       hasAo,
       yMax,
       xExtent,
-      traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo, themeOf(themeId).plot.traceMass, themeOf(themeId).plot.traceSnr),
+      traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo, themeOf(themeId).plot.traceMass, themeOf(themeId).plot.traceSnr, flipRaPulses, flipDecPulses),
       shapes: buildShapes(session, mask, traces, scaleMode),
       eventInputs,
     };
-  }, [log, sectionIdx, exclusions, scaleMode, traces, coordMode, device, autoScaleY, themeId]);
+  }, [log, sectionIdx, exclusions, scaleMode, traces, coordMode, device, autoScaleY, themeId, flipRaPulses, flipDecPulses]);
 
   useEffect(() => {
     dataRef.current = data ? { session: data.session, sessionIdx: data.sessionIdx } : null;

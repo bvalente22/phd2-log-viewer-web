@@ -81,8 +81,8 @@ const CHIP_TONE: Record<ChipTone, { active: string; inactive: string }> = {
 };
 
 const ToggleChip = ({
-  label, active, onClick, disabled, title, tone = 'default',
-}: { label: string; active: boolean; onClick: () => void; disabled?: boolean; title?: string; tone?: ChipTone }) => {
+  label, active, onClick, disabled, title, tone = 'default', className,
+}: { label: string; active: boolean; onClick: () => void; disabled?: boolean; title?: string; tone?: ChipTone; className?: string }) => {
   const palette = CHIP_TONE[tone];
   const cls = disabled
     ? 'cursor-not-allowed bg-slate-900 text-slate-600'
@@ -94,7 +94,7 @@ const ToggleChip = ({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`rounded px-2 py-0.5 text-xs transition-colors ${cls}`}
+      className={`rounded px-2 py-0.5 text-xs transition-colors ${cls}${className ? ` ${className}` : ''}`}
     >
       {label}
     </button>
@@ -123,6 +123,13 @@ export function GraphToolbar() {
   const setAutoScaleY = useViewStore((s) => s.setAutoScaleY);
   const showRangeSlider = useViewStore((s) => s.showRangeSlider);
   const setShowRangeSlider = useViewStore((s) => s.setShowRangeSlider);
+  const flipRaPulses = useViewStore((s) => s.flipRaPulses);
+  const setFlipRaPulses = useViewStore((s) => s.setFlipRaPulses);
+  const flipDecPulses = useViewStore((s) => s.flipDecPulses);
+  const setFlipDecPulses = useViewStore((s) => s.setFlipDecPulses);
+  const toggleRaAxis = useViewStore((s) => s.toggleRaAxis);
+  const toggleDecAxis = useViewStore((s) => s.toggleDecAxis);
+  const toggleStarGroup = useViewStore((s) => s.toggleStarGroup);
 
   const sec = log && sectionIdx >= 0 ? log.sections[sectionIdx] : null;
   const session = sec && sec.type === 'GUIDING' ? log!.sessions[sec.idx] : null;
@@ -134,22 +141,24 @@ export function GraphToolbar() {
   const hasAo = !!session?.entries.some((e) => e.mount === 'AO');
 
   // RA / Dec / Mount / AO / dx / dy are PHD2 jargon — kept in English across
-  // every locale (see locales/README.md). Trace toggles are now grouped
-  // by AXIS so each axis's overlays sit together: RA group has the line,
-  // its correction-pulse bars, and its mount-limit dotted lines; Dec
-  // group mirrors that. Mass + SNR (guide-star metrics) and Events
-  // (inline INFO labels) keep their own groups. Each chip is tinted to
-  // match its trace color on the chart.
+  // every locale (see locales/README.md). Trace toggles are grouped by
+  // AXIS so each axis's overlays sit together. The first chip in each
+  // axis group is a MASTER toggle (RA or Dec) that turns the entire
+  // group on/off in one click; the remaining chips are the individual
+  // sub-traces. Because the axis name is encoded by the master chip,
+  // sub-trace labels drop the redundant "RA "/"Dec " prefix and read as
+  // "trace · pulses · limits". Tone (sky for RA, red for Dec) keeps the
+  // two groups visually distinct even with the shared sub-labels.
   type TraceItem = { key: keyof TraceVisibility; label: string; title: string; tone: ChipTone };
   const raItems: TraceItem[] = [
-    { key: 'ra',       label: 'RA',                 title: t('traces.raTooltip'),       tone: 'ra' },
-    { key: 'raPulses', label: t('traces.raPulses'), title: t('traces.raPulsesTooltip'), tone: 'ra' },
-    { key: 'raLimits', label: t('traces.raLimits'), title: t('traces.raLimitsTooltip'), tone: 'ra' },
+    { key: 'ra',       label: 'trace',  title: t('traces.raTooltip'),       tone: 'ra' },
+    { key: 'raPulses', label: 'pulses', title: t('traces.raPulsesTooltip'), tone: 'ra' },
+    { key: 'raLimits', label: 'limits', title: t('traces.raLimitsTooltip'), tone: 'ra' },
   ];
   const decItems: TraceItem[] = [
-    { key: 'dec',       label: 'Dec',                  title: t('traces.decTooltip'),       tone: 'dec' },
-    { key: 'decPulses', label: t('traces.decPulses'),  title: t('traces.decPulsesTooltip'), tone: 'dec' },
-    { key: 'decLimits', label: t('traces.decLimits'),  title: t('traces.decLimitsTooltip'), tone: 'dec' },
+    { key: 'dec',       label: 'trace',  title: t('traces.decTooltip'),       tone: 'dec' },
+    { key: 'decPulses', label: 'pulses', title: t('traces.decPulsesTooltip'), tone: 'dec' },
+    { key: 'decLimits', label: 'limits', title: t('traces.decLimitsTooltip'), tone: 'dec' },
   ];
   const starItems: TraceItem[] = [
     { key: 'mass', label: 'Mass', title: t('traces.massTooltip'), tone: 'mass' },
@@ -175,6 +184,63 @@ export function GraphToolbar() {
     </>
   );
 
+  // Groups with a master toggle: RA, Dec, and Guide Star. The master is
+  // `active` whenever any sub-trace is on, so toggling individual chips
+  // keeps the master in sync without any extra subscription. Click
+  // behavior lives in the store (toggleRaAxis / toggleDecAxis /
+  // toggleStarGroup) — see viewStore.ts for the snapshot semantics that
+  // "remember which items were enabled."
+  const raAnyOn   = traces.ra   || traces.raPulses  || traces.raLimits;
+  const decAnyOn  = traces.dec  || traces.decPulses || traces.decLimits;
+  const starAnyOn = traces.mass || traces.snr;
+  // Per-tone border color for the master chips. Lighter shade than the
+  // chip body so it stays visible on both the slate-800 inactive
+  // background and the saturated active fill (e.g. sky-600). The border
+  // — together with bold + uppercase + tracking — is what makes a master
+  // chip read as a group header rather than another sub-trace sibling.
+  const MASTER_BORDER: Record<'ra' | 'dec' | 'star', string> = {
+    ra:   'border-sky-300',
+    dec:  'border-red-300',
+    star: 'border-amber-300',
+  };
+  const renderMasterGroup = (
+    masterLabel: string,
+    masterTone: 'ra' | 'dec' | 'star',
+    masterActive: boolean,
+    onMasterToggle: () => void,
+    masterTooltip: string,
+    items: TraceItem[],
+  ) => (
+    <>
+      <ToggleChip
+        // ms-3 mirrors the spacing the old text headers ("RA:", "Guide
+        // Star:") gave each group; without it, groups would butt up
+        // against whatever sits to their left.
+        label={masterLabel}
+        active={masterActive}
+        onClick={onMasterToggle}
+        disabled={graphMode === 'SCATTER'}
+        title={graphMode === 'SCATTER' ? t('traces.togglesScatterDisabled') : masterTooltip}
+        // 'star' tone reuses the yellow 'mass' palette (the more visible
+        // of the two guide-star metrics); the amber border keeps the
+        // group visually distinct from the Mass sub-chip.
+        tone={masterTone === 'star' ? 'mass' : masterTone}
+        className={`ms-3 border-2 ${MASTER_BORDER[masterTone]} font-semibold uppercase tracking-wider`}
+      />
+      {items.map((it) => (
+        <ToggleChip
+          key={it.key}
+          label={it.label}
+          active={traces[it.key]}
+          onClick={() => toggleTrace(it.key)}
+          disabled={graphMode === 'SCATTER'}
+          title={graphMode === 'SCATTER' ? t('traces.togglesScatterDisabled') : it.title}
+          tone={it.tone}
+        />
+      ))}
+    </>
+  );
+
   // Layout: data-display row first (what's plotted), display-options row
   // second (how it's plotted / utilities), legend on its own line below
   // both, left-justified. Each row is a flex-wrap container so they wrap
@@ -183,9 +249,37 @@ export function GraphToolbar() {
     <div className="flex flex-col border-b border-slate-800 text-xs">
       {/* Row 1 — DATA: what data is plotted on the chart. */}
       <div className="flex w-full flex-wrap items-center gap-2 px-3 py-1">
-        {renderTraceGroup('RA',  t('groups.raTooltip'),  raItems)}
-        {renderTraceGroup('Dec', t('groups.decTooltip'), decItems)}
-        {renderTraceGroup(t('groups.guideStar'), t('groups.guideStarTooltip'), starItems)}
+        {renderMasterGroup('RA',  'ra',  raAnyOn,  toggleRaAxis,  t('groups.raTooltip'),  raItems)}
+        <ToggleChip
+          label={t('traces.flipRaPulses')}
+          active={flipRaPulses}
+          onClick={() => setFlipRaPulses(!flipRaPulses)}
+          disabled={graphMode === 'SCATTER' || !traces.raPulses}
+          title={
+            graphMode === 'SCATTER'
+              ? t('traces.togglesScatterDisabled')
+              : !traces.raPulses
+              ? t('traces.flipPulsesDisabled')
+              : t('traces.flipRaPulsesTooltip')
+          }
+          tone="ra"
+        />
+        {renderMasterGroup('Dec', 'dec', decAnyOn, toggleDecAxis, t('groups.decTooltip'), decItems)}
+        <ToggleChip
+          label={t('traces.flipDecPulses')}
+          active={flipDecPulses}
+          onClick={() => setFlipDecPulses(!flipDecPulses)}
+          disabled={graphMode === 'SCATTER' || !traces.decPulses}
+          title={
+            graphMode === 'SCATTER'
+              ? t('traces.togglesScatterDisabled')
+              : !traces.decPulses
+              ? t('traces.flipPulsesDisabled')
+              : t('traces.flipDecPulsesTooltip')
+          }
+          tone="dec"
+        />
+        {renderMasterGroup(t('groups.guideStar'), 'star', starAnyOn, toggleStarGroup, t('groups.guideStarTooltip'), starItems)}
         {renderTraceGroup(t('groups.events'),    t('groups.eventsTooltip'),    eventItems)}
         <span className="ms-3 me-1 text-slate-500" title={t('groups.coordTooltip')}>{t('groups.coord')}:</span>
         <ToggleChip
