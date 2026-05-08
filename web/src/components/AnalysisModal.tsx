@@ -100,7 +100,7 @@ export function AnalysisModal() {
 
   const {
     garun, garunOther, kind, showRa, showDec, scaleMode, maxPeriodSec, yMaxLockPx, yMaxViewPx,
-    spikeSource, spikeRun, spikeAxis, spikeK, spikeMinPeriodSec,
+    spikeSource, spikeRun, spikeAxis, spikeDirection, spikeK, spikeMinPeriodSec,
   } = s;
   // The active dataset PeriodogramChart should render. In spike mode we
   // adapt the SpikeRun; otherwise it's the regular GARun pair.
@@ -248,6 +248,10 @@ export function AnalysisModal() {
             <span className="me-1 text-slate-500" title={t('spike.axisTooltip')}>{t('spike.axis')}:</span>
             <ToggleChip label="RA" active={spikeAxis === 'ra'} onClick={() => s.setSpikeAxis('ra')} title={t('spike.axisRaTooltip')} />
             <ToggleChip label="Dec" active={spikeAxis === 'dec'} onClick={() => s.setSpikeAxis('dec')} title={t('spike.axisDecTooltip')} />
+            <span className="ms-3 me-1 text-slate-500" title={t('spike.directionTooltip')}>{t('spike.direction')}:</span>
+            <ToggleChip label={t('spike.dirBoth')} active={spikeDirection === 'both'} onClick={() => s.setSpikeDirection('both')} title={t('spike.dirBothTooltip')} />
+            <ToggleChip label="+" active={spikeDirection === 'positive'} onClick={() => s.setSpikeDirection('positive')} title={t('spike.dirPositiveTooltip')} />
+            <ToggleChip label="−" active={spikeDirection === 'negative'} onClick={() => s.setSpikeDirection('negative')} title={t('spike.dirNegativeTooltip')} />
             <span className="ms-3 me-1 text-slate-500" title={t('spike.kTooltip')}>{t('spike.k')}:</span>
             <input
               type="range" min={1} max={6} step={0.5}
