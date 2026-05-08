@@ -115,8 +115,16 @@
     "resetTooltip": "Reset every Burst-tab knob to its default value and re-run the analysis. Useful when you've tuned far from a sensible baseline and want to start over.",
     "autoAdjust": "Auto adjust",
     "autoStop": "Stop",
-    "autoAdjustTooltip": "Start a continuous multi-axis search over the numeric knobs (HP, smooth, prominence, threshold, min spacing) to maximize the top candidate's confidence. Runs indefinitely — sliders move through coordinated 2-3 knob perturbations with simulated-annealing acceptance and periodic random restarts. Click 'Stop' to halt; on stop, the sliders settle at the best configuration the search ever saw.",
-    "autoStopTooltip": "Stop the running search and settle the sliders at the best configuration found so far."
+    "autoAdjustTooltip": "Start a continuous multi-axis search over the numeric knobs (HP, smooth, prominence, threshold, min spacing) to maximize the top candidate's confidence. Runs indefinitely — sliders move through coordinated 2-3 knob perturbations with simulated-annealing acceptance and periodic random restarts. Each visible improvement holds for ~3.5 s so you can react. Click 'Stop' to halt; if the best the search saw differs from where it ends, you'll be asked which to keep.",
+    "autoStopTooltip": "Stop the running search. If the best configuration found is better than where the search ends, you'll be offered the choice to restore it.",
+    "settle": {
+      "label": "Search stopped",
+      "message": "Best confidence found: {{best}}%. Search ended at {{current}}%.",
+      "keepBest": "Use best ({{best}}%)",
+      "keepBestTooltip": "Apply the slider values that produced the best confidence ({{best}}%) the search ever saw.",
+      "keepCurrent": "Keep current ({{current}}%)",
+      "keepCurrentTooltip": "Leave the sliders where the search ended ({{current}}%); discard the global-best configuration."
+    }
   },
   "show": "show",
   "showTooltip": "Toggle individual drift traces",

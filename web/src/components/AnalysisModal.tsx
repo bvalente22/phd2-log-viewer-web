@@ -6,6 +6,7 @@ import { PeriodogramChart } from './PeriodogramChart';
 import { SpikeChart } from './SpikeChart';
 import { BurstChart, BurstCandidatesTable } from './BurstChart';
 import { BurstControls } from './BurstControls';
+import { BurstSettleDialog } from './BurstSettleDialog';
 import { fmtNumber } from '../i18n/format';
 import type { GARun } from '../parser/analyze';
 import { pickTopSpikePeriods, type SpikeRun } from '../parser/spikeAnalysis';
@@ -103,7 +104,7 @@ export function AnalysisModal() {
   const {
     garun, garunOther, kind, showRa, showDec, scaleMode, maxPeriodSec, yMaxLockPx, yMaxViewPx,
     spikeSource, spikeRun, spikeAxis, spikeDirection, spikeK, spikeMinPeriodSec,
-    burstSource, burstRun, burstOpts, burstAutoAdjusting,
+    burstSource, burstRun, burstOpts, burstAutoAdjusting, burstPendingSettle,
   } = s;
   // The active dataset PeriodogramChart should render. In spike mode we
   // adapt the SpikeRun; otherwise it's the regular GARun pair.
@@ -265,6 +266,13 @@ export function AnalysisModal() {
             onAutoAdjust={s.autoAdjustBurstOpts}
             autoAdjusting={burstAutoAdjusting}
           />
+          {burstPendingSettle && (
+            <BurstSettleDialog
+              bestPct={burstPendingSettle.bestPct}
+              currentPct={burstPendingSettle.currentPct}
+              onResolve={s.resolveBurstPendingSettle}
+            />
+          )}
           <div className="flex flex-1 flex-col overflow-hidden">
             <BurstChart run={burstRun} scaleMode={scaleMode} />
           </div>

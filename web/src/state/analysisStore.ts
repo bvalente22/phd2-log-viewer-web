@@ -136,6 +136,19 @@ interface OpenState {
    *  is not done here — it's a simple "best effort" loop without an
    *  explicit cancel signal because total runtime is < ~2 s). */
   burstAutoAdjusting: boolean;
+  /**
+   * Set on stop when the auto-adjust search has a global best that
+   * differs from the configuration the search ended at. Holds both so
+   * the UI can render a "restore best vs keep current" dialog. The
+   * confidence values are pre-formatted percent integers for display.
+   * Cleared when the user resolves the dialog or clicks Auto adjust
+   * again.
+   */
+  burstPendingSettle: {
+    bestOpts: BurstAnalysisOptions;
+    bestPct: number;
+    currentPct: number;
+  } | null;
 }
 
 type AnalysisStateUnion = ClosedState | OpenState;
@@ -218,6 +231,10 @@ interface Actions {
    *  shows the sliders animating through the search. Stops early once
    *  any candidate hits the 'strong' rating threshold (≥ 0.7). */
   autoAdjustBurstOpts: () => Promise<void>;
+  /** Resolve the post-stop settle dialog. `keepBest=true` applies the
+   *  best opts the search saw; `false` keeps the current configuration.
+   *  Either way clears `burstPendingSettle`. */
+  resolveBurstPendingSettle: (keepBest: boolean) => void;
 }
 
 const DEFAULT_MAX_PERIOD_SEC = 600;
@@ -263,6 +280,7 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       burstRun: null,
       burstOpts: null,
       burstAutoAdjusting: false,
+      burstPendingSettle: null,
     } as OpenState),
   close: () => set({ state: 'closed' } as ClosedState),
   setShowRa: (b) => set((s) => (s.state === 'open' ? { ...s, showRa: b } : s)),
@@ -463,14 +481,20 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     if (initial.state !== 'open' || !initial.burstSource) return;
     // Toggle behavior: a second click while running asks for a stop.
     // Clearing the flag is enough — the running loop polls it before
-    // every step and exits cleanly, settling at the best opts seen.
+    // every step and exits cleanly, then offers the user a choice
+    // between the global-best opts and the current opts via the
+    // settle dialog (set on the burstPendingSettle field).
     if (initial.burstAutoAdjusting) {
       set({ ...initial, burstAutoAdjusting: false });
       return;
     }
     const src = initial.burstSource;
 
-    set({ ...initial, burstAutoAdjusting: true });
+    // Starting a new run — clear any leftover settle dialog and start
+    // tuning. (Reset is also disabled while running, so the only way
+    // burstPendingSettle persists is if the user dismissed without
+    // clicking either button, e.g. by switching tabs.)
+    set({ ...initial, burstAutoAdjusting: true, burstPendingSettle: null });
 
     let opts: BurstAnalysisOptions = initial.burstOpts ?? defaultBurstOptions(src.range);
 
@@ -705,27 +729,49 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       }
     }
 
-    // ---------- Final settle ----------
-    // On stop we always converge to the best opts we ever saw. The
-    // slider visibly returns to the global-best position with a longer
-    // pause so the eye registers the chosen value. Skip if the modal
-    // closed while we were running.
-    if (get().state === 'open') {
+    // ---------- Stop handler ----------
+    // The user's intent on Stop varies — sometimes they want the global
+    // best the search ever saw, sometimes they want to lock in whatever
+    // shape they were watching when they clicked. Don't auto-apply
+    // either; offer both via the settle dialog. The dialog is shown
+    // only when there's a meaningful difference (≥ 1 percentage point).
+    const finalState = get();
+    if (finalState.state === 'open') {
       const sameAsBest = tunable.every((k) => (opts[k] as number) === (bestOpts[k] as number));
-      if (!sameAsBest) {
-        const settlePatch: Partial<BurstAnalysisOptions> = {};
-        for (const k of tunable) (settlePatch as Record<string, number>)[k] = bestOpts[k] as number;
-        // Note: apply() short-circuits if state isn't open; safe to call.
-        await apply(settlePatch, SETTLE_MS);
-      }
+      const currentConf = finalState.burstRun?.candidates[0]?.confidence ?? 0;
+      const currentPct = Math.round(currentConf * 100);
+      const bestPct = Math.round(bestConf * 100);
+      const showDialog = !sameAsBest && bestPct > currentPct;
+      set({
+        ...finalState,
+        burstAutoAdjusting: false,
+        burstPendingSettle: showDialog
+          ? { bestOpts: { ...bestOpts }, bestPct, currentPct }
+          : null,
+      });
     }
-
-    // If the loop exited because the user clicked Stop, the flag is
-    // already cleared. Defensive clear in case we exited some other
-    // way (modal close, etc).
-    const final = get();
-    if (final.state === 'open' && final.burstAutoAdjusting) {
-      set({ ...final, burstAutoAdjusting: false });
+  },
+  resolveBurstPendingSettle: (keepBest) => {
+    const cur = get();
+    if (cur.state !== 'open' || !cur.burstPendingSettle) return;
+    if (!keepBest) {
+      // Stay where we are. Just clear the dialog.
+      set({ ...cur, burstPendingSettle: null });
+      return;
     }
+    if (!cur.burstSource) {
+      set({ ...cur, burstPendingSettle: null });
+      return;
+    }
+    // Restore the global-best opts and recompute. The search uses
+    // analyzeBursts identically so the chart and candidates table snap
+    // to the high-water-mark configuration the dialog promised.
+    const opts: BurstAnalysisOptions = {
+      ...cur.burstPendingSettle.bestOpts,
+      range: cur.burstSource.range,
+      mask: cur.burstSource.mask,
+    };
+    const run = analyzeBursts(cur.burstSource.session, opts);
+    set({ ...cur, burstOpts: opts, burstRun: run, burstPendingSettle: null });
   },
 }));
