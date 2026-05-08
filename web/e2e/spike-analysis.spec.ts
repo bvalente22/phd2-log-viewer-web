@@ -76,9 +76,14 @@ test.describe('Spike Analysis (kind=spike)', () => {
     // The cluster of real-data periods (per the offline analysis) sits
     // in 60-120s. Assert at least one of the surfaced top-3 periods
     // falls in that window. Filter out the algorithmic-echo by setting
-    // min period to 30s via the toolbar input.
-    const minPeriod = page.locator('input[type=number]').first();
-    await minPeriod.fill('30');
+    // the HF filter slider to 30s. The HF filter is the second range
+    // input in the toolbar (the first is the sigma slider).
+    const hfFilter = page.locator('.fixed.inset-0 input[type=range]').nth(1);
+    await hfFilter.evaluate((el: HTMLInputElement) => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
+      setter.call(el, '30');
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    });
     // Read out the period values from the top-3 panel cards. Each card
     // contains "Period: <number>s".
     await expect(page.locator('text=/Period:\\s+\\d+/').first()).toBeVisible();
@@ -105,12 +110,14 @@ test.describe('Spike Analysis (kind=spike)', () => {
     await expect(stats).not.toHaveText(raText, { timeout: 5000 });
   });
 
-  test('Min-period filter defaults to 8s', async ({ page }) => {
+  test('HF-filter slider defaults to 8s', async ({ page }) => {
     await openSpikeMode(page);
-    // The min-period number input lives in the spike-mode toolbar.
-    // Default should be 8 (per the user's request).
-    const minPeriod = page.locator('input[type=number]').first();
-    await expect(minPeriod).toHaveValue('8');
+    // The HF filter slider lives in the spike-mode toolbar (second
+    // range input — first is the sigma slider). Default should be 8s.
+    const hfFilter = page.locator('.fixed.inset-0 input[type=range]').nth(1);
+    await expect(hfFilter).toHaveValue('8');
+    // The readout shows "≥ 8s".
+    await expect(page.getByText(/≥\s*8s/)).toBeVisible();
   });
 
   test('Hovering the periodogram highlights aligned events on the spike chart', async ({ page }) => {
@@ -172,7 +179,8 @@ test.describe('Spike Analysis (kind=spike)', () => {
     // directly bypasses the React-attached descriptor; using the
     // HTMLInputElement.value PROTOTYPE setter (which React monkey-patches)
     // and then dispatching is the standard recipe.
-    const slider = page.locator('input[type=range]');
+    // Two range inputs in spike mode: [0] sigma, [1] HF filter. Pick first.
+    const slider = page.locator('.fixed.inset-0 input[type=range]').first();
     await slider.evaluate((el: HTMLInputElement) => {
       const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
       setter.call(el, '5');
