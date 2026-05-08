@@ -103,7 +103,7 @@ export function AnalysisModal() {
   const {
     garun, garunOther, kind, showRa, showDec, scaleMode, maxPeriodSec, yMaxLockPx, yMaxViewPx,
     spikeSource, spikeRun, spikeAxis, spikeDirection, spikeK, spikeMinPeriodSec,
-    burstSource, burstRun, burstOpts,
+    burstSource, burstRun, burstOpts, burstAutoAdjusting,
   } = s;
   // The active dataset PeriodogramChart should render. In spike mode we
   // adapt the SpikeRun; otherwise it's the regular GARun pair.
@@ -258,7 +258,13 @@ export function AnalysisModal() {
         // The shared toolbar (scale chips + Y-lock) doesn't apply here
         // because burst charts manage their own y-axes.
         <>
-          <BurstControls opts={burstOpts} setOpts={s.setBurstOpts} onReset={s.resetBurstOpts} />
+          <BurstControls
+            opts={burstOpts}
+            setOpts={s.setBurstOpts}
+            onReset={s.resetBurstOpts}
+            onAutoAdjust={s.autoAdjustBurstOpts}
+            autoAdjusting={burstAutoAdjusting}
+          />
           <div className="flex flex-1 flex-col overflow-hidden">
             <BurstChart run={burstRun} scaleMode={scaleMode} />
           </div>

@@ -129,6 +129,13 @@ interface OpenState {
   burstSource: SpikeSource | null;
   burstRun: BurstRun | null;
   burstOpts: BurstAnalysisOptions | null;
+  /** True while autoAdjustBurstOpts is iterating. The Auto-adjust button
+   *  uses this to disable itself + show a "tuning" indicator. The
+   *  individual sliders stay enabled so the user can interrupt by
+   *  dragging anything (the next setBurstOpts call clears the flag
+   *  is not done here — it's a simple "best effort" loop without an
+   *  explicit cancel signal because total runtime is < ~2 s). */
+  burstAutoAdjusting: boolean;
 }
 
 type AnalysisStateUnion = ClosedState | OpenState;
@@ -205,6 +212,12 @@ interface Actions {
   /** Reset every burst knob to its default value and re-run. Useful
    *  after the user has tuned far from a sensible baseline. */
   resetBurstOpts: () => void;
+  /** Hill-climb the numeric burst knobs (HP, smooth, prominence,
+   *  threshold, min-spacing) to maximize the top candidate's
+   *  confidence. Updates the store after each parameter so the UI
+   *  shows the sliders animating through the search. Stops early once
+   *  any candidate hits the 'strong' rating threshold (≥ 0.7). */
+  autoAdjustBurstOpts: () => Promise<void>;
 }
 
 const DEFAULT_MAX_PERIOD_SEC = 600;
@@ -249,6 +262,7 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       burstSource: spikeSource ?? null,
       burstRun: null,
       burstOpts: null,
+      burstAutoAdjusting: false,
     } as OpenState),
   close: () => set({ state: 'closed' } as ClosedState),
   setShowRa: (b) => set((s) => (s.state === 'open' ? { ...s, showRa: b } : s)),
@@ -443,5 +457,103 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       mask: cur.burstSource.mask,
     });
     set({ ...cur, burstOpts: opts, burstRun: run });
+  },
+  autoAdjustBurstOpts: async () => {
+    const initial = get();
+    if (initial.state !== 'open' || !initial.burstSource) return;
+    if (initial.burstAutoAdjusting) return;
+    const src = initial.burstSource;
+
+    set({ ...initial, burstAutoAdjusting: true });
+
+    let opts: BurstAnalysisOptions = initial.burstOpts ?? defaultBurstOptions(src.range);
+
+    // Pure helper — runs the pipeline with a trial patch and returns the
+    // top candidate's confidence (0..1). The candidate set is sorted by
+    // confidence in analyzeBursts so candidates[0] is always the best.
+    const trial = (patch: Partial<BurstAnalysisOptions>): number => {
+      const probe: BurstAnalysisOptions = {
+        ...opts,
+        ...patch,
+        range: src.range,
+        mask: src.mask,
+      };
+      const run = analyzeBursts(src.session, probe);
+      return run.candidates[0]?.confidence ?? 0;
+    };
+
+    // Apply the chosen value, push to the store, and pause briefly so
+    // the slider visibly moves. The pause is short (60 ms) — the user
+    // sees a smooth "tuning" animation across ~15 parameter updates,
+    // total ~1 s including compute.
+    const apply = async (patch: Partial<BurstAnalysisOptions>) => {
+      opts = {
+        ...opts,
+        ...patch,
+        range: src.range,
+        mask: src.mask,
+      };
+      const run = analyzeBursts(src.session, opts);
+      const after = get();
+      if (after.state !== 'open') return;
+      set({ ...after, burstOpts: opts, burstRun: run });
+      await new Promise((r) => setTimeout(r, 60));
+    };
+
+    // Coordinate-descent sweep: for one parameter at a time, evaluate a
+    // small grid of candidate values and apply the best. We sweep in
+    // order of typical impact on the confidence score, then make a
+    // second pass because earlier choices change the optimal value of
+    // later params (e.g. a wider envelope smoothing changes which
+    // prominence threshold is optimal).
+    const sweep = async <K extends keyof BurstAnalysisOptions>(
+      key: K,
+      candidates: BurstAnalysisOptions[K][],
+    ) => {
+      let bestVal = opts[key];
+      let bestConf = trial({ [key]: bestVal } as Partial<BurstAnalysisOptions>);
+      for (const v of candidates) {
+        if (v === bestVal) continue;
+        const conf = trial({ [key]: v } as Partial<BurstAnalysisOptions>);
+        // Require a meaningful improvement to switch — otherwise tiny
+        // noise differences would push the slider around indefinitely.
+        if (conf > bestConf + 0.01) {
+          bestConf = conf;
+          bestVal = v;
+        }
+      }
+      if (bestVal !== opts[key]) {
+        await apply({ [key]: bestVal } as Partial<BurstAnalysisOptions>);
+      }
+    };
+
+    // Stop early when we've reached "strong" — the rating threshold is
+    // 0.7 in burstAnalysis.ts, so use the same here.
+    const strongEnough = () => trial({}) >= 0.7;
+
+    for (let pass = 0; pass < 3; pass++) {
+      // Most impactful first — envelope width determines whether the ACF
+      // sees clean burst clusters or per-sample noise.
+      await sweep('envelopeSmoothSec', [4, 8, 12, 16, 24, 40, 60]);
+      if (strongEnough()) break;
+      // High-pass removes baseline drift that fakes long-period peaks.
+      await sweep('highPassPeriodSec', [0, 60, 120, 200, 300]);
+      if (strongEnough()) break;
+      // Prominence + threshold control how many envelope peaks land in
+      // the candidate's tolerance window — bigger support ratio →
+      // higher confidence.
+      await sweep('peakProminenceSigma', [0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0]);
+      if (strongEnough()) break;
+      await sweep('peakThresholdSigma', [-1, 0, 0.5, 1.0, 1.5, 2.0]);
+      if (strongEnough()) break;
+      // Min-spacing prevents double-counting closely-spaced bumps.
+      await sweep('minPeakSpacingSec', [5, 10, 15, 20, 30, 50, 80]);
+      if (strongEnough()) break;
+    }
+
+    const final = get();
+    if (final.state === 'open') {
+      set({ ...final, burstAutoAdjusting: false });
+    }
   },
 }));

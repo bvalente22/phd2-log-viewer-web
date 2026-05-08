@@ -10,6 +10,8 @@ interface BurstControlsProps {
   opts: BurstAnalysisOptions;
   setOpts: (patch: Partial<BurstAnalysisOptions>) => void;
   onReset: () => void;
+  onAutoAdjust: () => void;
+  autoAdjusting: boolean;
 }
 
 /** Multi-row knob grid for the Bursts tab. Each row groups related
@@ -17,16 +19,26 @@ interface BurstControlsProps {
  *  period search). Sliders are interactive — every change re-runs
  *  analyzeBursts. The runtime cost is small (a few ms on typical PHD2
  *  logs) so debouncing isn't needed yet. */
-export function BurstControls({ opts, setOpts, onReset }: BurstControlsProps) {
+export function BurstControls({ opts, setOpts, onReset, onAutoAdjust, autoAdjusting }: BurstControlsProps) {
   const { t } = useTranslation('analysis');
   return (
     <div className="border-b border-slate-800 px-3 py-2 text-xs">
-      <div className="mb-2 flex items-center justify-end">
+      <div className="mb-2 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={onAutoAdjust}
+          disabled={autoAdjusting}
+          title={t('burst.autoAdjustTooltip')}
+          className="rounded bg-emerald-700 px-3 py-0.5 text-xs text-white ring-1 ring-emerald-600 transition-colors hover:bg-emerald-600 disabled:cursor-wait disabled:bg-slate-700 disabled:text-slate-300 disabled:ring-slate-600"
+        >
+          {autoAdjusting ? t('burst.autoAdjusting') : t('burst.autoAdjust')}
+        </button>
         <button
           type="button"
           onClick={onReset}
+          disabled={autoAdjusting}
           title={t('burst.resetTooltip')}
-          className="rounded bg-slate-800 px-3 py-0.5 text-xs text-slate-200 ring-1 ring-slate-700 transition-colors hover:bg-rose-700 hover:text-white hover:ring-rose-600"
+          className="rounded bg-slate-800 px-3 py-0.5 text-xs text-slate-200 ring-1 ring-slate-700 transition-colors hover:bg-rose-700 hover:text-white hover:ring-rose-600 disabled:cursor-not-allowed disabled:bg-slate-900 disabled:text-slate-600"
         >
           {t('burst.reset')}
         </button>
