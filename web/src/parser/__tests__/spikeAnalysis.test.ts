@@ -113,16 +113,13 @@ describe('analyzeSpikes', () => {
     expect(run.sigma).toBeLessThan(stddevOrdinary * 0.7);
   });
 
-  it('FFT envelope surfaces the planted spike period in the top 3', () => {
+  it('spike-magnitude periodogram surfaces the planted period AND amplitude', () => {
     // 600 samples * 2s = 1200s. Spike period 80s → 15 cycles.
     //
-    // For a Dirac-comb-like signal (sharp narrow spikes at a fixed
-    // period), the FFT spreads energy roughly equally across the
-    // fundamental and its harmonics (T/2, T/3, ...). Any of those is a
-    // legitimate detection — they all reflect the same underlying
-    // periodicity. The user-facing surface is the top-3 list, so the
-    // assertion is "the planted period appears in the top 3", not
-    // "it's strictly first".
+    // The new spike-magnitude periodogram peaks at the actual period
+    // and reads in spike-magnitude units (px) rather than FFT spectral
+    // coefficients. The amplitude at the peak should ≈ the planted
+    // spike magnitude.
     const s = makeSpikeSession(600, 2.0, 0.05, 80, 2.0, 'ra');
     const run = analyzeSpikes(s, {
       range: { begin: 0, end: s.entries.length },
@@ -131,16 +128,33 @@ describe('analyzeSpikes', () => {
     });
     const top = pickTopSpikePeriods(run, 3, { minPeriodSec: 50 });
     expect(top.length).toBeGreaterThan(0);
-    // With minPeriodSec=50 we filter out the harmonics (40, 26.7, 20s),
-    // leaving the fundamental as the highest-period candidate that
-    // actually carries spike energy. The 80s period must be present.
     const has80 = top.some((p) => Math.abs(p.period - 80) / 80 < 0.15);
     expect(has80).toBe(true);
-    // The aligned count for the 80s peak should be most of the planted
-    // 15 spikes (with offset search, alignment isn't dependent on which
-    // event we picked as reference).
     const peak80 = top.find((p) => Math.abs(p.period - 80) / 80 < 0.15)!;
     expect(peak80.alignedEvents).toBeGreaterThanOrEqual(12);
+    // CRITICAL: amplitude reflects the spike's actual magnitude (~2 px),
+    // not the FFT spectral coefficient that the previous implementation
+    // returned (~0.04 px). With every event aligned at the true period,
+    // the periodogram amplitude equals the mean event magnitude.
+    expect(peak80.amplitude).toBeGreaterThan(1.5);
+    expect(peak80.amplitude).toBeLessThan(2.5);
+    expect(peak80.meanMagnitude).toBeGreaterThan(1.5);
+    expect(peak80.meanMagnitude).toBeLessThan(2.5);
+  });
+
+  it('threshold k changes the periodogram (slider must matter)', () => {
+    // The new periodogram is built from spike events; events depend on
+    // k, so the periodogram MUST change when k changes. The previous
+    // FFT-on-envelope was independent of k — exactly the bug the user
+    // reported in the slider feedback.
+    const s = makeSpikeSession(600, 2.0, 0.05, 80, 2.0, 'ra');
+    const tight = analyzeSpikes(s, { range: { begin: 0, end: s.entries.length }, axis: 'ra', k: 5 });
+    const loose = analyzeSpikes(s, { range: { begin: 0, end: s.entries.length }, axis: 'ra', k: 2 });
+    let sumAbsDiff = 0;
+    for (let i = 0; i < tight.fftAmplitude.length; i++) {
+      sumAbsDiff += Math.abs(tight.fftAmplitude[i] - loose.fftAmplitude[i]);
+    }
+    expect(sumAbsDiff).toBeGreaterThan(0.1);
   });
 
   it('respects the axis option (Dec)', () => {

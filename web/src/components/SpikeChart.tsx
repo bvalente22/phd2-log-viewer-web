@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Plot from 'react-plotly.js';
 import type { Data, Layout } from 'plotly.js';
 import type { SpikeRun } from '../parser/spikeAnalysis';
+import { alignedEventIndices } from '../parser/spikeAnalysis';
 import { useChartGestures } from './useChartGestures';
 import { useAnalysisStore } from '../state/analysisStore';
 import { useViewStore } from '../state/viewStore';
@@ -10,7 +11,11 @@ import { themeOf } from '../themes';
 
 const RA_COLOR = '#60a5fa';
 const DEC_COLOR = '#f87171';
-const SPIKE_MARKER = '#f59e0b';   // amber — pops against both blue and red
+const SPIKE_MARKER = '#f59e0b';        // amber — pops against both blue and red
+// Aligned-event highlight — a brighter cyan that contrasts hard
+// against the amber default so the user can see at a glance which
+// events the periodogram peak under their cursor was built from.
+const ALIGNED_MARKER = '#22d3ee';
 const THRESHOLD_LINE = 'rgba(245, 158, 11, 0.55)';
 
 interface SpikeChartProps {
@@ -48,6 +53,13 @@ export function SpikeChart({ run, scaleMode }: SpikeChartProps) {
     s.state === 'open' ? s.driftXRangeView : null,
   );
   const setDriftXRange = useAnalysisStore((s) => s.setDriftXRange);
+  // Hovered period from the periodogram. When non-null we render a
+  // second marker layer in cyan over the events that align with that
+  // period — the user gets a direct visual link from "this peak in
+  // the periodogram" to "these spike events on the timeline".
+  const hoverPeriod = useAnalysisStore((s) =>
+    s.state === 'open' ? s.spikeHoverPeriod : null,
+  );
 
   const k = scaleMode === 'ARCSEC' ? run.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
@@ -82,8 +94,30 @@ export function SpikeChart({ run, scaleMode }: SpikeChartProps) {
         hovertemplate: `${t('spike.spikeHover')}<br>t=%{x:.1f}s · y=%{y:.3f}${unit}<extra></extra>`,
       } as Data);
     }
+    // Overlay layer: events that phase-align with the hovered
+    // periodogram peak. Drawn as larger cyan ring markers so the
+    // user can see "these are the events the peak under your
+    // cursor was built from". Only present when the user is
+    // hovering the periodogram in spike mode.
+    if (hoverPeriod !== null && run.events.length > 0) {
+      const aligned = alignedEventIndices(run.events, hoverPeriod);
+      if (aligned.length > 0) {
+        out.push({
+          x: aligned.map((i) => run.events[i].t),
+          y: aligned.map((i) => run.events[i].value * k),
+          type: 'scattergl', mode: 'markers',
+          name: t('spike.alignedHighlight', { count: aligned.length, period: hoverPeriod.toFixed(1) }),
+          marker: {
+            color: 'rgba(34, 211, 238, 0.0)',           // hollow center
+            size: 14,
+            line: { width: 2.5, color: ALIGNED_MARKER }, // ring
+          },
+          hovertemplate: `${t('spike.alignedHover', { period: hoverPeriod.toFixed(1) })}<br>t=%{x:.1f}s · y=%{y:.3f}${unit}<extra></extra>`,
+        } as Data);
+      }
+    }
     return out;
-  }, [run, k, t, traceColor, unit]);
+  }, [run, k, t, traceColor, unit, hoverPeriod]);
 
   const yRange = useMemo<[number, number]>(() => {
     // Stretch enough to show both the thresholds and the spike peaks
