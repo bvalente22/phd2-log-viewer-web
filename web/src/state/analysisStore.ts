@@ -468,25 +468,17 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
 
     let opts: BurstAnalysisOptions = initial.burstOpts ?? defaultBurstOptions(src.range);
 
-    // Pure helper — runs the pipeline with a trial patch and returns the
-    // top candidate's confidence (0..1). The candidate set is sorted by
-    // confidence in analyzeBursts so candidates[0] is always the best.
-    const trial = (patch: Partial<BurstAnalysisOptions>): number => {
-      const probe: BurstAnalysisOptions = {
-        ...opts,
-        ...patch,
-        range: src.range,
-        mask: src.mask,
-      };
-      const run = analyzeBursts(src.session, probe);
-      return run.candidates[0]?.confidence ?? 0;
-    };
-
-    // Apply the chosen value, push to the store, and pause briefly so
-    // the slider visibly moves. The pause is short (60 ms) — the user
-    // sees a smooth "tuning" animation across ~15 parameter updates,
-    // total ~1 s including compute.
-    const apply = async (patch: Partial<BurstAnalysisOptions>) => {
+    // Apply a patch: write through to the store (so the slider visibly
+    // moves), recompute the analysis, and pause briefly so the user
+    // can register the change. Returns the top candidate's confidence
+    // (0..1). The single source of truth — every step of the search
+    // goes through this so the visualization is always honest.
+    const STEP_MS = 45;
+    const SETTLE_MS = 140;
+    const apply = async (
+      patch: Partial<BurstAnalysisOptions>,
+      pauseMs = STEP_MS,
+    ): Promise<number> => {
       opts = {
         ...opts,
         ...patch,
@@ -495,60 +487,71 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       };
       const run = analyzeBursts(src.session, opts);
       const after = get();
-      if (after.state !== 'open') return;
+      if (after.state !== 'open') return 0;
       set({ ...after, burstOpts: opts, burstRun: run });
-      await new Promise((r) => setTimeout(r, 60));
+      await new Promise((r) => setTimeout(r, pauseMs));
+      return run.candidates[0]?.confidence ?? 0;
     };
 
-    // Coordinate-descent sweep: for one parameter at a time, evaluate a
-    // small grid of candidate values and apply the best. We sweep in
-    // order of typical impact on the confidence score, then make a
-    // second pass because earlier choices change the optimal value of
-    // later params (e.g. a wider envelope smoothing changes which
-    // prominence threshold is optimal).
+    // Sweep one parameter through every candidate value, animating the
+    // slider through each in turn so the user can see the search.
+    // Tracks the best (key, value, confidence) seen during the sweep,
+    // then settles back at that value. The final settle is a separate
+    // apply with a longer pause so the eye registers the chosen value.
     const sweep = async <K extends keyof BurstAnalysisOptions>(
       key: K,
       candidates: BurstAnalysisOptions[K][],
     ) => {
-      let bestVal = opts[key];
-      let bestConf = trial({ [key]: bestVal } as Partial<BurstAnalysisOptions>);
+      const startVal = opts[key];
+      // Establish a baseline confidence at the current value before
+      // sweeping, so we don't switch on a sub-0.01 improvement.
+      const startConf = await apply({ [key]: startVal } as Partial<BurstAnalysisOptions>);
+      let bestVal = startVal;
+      let bestConf = startConf;
       for (const v of candidates) {
         if (v === bestVal) continue;
-        const conf = trial({ [key]: v } as Partial<BurstAnalysisOptions>);
+        // Show the trial value LIVE — the slider moves to v, the chart
+        // re-renders with the trial's analysis, then we measure.
+        const conf = await apply({ [key]: v } as Partial<BurstAnalysisOptions>);
         // Require a meaningful improvement to switch — otherwise tiny
         // noise differences would push the slider around indefinitely.
         if (conf > bestConf + 0.01) {
           bestConf = conf;
           bestVal = v;
         }
+        if (bestConf >= 0.7) break; // strong enough — bail mid-sweep
       }
-      if (bestVal !== opts[key]) {
-        await apply({ [key]: bestVal } as Partial<BurstAnalysisOptions>);
+      // Settle at the best value we found. If nothing beat the start,
+      // we still re-apply so the slider visibly returns home from the
+      // last trial position.
+      if (opts[key] !== bestVal) {
+        await apply({ [key]: bestVal } as Partial<BurstAnalysisOptions>, SETTLE_MS);
       }
     };
 
-    // Stop early when we've reached "strong" — the rating threshold is
-    // 0.7 in burstAnalysis.ts, so use the same here.
-    const strongEnough = () => trial({}) >= 0.7;
+    // Read the current top-candidate confidence without disturbing the
+    // store — used for the early-exit check between sweeps.
+    const currentConfidence = (): number => {
+      const run = analyzeBursts(src.session, { ...opts, range: src.range, mask: src.mask });
+      return run.candidates[0]?.confidence ?? 0;
+    };
 
+    // Coordinate-descent passes. Order params by typical impact:
+    // earlier choices change the optimal value of later ones (a wider
+    // envelope smoothing makes a different prominence threshold
+    // optimal), so multiple passes are valuable even though each
+    // individual sweep is greedy.
     for (let pass = 0; pass < 3; pass++) {
-      // Most impactful first — envelope width determines whether the ACF
-      // sees clean burst clusters or per-sample noise.
-      await sweep('envelopeSmoothSec', [4, 8, 12, 16, 24, 40, 60]);
-      if (strongEnough()) break;
-      // High-pass removes baseline drift that fakes long-period peaks.
-      await sweep('highPassPeriodSec', [0, 60, 120, 200, 300]);
-      if (strongEnough()) break;
-      // Prominence + threshold control how many envelope peaks land in
-      // the candidate's tolerance window — bigger support ratio →
-      // higher confidence.
+      await sweep('envelopeSmoothSec', [2, 4, 8, 12, 16, 24, 32, 48, 60, 80]);
+      if (currentConfidence() >= 0.7) break;
+      await sweep('highPassPeriodSec', [0, 30, 60, 120, 200, 300]);
+      if (currentConfidence() >= 0.7) break;
       await sweep('peakProminenceSigma', [0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0]);
-      if (strongEnough()) break;
+      if (currentConfidence() >= 0.7) break;
       await sweep('peakThresholdSigma', [-1, 0, 0.5, 1.0, 1.5, 2.0]);
-      if (strongEnough()) break;
-      // Min-spacing prevents double-counting closely-spaced bumps.
+      if (currentConfidence() >= 0.7) break;
       await sweep('minPeakSpacingSec', [5, 10, 15, 20, 30, 50, 80]);
-      if (strongEnough()) break;
+      if (currentConfidence() >= 0.7) break;
     }
 
     const final = get();
