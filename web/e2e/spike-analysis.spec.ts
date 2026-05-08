@@ -145,6 +145,23 @@ test.describe('Spike Analysis (kind=spike)', () => {
     expect(after).toBeGreaterThan(before);
   });
 
+  test('Direction toggle (+) excludes negative-side spikes', async ({ page }) => {
+    await openSpikeMode(page);
+    const stats = page.locator('text=/\\d+ events · σ_robust/').first();
+    await expect(stats).toBeVisible();
+    const both = await stats.innerText();
+    const bothCount = Number(both.match(/(\d+) events/)?.[1]);
+    expect(bothCount).toBeGreaterThan(0);
+    // The direction chips live in the modal toolbar. Click the "+" chip.
+    await page.locator('.fixed.inset-0').getByRole('button', { name: '+', exact: true }).click();
+    await expect(stats).not.toHaveText(both, { timeout: 5000 });
+    const pos = await stats.innerText();
+    const posCount = Number(pos.match(/(\d+) events/)?.[1]);
+    // Positive-only is strictly a subset; count must drop.
+    expect(posCount).toBeLessThan(bothCount);
+    expect(posCount).toBeGreaterThan(0);
+  });
+
   test('Sigma slider changes the spike count', async ({ page }) => {
     await openSpikeMode(page);
     const stats = page.locator('text=/\\d+ events · σ_robust/').first();

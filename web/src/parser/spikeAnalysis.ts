@@ -6,17 +6,29 @@ const MIN_ENTRIES = 24; // Same lower bound the regular GA analyze uses,
 // plus a bit of slack so the spike periodogram has meaningful resolution.
 
 export type SpikeAxis = 'ra' | 'dec';
+/**
+ * Which side of the median a sample must be on to count as a spike.
+ *   'both'     — flag samples whose |deviation| > threshold (default).
+ *   'positive' — flag samples whose deviation > +threshold (e.g. East
+ *                pulses that overshoot, dome bumps in one direction).
+ *   'negative' — flag samples whose deviation < -threshold.
+ *
+ * Useful when the periodic disturbance is one-sided — combining both
+ * directions can wash out the period if the positive and negative
+ * arrivals happen at different cadences (e.g. drive-train chatter
+ * that pulls one way only).
+ */
+export type SpikeDirection = 'both' | 'positive' | 'negative';
 
 export interface SpikeAnalysisOptions {
   range: { begin: number; end: number };
   mask?: Uint8Array;
-  /** Which axis to analyze. RA-only initially per the user's request, but
-   *  the API accepts either so the modal can flip RA ↔ Dec without a
-   *  separate code path. */
+  /** Which axis to analyze. */
   axis: SpikeAxis;
-  /** Sigma multiplier for the spike threshold. Default 3 in callers; the
-   *  pipeline accepts 1..6 to give the user a slider's worth of room. */
+  /** Sigma multiplier for the spike threshold. UI accepts 1..6. */
   k: number;
+  /** Direction filter for spike detection. Default 'both'. */
+  direction?: SpikeDirection;
 }
 
 /**
@@ -40,6 +52,8 @@ export interface SpikeRun {
   axis: SpikeAxis;
   /** The k that generated this run. Stored so the modal can re-display it. */
   k: number;
+  /** Direction filter that produced this run's spike events. */
+  direction: SpikeDirection;
   /** Robust center of the drift-corrected series (median, pixels). */
   median: number;
   /** Robust σ (1.4826 × MAD), in pixels. Less inflated by spikes than the
@@ -166,30 +180,43 @@ const ALIGN_TOL = 0.15;
 const NUM_OFFSETS = 32;
 
 /**
+ * Minimum aligned-event count for a candidate period to count as a
+ * "real" peak. Expressed as a fraction of the total event count.
+ *
+ * Why we need this: with N total events scattered in time, ANY period
+ * will catch some events at SOME offset purely by coincidence — the
+ * 32-offset best-of search inflates the random alignment count well
+ * above the per-offset uniform expectation. Without a floor, the
+ * mean-magnitude periodogram reads ~A (the typical spike size) at
+ * literally every period, because the events are the same large
+ * spikes regardless of which period you fold them onto.
+ *
+ * 0.4 (40% of events must align at the best offset) was chosen
+ * empirically against the Peak-86sec sample log — it's high enough
+ * to suppress the noise floor, low enough to keep harmonics of the
+ * true period visible.
+ */
+const MIN_ALIGNED_FRACTION = 0.4;
+
+/**
  * Build a "spike magnitude periodogram" — for each candidate period
- * T, find the best phase-offset that aligns the most spike events,
- * and report the SUM of aligned event magnitudes divided by total
- * event count. The result reads directly in spike-magnitude units
- * (px or arcsec when scaled), peaks where events cluster periodically,
- * and dips elsewhere.
- *
- * Why this replaces the FFT-on-envelope approach: the FFT amplitude is
- * spectral content per bin (≈ A × dt / T for sparse spikes — tiny),
- * not the spike's actual magnitude. Users intuit "amplitude" as the
- * spike's pixel size, not its Fourier coefficient. This periodogram
- * gives them the magnitude they expect:
- *
- *    amplitude(T) = (sum of |x - median| for events aligned with T)
- *                 / (total event count)
+ * T, find the phase-offset that aligns the most spike events, and
+ * report the MEAN MAGNITUDE of those aligned events (when the count
+ * exceeds the minimum-aligned threshold; otherwise zero).
  *
  * For a perfect periodic spike train of magnitude A:
- *   - At T = true period, ALL events align → amplitude = A
- *   - At unrelated T, only a fraction align → amplitude << A
- *   - At harmonics (T/2, 2T, ...) some subset aligns → intermediate
+ *   - At T = true period, every event aligns → amplitude = mean = A
+ *   - At harmonics (T/2, 2T, ...) the events still align well →
+ *     amplitude ≈ A (these are real periodicities)
+ *   - At unrelated T, fewer events fit the alignment window than the
+ *     min-aligned floor → amplitude = 0 (clean baseline)
  *
- * This also makes the threshold slider meaningful: changing k changes
- * which samples are flagged as events, which directly changes the
- * periodogram values.
+ * The min-aligned floor is what makes the chart legible: without it,
+ * the mean-of-aligned metric saturates near A across all periods
+ * (because the underlying events are the same set of large spikes
+ * regardless of where you fold them). The floor distinguishes
+ * "found a real periodic structure" from "caught the same N events
+ * by coincidence at some offset".
  */
 function spikeMagnitudePeriodogram(
   events: SpikeEvent[],
@@ -209,12 +236,9 @@ function spikeMagnitudePeriodogram(
   }
   const period = new Float64Array(numBins);
   const amplitude = new Float64Array(numBins);
-  // Log-spaced grid — most physically meaningful for periods, where
-  // human "doubling" intuition is logarithmic anyway.
   const logMin = Math.log(periodMin);
   const logMax = Math.log(periodMax);
-  const totalDev = events.reduce((a, e) => a + e.deviation, 0);
-  const totalCount = events.length;
+  const minAligned = Math.max(2, Math.floor(events.length * MIN_ALIGNED_FRACTION));
 
   let ampMax = 0;
   for (let i = 0; i < numBins; i++) {
@@ -222,24 +246,31 @@ function spikeMagnitudePeriodogram(
     period[i] = T;
     const halfWindow = T * ALIGN_TOL;
     let bestSum = 0;
+    let bestCount = 0;
     for (let o = 0; o < NUM_OFFSETS; o++) {
       const offset = (o / NUM_OFFSETS) * T;
       let sum = 0;
+      let count = 0;
       for (const ev of events) {
         const phase = ((ev.t - offset) % T + T) % T;
         const dist = Math.min(phase, T - phase);
-        if (dist <= halfWindow) sum += ev.deviation;
+        if (dist <= halfWindow) {
+          sum += ev.deviation;
+          count++;
+        }
       }
-      if (sum > bestSum) bestSum = sum;
+      if (sum > bestSum) {
+        bestSum = sum;
+        bestCount = count;
+      }
     }
-    // Normalize so the headline interpretation is "average event
-    // magnitude, weighted by alignment fraction". For all events
-    // aligned this is the mean magnitude (≈ the typical spike size).
-    const a = bestSum / totalCount;
+    // Mean magnitude of aligned events when there are enough of them
+    // to credibly call this a periodic structure; otherwise zero so
+    // the chart baseline is clean.
+    const a = bestCount >= minAligned ? bestSum / bestCount : 0;
     amplitude[i] = a;
     if (a > ampMax) ampMax = a;
   }
-  void totalDev; // kept for potential future re-weighting; unused for now.
   return { period, amplitude, ampMax };
 }
 
@@ -317,11 +348,17 @@ export function analyzeSpikes(s: GuideSession, opts: SpikeAnalysisOptions): Spik
   const values = opts.axis === 'ra' ? drift.rac : drift.decc;
   const { median, sigma } = robustStats(values);
   const threshold = opts.k * sigma;
+  const direction: SpikeDirection = opts.direction ?? 'both';
 
   const n = values.length;
   const spikeMask = new Uint8Array(n);
   for (let i = 0; i < n; i++) {
-    if (Math.abs(values[i] - median) > threshold) spikeMask[i] = 1;
+    const dev = values[i] - median;
+    let isSpike = false;
+    if (direction === 'positive') isSpike = dev > threshold;
+    else if (direction === 'negative') isSpike = dev < -threshold;
+    else isSpike = Math.abs(dev) > threshold;
+    if (isSpike) spikeMask[i] = 1;
   }
   const events = clusterSpikes(drift.t, values, median, spikeMask);
 
@@ -361,6 +398,7 @@ export function analyzeSpikes(s: GuideSession, opts: SpikeAnalysisOptions): Spik
   return {
     axis: opts.axis,
     k: opts.k,
+    direction,
     median,
     sigma,
     threshold,
