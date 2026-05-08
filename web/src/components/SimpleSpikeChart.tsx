@@ -5,6 +5,7 @@ import type { Data, Layout } from 'plotly.js';
 import type { SimpleSpikeRun } from '../parser/simpleSpikeAnalysis';
 import { useViewStore } from '../state/viewStore';
 import { themeOf } from '../themes';
+import { useChartGestures } from './useChartGestures';
 
 const RA_COLOR = '#60a5fa';
 const DEC_COLOR = '#f87171';
@@ -26,6 +27,11 @@ export function SimpleSpikeChart({ run, scaleMode }: SimpleSpikeChartProps) {
   const themeId = useViewStore((s) => s.theme);
   const tc = themeOf(themeId).plot;
   const id = useId().replace(/:/g, '_');
+
+  // Same drag interface as the other charts — drag pans X and zooms Y
+  // simultaneously; scroll-wheel zooms X. enableModifierSelect=false
+  // because there's no include/exclude editing on this tab.
+  useChartGestures(id, {}, { enableModifierSelect: false });
 
   const k = scaleMode === 'ARCSEC' ? run.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
