@@ -7,6 +7,7 @@ import { SpikeChart } from './SpikeChart';
 import { BurstChart, BurstCandidatesTable } from './BurstChart';
 import { BurstControls } from './BurstControls';
 import { BurstSettleDialog } from './BurstSettleDialog';
+import { SimpleSpikeChart } from './SimpleSpikeChart';
 import { fmtNumber } from '../i18n/format';
 import type { GARun } from '../parser/analyze';
 import { pickTopSpikePeriods, type SpikeRun } from '../parser/spikeAnalysis';
@@ -105,6 +106,7 @@ export function AnalysisModal() {
     garun, garunOther, kind, showRa, showDec, scaleMode, maxPeriodSec, yMaxLockPx, yMaxViewPx,
     spikeSource, spikeRun, spikeAxis, spikeDirection, spikeK, spikeMinPeriodSec,
     burstSource, burstRun, burstOpts, burstAutoAdjusting, burstAutoBestPct, burstPendingSettle,
+    simpleSpikeRun, simpleSpikeAxis, simpleSpikeDirection,
   } = s;
   // The active dataset PeriodogramChart should render. In spike mode we
   // adapt the SpikeRun; otherwise it's the regular GARun pair.
@@ -141,16 +143,19 @@ export function AnalysisModal() {
     ? t('mode.spike')
     : kind === 'burst'
     ? t('mode.burst')
+    : kind === 'simple-spike'
+    ? t('mode.simpleSpike')
     : t('mode.selected');
   // 'all' / 'all-raw-ra' tabs always appear when their counterpart is
-  // available. Spike + Bursts tabs appear whenever the modal was opened
-  // with a spikeSource (i.e. for kind 'all' / 'all-raw-ra'; not for
-  // 'unguided'). Both tabs reuse the same SpikeSource — the burst tab's
-  // own source pointer in the store is just an alias.
+  // available. Spike / Bursts / Simple Spikes all appear whenever the
+  // modal was opened with a spikeSource (i.e. for kind 'all' /
+  // 'all-raw-ra'; not for 'unguided'). They all reuse the same source
+  // ref — the per-tab pointers in the store are aliases.
   const showResidualTabs = kind !== 'unguided' && !!garunOther;
   const showSpikeTab = kind !== 'unguided' && !!spikeSource;
   const showBurstTab = kind !== 'unguided' && !!burstSource;
-  const showAnyTabs = showResidualTabs || showSpikeTab || showBurstTab;
+  const showSimpleSpikeTab = kind !== 'unguided' && !!spikeSource;
+  const showAnyTabs = showResidualTabs || showSpikeTab || showBurstTab || showSimpleSpikeTab;
 
   const ToggleChip = ({
     label, active, onClick, title: tip, disabled,
@@ -236,6 +241,10 @@ export function AnalysisModal() {
                 <ModeTab target="burst" current={kind} label={t('mode.burst')}
                   onClick={() => s.setKind('burst')} tip={t('mode.burstTooltip')} />
               )}
+              {showSimpleSpikeTab && (
+                <ModeTab target="simple-spike" current={kind} label={t('mode.simpleSpike')}
+                  onClick={() => s.setKind('simple-spike')} tip={t('mode.simpleSpikeTooltip')} />
+              )}
             </div>
           )}
           <h2 className="text-sm font-medium" title={t('titleTooltip')}>
@@ -252,7 +261,71 @@ export function AnalysisModal() {
           <span className="ms-1 text-xs opacity-70">{t('esc')}</span>
         </button>
       </header>
-      {kind === 'burst' && burstRun && burstOpts ? (
+      {kind === 'simple-spike' && simpleSpikeRun ? (
+        // Simple Spikes tab: minimal single-chart layout. Toolbar has
+        // axis + direction chips + scale; chart fills the body; bottom
+        // panel shows just the two summary numbers (period + mean
+        // amplitude).
+        <>
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-1 text-xs">
+            <span className="me-1 text-slate-500" title={t('simpleSpike.axisTooltip')}>{t('simpleSpike.axis')}:</span>
+            <ToggleChip label="RA" active={simpleSpikeAxis === 'ra'} onClick={() => s.setSimpleSpikeAxis('ra')} title={t('simpleSpike.axisRaTooltip')} />
+            <ToggleChip label="Dec" active={simpleSpikeAxis === 'dec'} onClick={() => s.setSimpleSpikeAxis('dec')} title={t('simpleSpike.axisDecTooltip')} />
+            <span className="ms-3 me-1 text-slate-500" title={t('simpleSpike.directionTooltip')}>{t('simpleSpike.direction')}:</span>
+            <ToggleChip label="±" active={simpleSpikeDirection === 'both'} onClick={() => s.setSimpleSpikeDirection('both')} title={t('simpleSpike.dirBothTooltip')} />
+            <ToggleChip label="+" active={simpleSpikeDirection === 'positive'} onClick={() => s.setSimpleSpikeDirection('positive')} title={t('simpleSpike.dirPositiveTooltip')} />
+            <ToggleChip label="−" active={simpleSpikeDirection === 'negative'} onClick={() => s.setSimpleSpikeDirection('negative')} title={t('simpleSpike.dirNegativeTooltip')} />
+            <span className="ms-3 me-1 text-slate-500" title={t('scaleTooltip')}>{t('scale')}:</span>
+            <ToggleChip label="arc-sec" active={scaleMode === 'ARCSEC'} onClick={() => s.setScaleMode('ARCSEC')} title={t('arcsecTooltip')} />
+            <ToggleChip label="pixels" active={scaleMode === 'PIXELS'} onClick={() => s.setScaleMode('PIXELS')} title={t('pixelsTooltip')} />
+            <span className="ms-auto text-slate-600">{t('gestureHint')}</span>
+          </div>
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <SimpleSpikeChart run={simpleSpikeRun} scaleMode={scaleMode} />
+          </div>
+          <div className="border-t-2 border-amber-800 bg-slate-900/70 px-4 py-2 text-xs">
+            <div className="mb-1 flex items-center gap-3">
+              <span className="font-semibold uppercase tracking-wider text-slate-400">
+                {t('simpleSpike.summary')}
+              </span>
+              <span className="text-slate-500" title={t('simpleSpike.runStatsTooltip')}>
+                {t('simpleSpike.runStats', {
+                  count: simpleSpikeRun.spikeIndices.length,
+                  sigma: fmtNumber(
+                    simpleSpikeRun.sigma * (scaleMode === 'ARCSEC' ? simpleSpikeRun.pixelScale : 1),
+                    2,
+                  ),
+                  unit: scaleMode === 'ARCSEC' ? '″' : 'px',
+                })}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+              <div
+                className="rounded border border-amber-700/50 bg-slate-900 px-3 py-1 font-mono text-slate-200"
+                title={t('simpleSpike.periodTooltip')}
+              >
+                <div className="text-[10px] uppercase tracking-wider text-amber-300">{t('simpleSpike.periodLabel')}</div>
+                <div className="text-base">
+                  {simpleSpikeRun.periodSec > 0
+                    ? `${fmtNumber(simpleSpikeRun.periodSec, 1)}s`
+                    : t('simpleSpike.periodNone')}
+                </div>
+              </div>
+              <div
+                className="rounded border border-amber-700/50 bg-slate-900 px-3 py-1 font-mono text-slate-200"
+                title={t('simpleSpike.amplitudeTooltip')}
+              >
+                <div className="text-[10px] uppercase tracking-wider text-amber-300">{t('simpleSpike.amplitudeLabel')}</div>
+                <div className="text-base">
+                  {simpleSpikeRun.spikeIndices.length > 0
+                    ? `${fmtNumber(simpleSpikeRun.meanAmplitude * simpleSpikeRun.pixelScale, 2)}″ (${fmtNumber(simpleSpikeRun.meanAmplitude, 2)}px)`
+                    : t('simpleSpike.amplitudeNone')}
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : kind === 'burst' && burstRun && burstOpts ? (
         // Bursts tab: completely different layout — its own controls
         // pane (multi-row knob grid), then a vertically-stacked column
         // of diagnostic charts, then the candidates table at the bottom.

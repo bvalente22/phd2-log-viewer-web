@@ -15,11 +15,13 @@
     "unguided": "Unguided section",
     "spike": "Spikes",
     "burst": "Bursts",
+    "simpleSpike": "Simple",
     "tabsLabel": "Analysis mode",
     "selectedTooltip": "Residual error mode: every included, non-excluded frame as recorded — RA / Dec are what's left after PHD2's corrections.",
     "rawRaTooltip": "Raw RA mode: same range, but with PHD2's RA correction pulses re-added to the raw error. Shows what tracking would have looked like unguided in RA, while Dec keeps its corrections.",
     "spikeTooltip": "Spike Analysis: detect outlier samples (|deviation from median| > k × σ_robust) and surface the dominant periods of the spike train. Useful for finding short-lived periodic disturbances that the regular periodic-error periodogram would smear into the noise floor.",
-    "burstTooltip": "Burst-period workbench: programmatic search for repeating spike clusters with a tunable preprocessing pipeline (resample → detrend → energy → envelope → autocorrelation + FFT + peak-spacing). Surfaces ranked candidates with harmonic flags. Use this when the simpler Spikes tab can't pin down the period."
+    "burstTooltip": "Burst-period workbench: programmatic search for repeating spike clusters with a tunable preprocessing pipeline (resample → detrend → energy → envelope → autocorrelation + FFT + peak-spacing). Surfaces ranked candidates with harmonic flags. Use this when the simpler Spikes tab can't pin down the period.",
+    "simpleSpikeTooltip": "Bare-bones spike analyzer: linearly detrend the chosen axis, threshold at 3σ (with optional +/− side filter), FFT the sparse spike series, and report the dominant period plus the mean amplitude of the detected spikes. Two numbers, no knobs."
   },
   "spike": {
     "axis": "axis",
@@ -127,6 +129,28 @@
       "keepCurrent": "Keep current ({{current}}%)",
       "keepCurrentTooltip": "Leave the sliders where the search ended ({{current}}%); discard the global-best configuration."
     }
+  },
+  "simpleSpike": {
+    "axis": "axis",
+    "axisTooltip": "Which guiding axis to analyze. RA detrend + 3σ on RA; Dec detrend + 3σ on Dec.",
+    "axisRaTooltip": "Analyze RA spikes",
+    "axisDecTooltip": "Analyze Dec spikes",
+    "direction": "side",
+    "directionTooltip": "Which side(s) of the baseline (median after detrend) to count as spikes. ± keeps both signs; + only above the baseline; − only below.",
+    "dirBothTooltip": "Both sides — flag samples whose |deviation| exceeds 3σ.",
+    "dirPositiveTooltip": "Positive side only — flag samples whose deviation exceeds +3σ.",
+    "dirNegativeTooltip": "Negative side only — flag samples whose deviation falls below −3σ.",
+    "detrended": "Detrended",
+    "markers": "Spikes (3σ)",
+    "summary": "Result",
+    "periodLabel": "Period",
+    "periodTooltip": "Dominant period of the spike train, derived from FFT of the sparse spike-only series (samples below the 3σ threshold are zeroed out).",
+    "periodNone": "—",
+    "amplitudeLabel": "Mean amplitude",
+    "amplitudeTooltip": "Mean of |deviation from baseline| across the samples that exceeded the 3σ threshold. Roughly: how big is a typical spike.",
+    "amplitudeNone": "—",
+    "runStats": "{{count}} spike samples · σ = {{sigma}}{{unit}}",
+    "runStatsTooltip": "Total samples flagged as spikes (above the 3σ threshold, with the active direction filter applied), and the robust σ used to set the threshold."
   },
   "show": "show",
   "showTooltip": "Toggle individual drift traces",

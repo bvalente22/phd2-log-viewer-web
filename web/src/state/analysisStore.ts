@@ -7,9 +7,15 @@ import {
   type BurstAnalysisOptions,
   type BurstRun,
 } from '../parser/burstAnalysis';
+import {
+  analyzeSimpleSpikes,
+  type SimpleSpikeAxis,
+  type SimpleSpikeDirection,
+  type SimpleSpikeRun,
+} from '../parser/simpleSpikeAnalysis';
 import type { GuideSession } from '../parser/types';
 
-export type AnalysisKind = 'all' | 'all-raw-ra' | 'unguided' | 'spike' | 'burst';
+export type AnalysisKind = 'all' | 'all-raw-ra' | 'unguided' | 'spike' | 'burst' | 'simple-spike';
 
 interface ClosedState {
   state: 'closed';
@@ -158,6 +164,14 @@ interface OpenState {
     bestPct: number;
     currentPct: number;
   } | null;
+
+  /** Simple Spikes tab state. Stripped-down spike analyzer: detrend →
+   *  3σ threshold → FFT of sparse spike series → period + mean amplitude.
+   *  Same source ref as the spike/burst tabs (drift-corrected RA or Dec
+   *  for the modal's range). Lazily computed on first switch. */
+  simpleSpikeRun: SimpleSpikeRun | null;
+  simpleSpikeAxis: SimpleSpikeAxis;
+  simpleSpikeDirection: SimpleSpikeDirection;
 }
 
 type AnalysisStateUnion = ClosedState | OpenState;
@@ -244,6 +258,11 @@ interface Actions {
    *  best opts the search saw; `false` keeps the current configuration.
    *  Either way clears `burstPendingSettle`. */
   resolveBurstPendingSettle: (keepBest: boolean) => void;
+
+  /** Switch the Simple Spikes axis and re-run analyzeSimpleSpikes. */
+  setSimpleSpikeAxis: (axis: SimpleSpikeAxis) => void;
+  /** Switch the Simple Spikes direction filter and re-run. */
+  setSimpleSpikeDirection: (dir: SimpleSpikeDirection) => void;
 }
 
 const DEFAULT_MAX_PERIOD_SEC = 600;
@@ -291,6 +310,9 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       burstAutoAdjusting: false,
       burstAutoBestPct: null,
       burstPendingSettle: null,
+      simpleSpikeRun: null,
+      simpleSpikeAxis: 'ra',
+      simpleSpikeDirection: 'both',
     } as OpenState),
   close: () => set({ state: 'closed' } as ClosedState),
   setShowRa: (b) => set((s) => (s.state === 'open' ? { ...s, showRa: b } : s)),
@@ -353,6 +375,19 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
         mask: cur.burstSource.mask,
       });
       set({ ...cur, kind, burstOpts: opts, burstRun: run });
+      return;
+    }
+    // 'simple-spike': stripped-down analyzer; lazy-compute on first open,
+    // re-run on axis/direction change.
+    if (kind === 'simple-spike') {
+      if (!cur.spikeSource) return; // reuse the spike source ref
+      const run = analyzeSimpleSpikes(cur.spikeSource.session, {
+        range: cur.spikeSource.range,
+        mask: cur.spikeSource.mask,
+        axis: cur.simpleSpikeAxis,
+        direction: cur.simpleSpikeDirection,
+      });
+      set({ ...cur, kind, simpleSpikeRun: run });
       return;
     }
     // 'unguided' isn't reachable from setKind — it's set at open() time.
@@ -763,6 +798,38 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
           : null,
       });
     }
+  },
+  setSimpleSpikeAxis: (axis) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (cur.simpleSpikeAxis === axis) return;
+    if (!cur.spikeSource) {
+      set({ ...cur, simpleSpikeAxis: axis });
+      return;
+    }
+    const run = analyzeSimpleSpikes(cur.spikeSource.session, {
+      range: cur.spikeSource.range,
+      mask: cur.spikeSource.mask,
+      axis,
+      direction: cur.simpleSpikeDirection,
+    });
+    set({ ...cur, simpleSpikeAxis: axis, simpleSpikeRun: run });
+  },
+  setSimpleSpikeDirection: (dir) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (cur.simpleSpikeDirection === dir) return;
+    if (!cur.spikeSource) {
+      set({ ...cur, simpleSpikeDirection: dir });
+      return;
+    }
+    const run = analyzeSimpleSpikes(cur.spikeSource.session, {
+      range: cur.spikeSource.range,
+      mask: cur.spikeSource.mask,
+      axis: cur.simpleSpikeAxis,
+      direction: dir,
+    });
+    set({ ...cur, simpleSpikeDirection: dir, simpleSpikeRun: run });
   },
   resolveBurstPendingSettle: (keepBest) => {
     const cur = get();
