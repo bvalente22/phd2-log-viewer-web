@@ -461,7 +461,13 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
   autoAdjustBurstOpts: async () => {
     const initial = get();
     if (initial.state !== 'open' || !initial.burstSource) return;
-    if (initial.burstAutoAdjusting) return;
+    // Toggle behavior: a second click while running asks for a stop.
+    // Clearing the flag is enough — the running loop polls it before
+    // every step and exits cleanly, settling at the best opts seen.
+    if (initial.burstAutoAdjusting) {
+      set({ ...initial, burstAutoAdjusting: false });
+      return;
+    }
     const src = initial.burstSource;
 
     set({ ...initial, burstAutoAdjusting: true });
@@ -493,6 +499,14 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       return run.candidates[0]?.confidence ?? 0;
     };
 
+    // Polled by the search loop. The user toggling the button clears
+    // burstAutoAdjusting in the click handler, so the next loop check
+    // sees it false and exits gracefully.
+    const isStopped = (): boolean => {
+      const s = get();
+      return s.state !== 'open' || !s.burstAutoAdjusting;
+    };
+
     // ---------- Phase 1: warm-up coordinate descent ----------
     // Quick single-axis sweeps in order of typical impact. Anchors the
     // search in a sensible region before the multi-axis SA refines it.
@@ -500,11 +514,13 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       key: K,
       candidates: BurstAnalysisOptions[K][],
     ) => {
+      if (isStopped()) return;
       const startVal = opts[key];
       const startConf = await apply({ [key]: startVal } as Partial<BurstAnalysisOptions>);
       let bestVal = startVal;
       let bestConf = startConf;
       for (const v of candidates) {
+        if (isStopped()) return;
         if (v === bestVal) continue;
         const conf = await apply({ [key]: v } as Partial<BurstAnalysisOptions>);
         if (conf > bestConf + 0.01) {
@@ -513,7 +529,7 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
         }
         if (bestConf >= 0.7) break;
       }
-      if (opts[key] !== bestVal) {
+      if (opts[key] !== bestVal && !isStopped()) {
         await apply({ [key]: bestVal } as Partial<BurstAnalysisOptions>, SETTLE_MS);
       }
     };
@@ -525,14 +541,16 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
 
     // Single warm-up pass — coordinate descent converges fast for the
     // first round and the SA phase below picks up where it leaves off.
-    await sweep('envelopeSmoothSec', [2, 4, 8, 16, 24, 40, 60, 80]);
-    if (currentConfidence() < 0.7)
+    // Each sweep checks the stop flag so the user's stop click takes
+    // effect promptly even during the warm-up.
+    if (!isStopped()) await sweep('envelopeSmoothSec', [2, 4, 8, 16, 24, 40, 60, 80]);
+    if (!isStopped() && currentConfidence() < 0.7)
       await sweep('highPassPeriodSec', [0, 60, 120, 200, 300]);
-    if (currentConfidence() < 0.7)
+    if (!isStopped() && currentConfidence() < 0.7)
       await sweep('peakProminenceSigma', [0.3, 0.5, 1.0, 1.5, 2.5]);
-    if (currentConfidence() < 0.7)
+    if (!isStopped() && currentConfidence() < 0.7)
       await sweep('peakThresholdSigma', [-0.5, 0.5, 1.0, 1.5, 2.5]);
-    if (currentConfidence() < 0.7)
+    if (!isStopped() && currentConfidence() < 0.7)
       await sweep('minPeakSpacingSec', [5, 15, 30, 50, 80]);
 
     // ---------- Phase 2: multi-axis simulated annealing ----------
@@ -586,10 +604,42 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     let bestConf = currentConfidence();
     let temperature = 0.15;
     let sinceImprovement = 0;
-    const SA_BUDGET = 60;
+    let iteration = 0;
 
-    for (let step = 0; step < SA_BUDGET; step++) {
-      if (bestConf >= 0.75) break; // comfortably 'strong' — done.
+    // Indefinite loop — runs until the user stops it (toggle button
+    // clears burstAutoAdjusting). The user is in control of how long
+    // to search; we keep proposing multi-axis moves and re-heating
+    // when stuck, with periodic random restarts to escape global
+    // optima.
+    while (!isStopped()) {
+      iteration++;
+
+      // Periodic random restart — every 80 steps after stagnation, jump
+      // to a completely random configuration. Most random restarts will
+      // land on a worse spot and SA's reject path will revert; the
+      // occasional lucky one finds a new basin of attraction.
+      if (iteration % 80 === 0 && sinceImprovement > 30) {
+        const jumpPatch: Partial<BurstAnalysisOptions> = {};
+        for (const p of tunable) {
+          const r = ranges[p];
+          const span = r.max - r.min;
+          let v = r.min + rand() * span;
+          v = Math.round(v / r.step) * r.step;
+          (jumpPatch as Record<string, number>)[p] = v;
+        }
+        await apply(jumpPatch);
+        const jumpConf = currentConfidence();
+        if (jumpConf > bestConf) {
+          bestConf = jumpConf;
+          bestOpts = { ...opts };
+          sinceImprovement = 0;
+        } else {
+          await apply(bestOpts);
+        }
+        // Re-heat after a restart so the next steps can keep exploring.
+        temperature = 0.18;
+        continue;
+      }
 
       // Pick 2 or 3 random knobs to perturb together.
       const k = 2 + Math.floor(rand() * 2);
@@ -603,48 +653,50 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       }
 
       const conf = await apply(patch);
+      if (isStopped()) break;
       const dE = conf - bestConf;
 
       if (dE > 0) {
-        // Strict improvement — keep, update best.
         bestConf = conf;
         bestOpts = { ...opts };
         sinceImprovement = 0;
       } else if (rand() < Math.exp(dE / temperature)) {
-        // Worse but accepted (Metropolis criterion). Already applied;
-        // opts is now the worse candidate. Don't update best.
         sinceImprovement++;
       } else {
-        // Rejected — revert to bestOpts so the next perturbation is
-        // anchored at the current global best, not the bad trial.
         await apply(bestOpts);
         sinceImprovement++;
       }
 
-      // Geometric cooling.
-      temperature *= 0.96;
+      // Slow cooling so an indefinite run doesn't freeze fast.
+      temperature *= 0.985;
 
-      // Re-heat if we've stalled — gives SA a fresh chance to escape
-      // a basin coordinate descent + SA both got stuck in.
-      if (sinceImprovement > 12) {
-        temperature = Math.min(0.18, temperature * 3);
+      // Re-heat if we've stalled.
+      if (sinceImprovement > 15) {
+        temperature = Math.min(0.18, temperature * 4);
         sinceImprovement = 0;
       }
     }
 
     // ---------- Final settle ----------
-    // Make sure we end at the best opts we ever saw. The slider visibly
-    // returns to the global-best position with a longer pause so the
-    // eye registers the chosen value.
-    const sameAsBest = tunable.every((k) => (opts[k] as number) === (bestOpts[k] as number));
-    if (!sameAsBest) {
-      const settlePatch: Partial<BurstAnalysisOptions> = {};
-      for (const k of tunable) (settlePatch as Record<string, number>)[k] = bestOpts[k] as number;
-      await apply(settlePatch, SETTLE_MS);
+    // On stop we always converge to the best opts we ever saw. The
+    // slider visibly returns to the global-best position with a longer
+    // pause so the eye registers the chosen value. Skip if the modal
+    // closed while we were running.
+    if (get().state === 'open') {
+      const sameAsBest = tunable.every((k) => (opts[k] as number) === (bestOpts[k] as number));
+      if (!sameAsBest) {
+        const settlePatch: Partial<BurstAnalysisOptions> = {};
+        for (const k of tunable) (settlePatch as Record<string, number>)[k] = bestOpts[k] as number;
+        // Note: apply() short-circuits if state isn't open; safe to call.
+        await apply(settlePatch, SETTLE_MS);
+      }
     }
 
+    // If the loop exited because the user clicked Stop, the flag is
+    // already cleared. Defensive clear in case we exited some other
+    // way (modal close, etc).
     const final = get();
-    if (final.state === 'open') {
+    if (final.state === 'open' && final.burstAutoAdjusting) {
       set({ ...final, burstAutoAdjusting: false });
     }
   },

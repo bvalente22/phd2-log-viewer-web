@@ -114,8 +114,9 @@
     "reset": "Reset to defaults",
     "resetTooltip": "Reset every Burst-tab knob to its default value and re-run the analysis. Useful when you've tuned far from a sensible baseline and want to start over.",
     "autoAdjust": "Auto adjust",
-    "autoAdjusting": "Tuning…",
-    "autoAdjustTooltip": "Hill-climb the numeric knobs (HP, smooth, prominence, threshold, min spacing) to maximize the top candidate's confidence. The sliders animate through the search; total runtime ≈ 1-2 s. Stops early once any candidate hits 'strong' (≥ 70% confidence). Axis, direction, energy method, and period range are left alone — those are semantic choices, not search parameters."
+    "autoStop": "Stop",
+    "autoAdjustTooltip": "Start a continuous multi-axis search over the numeric knobs (HP, smooth, prominence, threshold, min spacing) to maximize the top candidate's confidence. Runs indefinitely — sliders move through coordinated 2-3 knob perturbations with simulated-annealing acceptance and periodic random restarts. Click 'Stop' to halt; on stop, the sliders settle at the best configuration the search ever saw.",
+    "autoStopTooltip": "Stop the running search and settle the sliders at the best configuration found so far."
   },
   "show": "show",
   "showTooltip": "Toggle individual drift traces",

@@ -27,11 +27,14 @@ export function BurstControls({ opts, setOpts, onReset, onAutoAdjust, autoAdjust
         <button
           type="button"
           onClick={onAutoAdjust}
-          disabled={autoAdjusting}
-          title={t('burst.autoAdjustTooltip')}
-          className="rounded bg-emerald-700 px-3 py-0.5 text-xs text-white ring-1 ring-emerald-600 transition-colors hover:bg-emerald-600 disabled:cursor-wait disabled:bg-slate-700 disabled:text-slate-300 disabled:ring-slate-600"
+          title={autoAdjusting ? t('burst.autoStopTooltip') : t('burst.autoAdjustTooltip')}
+          className={
+            autoAdjusting
+              ? 'rounded bg-rose-700 px-3 py-0.5 text-xs text-white ring-1 ring-rose-600 transition-colors hover:bg-rose-600'
+              : 'rounded bg-emerald-700 px-3 py-0.5 text-xs text-white ring-1 ring-emerald-600 transition-colors hover:bg-emerald-600'
+          }
         >
-          {autoAdjusting ? t('burst.autoAdjusting') : t('burst.autoAdjust')}
+          {autoAdjusting ? t('burst.autoStop') : t('burst.autoAdjust')}
         </button>
         <button
           type="button"
