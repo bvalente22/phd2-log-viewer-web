@@ -8,6 +8,8 @@ import { BurstChart, BurstCandidatesTable } from './BurstChart';
 import { BurstControls } from './BurstControls';
 import { BurstSettleDialog } from './BurstSettleDialog';
 import { SimpleSpikeChart } from './SimpleSpikeChart';
+import { ManualSpikeChart } from './ManualSpikeChart';
+import { manualSpikeStats } from '../parser/manualSpikeAnalysis';
 import { fmtNumber } from '../i18n/format';
 import type { GARun } from '../parser/analyze';
 import { pickTopSpikePeriods, type SpikeRun } from '../parser/spikeAnalysis';
@@ -107,6 +109,7 @@ export function AnalysisModal() {
     spikeSource, spikeRun, spikeAxis, spikeDirection, spikeK, spikeMinPeriodSec,
     burstSource, burstRun, burstOpts, burstAutoAdjusting, burstAutoBestPct, burstPendingSettle,
     simpleSpikeRun, simpleSpikeAxis, simpleSpikeDirection,
+    manualSpikeRun, manualSpikeAxis, manualSpikeSelections,
   } = s;
   // The active dataset PeriodogramChart should render. In spike mode we
   // adapt the SpikeRun; otherwise it's the regular GARun pair.
@@ -145,6 +148,8 @@ export function AnalysisModal() {
     ? t('mode.burst')
     : kind === 'simple-spike'
     ? t('mode.simpleSpike')
+    : kind === 'manual-spike'
+    ? t('mode.manualSpike')
     : t('mode.selected');
   // 'all' / 'all-raw-ra' tabs always appear when their counterpart is
   // available. Spike / Bursts / Simple Spikes all appear whenever the
@@ -155,7 +160,8 @@ export function AnalysisModal() {
   const showSpikeTab = kind !== 'unguided' && !!spikeSource;
   const showBurstTab = kind !== 'unguided' && !!burstSource;
   const showSimpleSpikeTab = kind !== 'unguided' && !!spikeSource;
-  const showAnyTabs = showResidualTabs || showSpikeTab || showBurstTab || showSimpleSpikeTab;
+  const showManualSpikeTab = kind !== 'unguided' && !!spikeSource;
+  const showAnyTabs = showResidualTabs || showSpikeTab || showBurstTab || showSimpleSpikeTab || showManualSpikeTab;
 
   const ToggleChip = ({
     label, active, onClick, title: tip, disabled,
@@ -245,6 +251,10 @@ export function AnalysisModal() {
                 <ModeTab target="simple-spike" current={kind} label={t('mode.simpleSpike')}
                   onClick={() => s.setKind('simple-spike')} tip={t('mode.simpleSpikeTooltip')} />
               )}
+              {showManualSpikeTab && (
+                <ModeTab target="manual-spike" current={kind} label={t('mode.manualSpike')}
+                  onClick={() => s.setKind('manual-spike')} tip={t('mode.manualSpikeTooltip')} />
+              )}
             </div>
           )}
           <h2 className="text-sm font-medium" title={t('titleTooltip')}>
@@ -261,7 +271,84 @@ export function AnalysisModal() {
           <span className="ms-1 text-xs opacity-70">{t('esc')}</span>
         </button>
       </header>
-      {kind === 'simple-spike' && simpleSpikeRun ? (
+      {kind === 'manual-spike' && manualSpikeRun ? (
+        // Manual Spike tab: same chart layout as Simple but the spike
+        // markers come from user clicks (left = add, right = remove).
+        // Bottom panel shows the period + amplitude in BIG text.
+        (() => {
+          const stats = manualSpikeStats(manualSpikeRun, manualSpikeSelections);
+          const ps = manualSpikeRun.pixelScale;
+          const meanArc = stats.meanAmplitude * ps;
+          return (
+            <>
+              <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-1 text-xs">
+                <span className="me-1 text-slate-500" title={t('manualSpike.axisTooltip')}>{t('manualSpike.axis')}:</span>
+                <ToggleChip label="RA" active={manualSpikeAxis === 'ra'} onClick={() => s.setManualSpikeAxis('ra')} title={t('manualSpike.axisRaTooltip')} />
+                <ToggleChip label="Dec" active={manualSpikeAxis === 'dec'} onClick={() => s.setManualSpikeAxis('dec')} title={t('manualSpike.axisDecTooltip')} />
+                <span className="ms-3 me-1 text-slate-500" title={t('scaleTooltip')}>{t('scale')}:</span>
+                <ToggleChip label="arc-sec" active={scaleMode === 'ARCSEC'} onClick={() => s.setScaleMode('ARCSEC')} title={t('arcsecTooltip')} />
+                <ToggleChip label="pixels" active={scaleMode === 'PIXELS'} onClick={() => s.setScaleMode('PIXELS')} title={t('pixelsTooltip')} />
+                <button
+                  type="button"
+                  onClick={s.resetManualSpikePoints}
+                  disabled={stats.count === 0}
+                  className="ms-3 rounded bg-slate-800 px-3 py-0.5 text-xs text-slate-200 ring-1 ring-slate-700 transition-colors hover:bg-rose-700 hover:text-white hover:ring-rose-600 disabled:cursor-not-allowed disabled:bg-slate-900 disabled:text-slate-600"
+                  title={t('manualSpike.resetTooltip')}
+                >
+                  {t('manualSpike.reset')}
+                </button>
+                <span className="ms-auto text-slate-600">
+                  {t('manualSpike.gestureHint')}
+                </span>
+              </div>
+              <div className="flex flex-1 flex-col overflow-hidden">
+                <ManualSpikeChart
+                  run={manualSpikeRun}
+                  scaleMode={scaleMode}
+                  selectedIndices={manualSpikeSelections}
+                  onAddPoint={s.addManualSpikePoint}
+                  onRemovePoint={s.removeManualSpikePoint}
+                />
+              </div>
+              <div className="border-t-2 border-amber-800 bg-slate-900/70 px-4 py-3 text-xs">
+                <div className="mb-2 flex items-center gap-3">
+                  <span className="font-semibold uppercase tracking-wider text-slate-400">
+                    {t('manualSpike.summary')}
+                  </span>
+                  <span className="text-slate-500">
+                    {t('manualSpike.runStats', { count: stats.count })}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="rounded border border-amber-700/50 bg-slate-900 px-4 py-3 font-mono text-slate-200">
+                    <div className="text-[10px] uppercase tracking-wider text-amber-300">
+                      {t('manualSpike.periodLabel')}
+                    </div>
+                    <div className="text-3xl font-bold">
+                      {stats.count >= 2 ? `${fmtNumber(stats.meanPeriodSec, 1)}s` : t('manualSpike.periodNone')}
+                    </div>
+                    {stats.count >= 3 && (
+                      <div className="mt-1 text-xs text-slate-400">
+                        {t('manualSpike.intervalStd', { std: fmtNumber(stats.intervalStdSec, 1) })}
+                      </div>
+                    )}
+                  </div>
+                  <div className="rounded border border-amber-700/50 bg-slate-900 px-4 py-3 font-mono text-slate-200">
+                    <div className="text-[10px] uppercase tracking-wider text-amber-300">
+                      {t('manualSpike.amplitudeLabel')}
+                    </div>
+                    <div className="text-3xl font-bold">
+                      {stats.count >= 1
+                        ? `${fmtNumber(meanArc, 2)}″ (${fmtNumber(stats.meanAmplitude, 2)}px)`
+                        : t('manualSpike.amplitudeNone')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          );
+        })()
+      ) : kind === 'simple-spike' && simpleSpikeRun ? (
         // Simple Spikes tab: minimal single-chart layout. Toolbar has
         // axis + direction chips + scale; chart fills the body; bottom
         // panel shows just the two summary numbers (period + mean

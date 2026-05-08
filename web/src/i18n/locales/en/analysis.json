@@ -16,12 +16,14 @@
     "spike": "Spikes",
     "burst": "Bursts",
     "simpleSpike": "Simple",
+    "manualSpike": "Manual Spike",
     "tabsLabel": "Analysis mode",
     "selectedTooltip": "Residual error mode: every included, non-excluded frame as recorded — RA / Dec are what's left after PHD2's corrections.",
     "rawRaTooltip": "Raw RA mode: same range, but with PHD2's RA correction pulses re-added to the raw error. Shows what tracking would have looked like unguided in RA, while Dec keeps its corrections.",
     "spikeTooltip": "Spike Analysis: detect outlier samples (|deviation from median| > k × σ_robust) and surface the dominant periods of the spike train. Useful for finding short-lived periodic disturbances that the regular periodic-error periodogram would smear into the noise floor.",
     "burstTooltip": "Burst-period workbench: programmatic search for repeating spike clusters with a tunable preprocessing pipeline (resample → detrend → energy → envelope → autocorrelation + FFT + peak-spacing). Surfaces ranked candidates with harmonic flags. Use this when the simpler Spikes tab can't pin down the period.",
-    "simpleSpikeTooltip": "Bare-bones spike analyzer: linearly detrend the chosen axis, threshold at 3σ (with optional +/− side filter), FFT the sparse spike series, and report the dominant period plus the mean amplitude of the detected spikes. Two numbers, no knobs."
+    "simpleSpikeTooltip": "Bare-bones spike analyzer: linearly detrend the chosen axis, threshold at 3σ (with optional +/− side filter), FFT the sparse spike series, and report the dominant period plus the mean amplitude of the detected spikes. Two numbers, no knobs.",
+    "manualSpikeTooltip": "Manual spike picker: same detrend pipeline as Simple, but the user clicks individual data points to mark them as spikes. Mean period (from inter-pick spacing) and mean amplitude update live as points are added or removed. Left-click to add, right-click to remove."
   },
   "spike": {
     "axis": "axis",
@@ -151,6 +153,26 @@
     "amplitudeNone": "—",
     "runStats": "{{count}} spike samples · σ = {{sigma}}{{unit}}",
     "runStatsTooltip": "Total samples flagged as spikes (above the 3σ threshold, with the active direction filter applied), and the robust σ used to set the threshold."
+  },
+  "manualSpike": {
+    "axis": "axis",
+    "axisTooltip": "Which guiding axis to analyze. Switching axes clears the current point selection because indices into the previous axis's data wouldn't apply to the new one.",
+    "axisRaTooltip": "Analyze RA",
+    "axisDecTooltip": "Analyze Dec",
+    "detrended": "Detrended",
+    "selected": "Selected spikes",
+    "selectedHover": "Selected",
+    "clickTarget": "click targets",
+    "summary": "Result",
+    "periodLabel": "Mean period",
+    "periodNone": "—",
+    "amplitudeLabel": "Mean amplitude",
+    "amplitudeNone": "—",
+    "intervalStd": "σ(Δt) = {{std}}s",
+    "runStats": "{{count}} points selected",
+    "reset": "Reset",
+    "resetTooltip": "Clear all selected points and start over.",
+    "gestureHint": "left-click = add point · right-click = remove point · scroll = X zoom · drag = X pan + Y zoom"
   },
   "show": "show",
   "showTooltip": "Toggle individual drift traces",

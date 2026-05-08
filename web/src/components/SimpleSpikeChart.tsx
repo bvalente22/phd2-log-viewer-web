@@ -100,7 +100,10 @@ export function SimpleSpikeChart({ run, scaleMode }: SimpleSpikeChartProps) {
       gridcolor: tc.grid,
       zerolinecolor: tc.zerolineStrong,
       zerolinewidth: 1,
-      fixedrange: false,
+      // fixedrange disables Plotly's built-in scroll-zoom on Y so the
+      // middle-wheel only zooms X. useChartGestures still drives drag-Y
+      // zoom via Plotly.relayout, which bypasses fixedrange.
+      fixedrange: true,
     },
     showlegend: true,
     legend: { orientation: 'h', y: 1.18 },

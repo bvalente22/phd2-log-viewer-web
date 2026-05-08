@@ -13,9 +13,14 @@ import {
   type SimpleSpikeDirection,
   type SimpleSpikeRun,
 } from '../parser/simpleSpikeAnalysis';
+import {
+  analyzeManualSpikes,
+  type ManualSpikeAxis,
+  type ManualSpikeRun,
+} from '../parser/manualSpikeAnalysis';
 import type { GuideSession } from '../parser/types';
 
-export type AnalysisKind = 'all' | 'all-raw-ra' | 'unguided' | 'spike' | 'burst' | 'simple-spike';
+export type AnalysisKind = 'all' | 'all-raw-ra' | 'unguided' | 'spike' | 'burst' | 'simple-spike' | 'manual-spike';
 
 interface ClosedState {
   state: 'closed';
@@ -172,6 +177,16 @@ interface OpenState {
   simpleSpikeRun: SimpleSpikeRun | null;
   simpleSpikeAxis: SimpleSpikeAxis;
   simpleSpikeDirection: SimpleSpikeDirection;
+
+  /** Manual Spike tab state. Same detrend pipeline as Simple Spikes,
+   *  but no automatic threshold detection — the user clicks samples
+   *  to mark them as spikes and the displayed mean period / mean
+   *  amplitude updates from those selections. */
+  manualSpikeRun: ManualSpikeRun | null;
+  manualSpikeAxis: ManualSpikeAxis;
+  /** Indices into manualSpikeRun.t / .detrended of the user-selected
+   *  spike samples. Cleared on axis change and on Reset. */
+  manualSpikeSelections: number[];
 }
 
 type AnalysisStateUnion = ClosedState | OpenState;
@@ -263,6 +278,17 @@ interface Actions {
   setSimpleSpikeAxis: (axis: SimpleSpikeAxis) => void;
   /** Switch the Simple Spikes direction filter and re-run. */
   setSimpleSpikeDirection: (dir: SimpleSpikeDirection) => void;
+
+  /** Switch the Manual Spike axis. Clears existing selections because
+   *  indices into the previous axis's array are no longer meaningful. */
+  setManualSpikeAxis: (axis: ManualSpikeAxis) => void;
+  /** Add a sample index to the Manual Spike selection set (no-op if
+   *  already present). */
+  addManualSpikePoint: (index: number) => void;
+  /** Remove a sample index from the Manual Spike selection set. */
+  removeManualSpikePoint: (index: number) => void;
+  /** Clear the entire Manual Spike selection set. */
+  resetManualSpikePoints: () => void;
 }
 
 const DEFAULT_MAX_PERIOD_SEC = 600;
@@ -313,6 +339,9 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       simpleSpikeRun: null,
       simpleSpikeAxis: 'ra',
       simpleSpikeDirection: 'both',
+      manualSpikeRun: null,
+      manualSpikeAxis: 'ra',
+      manualSpikeSelections: [],
     } as OpenState),
   close: () => set({ state: 'closed' } as ClosedState),
   setShowRa: (b) => set((s) => (s.state === 'open' ? { ...s, showRa: b } : s)),
@@ -388,6 +417,19 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
         direction: cur.simpleSpikeDirection,
       });
       set({ ...cur, kind, simpleSpikeRun: run });
+      return;
+    }
+    // 'manual-spike': same detrend as Simple Spikes, no detection. The
+    // selections array is preserved across the lazy compute, so re-
+    // entering the tab keeps the user's picks intact.
+    if (kind === 'manual-spike') {
+      if (!cur.spikeSource) return;
+      const run = analyzeManualSpikes(cur.spikeSource.session, {
+        range: cur.spikeSource.range,
+        mask: cur.spikeSource.mask,
+        axis: cur.manualSpikeAxis,
+      });
+      set({ ...cur, kind, manualSpikeRun: run });
       return;
     }
     // 'unguided' isn't reachable from setKind — it's set at open() time.
@@ -830,6 +872,41 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       direction: dir,
     });
     set({ ...cur, simpleSpikeDirection: dir, simpleSpikeRun: run });
+  },
+  setManualSpikeAxis: (axis) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (cur.manualSpikeAxis === axis) return;
+    if (!cur.spikeSource) {
+      set({ ...cur, manualSpikeAxis: axis, manualSpikeSelections: [] });
+      return;
+    }
+    const run = analyzeManualSpikes(cur.spikeSource.session, {
+      range: cur.spikeSource.range,
+      mask: cur.spikeSource.mask,
+      axis,
+    });
+    // Selections were indices into the previous axis's data; clear them.
+    set({ ...cur, manualSpikeAxis: axis, manualSpikeRun: run, manualSpikeSelections: [] });
+  },
+  addManualSpikePoint: (index) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (cur.manualSpikeSelections.includes(index)) return;
+    set({ ...cur, manualSpikeSelections: [...cur.manualSpikeSelections, index] });
+  },
+  removeManualSpikePoint: (index) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    const next = cur.manualSpikeSelections.filter((i) => i !== index);
+    if (next.length === cur.manualSpikeSelections.length) return;
+    set({ ...cur, manualSpikeSelections: next });
+  },
+  resetManualSpikePoints: () => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (cur.manualSpikeSelections.length === 0) return;
+    set({ ...cur, manualSpikeSelections: [] });
   },
   resolveBurstPendingSettle: (keepBest) => {
     const cur = get();
