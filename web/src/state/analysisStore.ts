@@ -93,12 +93,20 @@ interface OpenState {
   /** Sigma multiplier (k). UI exposes a slider over [1, 6]. */
   spikeK: number;
   /**
-   * Optional minimum-period filter for the top-3 spike periods list,
-   * in seconds. Useful for excluding PHD2's algorithmic-echo peak (~10-
-   * 20s) so the user-facing top-3 surfaces only meaningful periodic
-   * behavior. Null = no filter.
+   * Minimum-period filter for the top-3 spike periods list, in
+   * seconds. Default 8s — drops Nyquist-floor noise and bin-bleed
+   * without hiding the algorithmic-echo (which sits around 10-20s
+   * and is sometimes the real periodic signal the user wants to see).
+   * Null = no filter.
    */
   spikeMinPeriodSec: number | null;
+  /**
+   * Period (in seconds) currently hovered on the periodogram in spike
+   * mode. Used by SpikeChart to highlight the spike events that align
+   * with this period — visualizes which events contribute to the peak
+   * under the cursor. Null when no hover is active.
+   */
+  spikeHoverPeriod: number | null;
 }
 
 type AnalysisStateUnion = ClosedState | OpenState;
@@ -161,10 +169,19 @@ interface Actions {
   setSpikeK: (k: number) => void;
   /** Optional minimum-period filter for the top-3 list. Null clears it. */
   setSpikeMinPeriod: (sec: number | null) => void;
+  /** Set the hovered periodogram period (or null to clear). The spike
+   *  chart subscribes to this and re-renders aligned events
+   *  highlighted whenever it's non-null. */
+  setSpikeHoverPeriod: (sec: number | null) => void;
 }
 
 const DEFAULT_MAX_PERIOD_SEC = 600;
 const DEFAULT_SPIKE_K = 3;
+// Default minimum period for the spike top-3 filter. 8s drops Nyquist-
+// adjacent noise (typical PHD2 cadence is 1-3s) without hiding the
+// algorithmic-echo at ~10-20s, which the user might genuinely want to
+// see. They can tune this to ~30s if they want to exclude the echo.
+const DEFAULT_SPIKE_MIN_PERIOD_SEC = 8;
 
 /**
  * Tracks whether the Analysis modal is open and what GARun result it's
@@ -192,7 +209,8 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       spikeRun: null,
       spikeAxis: 'ra',
       spikeK: DEFAULT_SPIKE_K,
-      spikeMinPeriodSec: null,
+      spikeMinPeriodSec: DEFAULT_SPIKE_MIN_PERIOD_SEC,
+      spikeHoverPeriod: null,
     } as OpenState),
   close: () => set({ state: 'closed' } as ClosedState),
   setShowRa: (b) => set((s) => (s.state === 'open' ? { ...s, showRa: b } : s)),
@@ -319,5 +337,11 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     const cur = get();
     if (cur.state !== 'open') return;
     set({ ...cur, spikeMinPeriodSec: sec });
+  },
+  setSpikeHoverPeriod: (sec) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (cur.spikeHoverPeriod === sec) return; // no-op
+    set({ ...cur, spikeHoverPeriod: sec });
   },
 }));
