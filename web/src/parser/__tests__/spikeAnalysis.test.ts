@@ -255,6 +255,36 @@ describe('analyzeSpikes', () => {
     expect(neg.events.length).toBeGreaterThan(0);
   });
 
+  it('low-pass filter smooths the values and reduces high-frequency spikes', () => {
+    // Inject narrow (1-sample) spikes at every 4th sample on top of a
+    // flat baseline. Without filtering, every spike clears the threshold.
+    // A boxcar low-pass with cutoff well above the 1-sample spike width
+    // averages the bumps into the noise floor so fewer (or zero) events
+    // are flagged. The filtered series is also smoother (smaller P-P).
+    const s = newGuideSession('2026-01-01 00:00:00');
+    s.startsMs = 0;
+    s.pixelScale = 1;
+    const n = 200, dt = 2;
+    for (let i = 0; i < n; i++) {
+      const v = i > 0 && i % 4 === 0 ? 1.5 : 0;
+      s.entries.push(makeEntry(i, (i + 1) * dt, v, 0));
+    }
+    const noFilter = analyzeSpikes(s, {
+      range: { begin: 0, end: s.entries.length },
+      axis: 'ra', k: 3, filterPeriodSec: 0,
+    });
+    const filtered = analyzeSpikes(s, {
+      range: { begin: 0, end: s.entries.length },
+      axis: 'ra', k: 3, filterPeriodSec: 30,
+    });
+    expect(filtered.events.length).toBeLessThan(noFilter.events.length);
+    const ppRaw = noFilter.valueMax - noFilter.valueMin;
+    const ppFilt = filtered.valueMax - filtered.valueMin;
+    expect(ppFilt).toBeLessThan(ppRaw);
+    expect(filtered.filterPeriodSec).toBe(30);
+    expect(noFilter.filterPeriodSec).toBe(0);
+  });
+
   it('clusters consecutive flagged samples into single events', () => {
     const s = makeSpikeSession(200, 2.0, 0.1, 80, 2.0, 'ra');
     const run = analyzeSpikes(s, {

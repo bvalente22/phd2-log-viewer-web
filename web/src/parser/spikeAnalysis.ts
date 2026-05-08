@@ -29,6 +29,15 @@ export interface SpikeAnalysisOptions {
   k: number;
   /** Direction filter for spike detection. Default 'both'. */
   direction?: SpikeDirection;
+  /**
+   * Low-pass cutoff period, in seconds. When > 0, the drift-corrected
+   * series is smoothed with a centered boxcar filter whose first response
+   * null sits at this period — content shorter than this is attenuated.
+   * The filtered series is what spike detection, the chart trace, and
+   * the periodogram all see, so the user gets a coherent picture as
+   * they slide the HF filter. Default 0 (no filter).
+   */
+  filterPeriodSec?: number;
 }
 
 /**
@@ -54,6 +63,9 @@ export interface SpikeRun {
   k: number;
   /** Direction filter that produced this run's spike events. */
   direction: SpikeDirection;
+  /** Low-pass cutoff period (seconds) applied to the drift-corrected
+   *  series. 0 = no filter. */
+  filterPeriodSec: number;
   /** Robust center of the drift-corrected series (median, pixels). */
   median: number;
   /** Robust σ (1.4826 × MAD), in pixels. Less inflated by spikes than the
@@ -85,6 +97,42 @@ export interface SpikeRun {
   /** The min/max of `values`, useful for chart Y-range hints. */
   valueMin: number;
   valueMax: number;
+}
+
+/**
+ * Centered-window boxcar smoother — a crude but predictable low-pass
+ * filter. The first response null sits at period = N × dt where N is
+ * the window in samples; callers should pass
+ * `windowSamples = round(cutoffPeriodSec / dt)` for a ~T_cutoff cutoff.
+ *
+ * Edges use a truncated window (not zero-padded) so the boundary samples
+ * don't get pulled toward zero. Returns a fresh Float64Array even when
+ * no filtering is applied so downstream code can store the result
+ * unconditionally.
+ *
+ * O(n × windowSamples). For typical n=5000 and window<200 that's well
+ * under a millisecond per recompute, plenty fast for slider drag.
+ */
+function lowPassBoxcar(values: ArrayLike<number>, windowSamples: number): Float64Array {
+  const n = values.length;
+  const out = new Float64Array(n);
+  if (windowSamples <= 1 || n < 3) {
+    for (let i = 0; i < n; i++) out[i] = values[i];
+    return out;
+  }
+  const half = Math.floor(windowSamples / 2);
+  for (let i = 0; i < n; i++) {
+    const lo = Math.max(0, i - half);
+    const hi = Math.min(n - 1, i + half);
+    let sum = 0;
+    let count = 0;
+    for (let j = lo; j <= hi; j++) {
+      sum += values[j];
+      count++;
+    }
+    out[i] = sum / count;
+  }
+  return out;
 }
 
 /**
@@ -345,7 +393,24 @@ export function analyzeSpikes(s: GuideSession, opts: SpikeAnalysisOptions): Spik
       `analyzeSpikes: need at least ${MIN_ENTRIES} usable entries; got ${drift.t.length}`,
     );
   }
-  const values = opts.axis === 'ra' ? drift.rac : drift.decc;
+  // Cadence — needed for both the optional low-pass and the periodogram
+  // grid below. Computed once up front so we can size the filter window.
+  const dt = drift.t.length > 1
+    ? (drift.t[drift.t.length - 1] - drift.t[0]) / (drift.t.length - 1)
+    : 1;
+  const span = drift.t.length > 1 ? drift.t[drift.t.length - 1] - drift.t[0] : 1;
+  // Optional low-pass filter on the chosen axis. The slider's value
+  // (filterPeriodSec) is the cutoff period in seconds — content at
+  // shorter periods is attenuated. Boxcar's first response null sits
+  // at period = N × dt, so N = round(cutoffSec / dt).
+  const rawAxis = opts.axis === 'ra' ? drift.rac : drift.decc;
+  const filterPeriodSec = opts.filterPeriodSec ?? 0;
+  const cutoffSamples = filterPeriodSec > 0
+    ? Math.max(2, Math.round(filterPeriodSec / dt))
+    : 0;
+  const values = cutoffSamples > 0
+    ? lowPassBoxcar(rawAxis, cutoffSamples)
+    : (rawAxis instanceof Float64Array ? rawAxis : new Float64Array(rawAxis));
   const { median, sigma } = robustStats(values);
   const threshold = opts.k * sigma;
   const direction: SpikeDirection = opts.direction ?? 'both';
@@ -369,10 +434,6 @@ export function analyzeSpikes(s: GuideSession, opts: SpikeAnalysisOptions): Spik
   //     detected, otherwise a wide alignment window will catch most
   //     events at any long period (the alignment-based amplitude
   //     saturates and produces spurious "peaks" near the span/2 bin).
-  const dt = drift.t.length > 1
-    ? (drift.t[drift.t.length - 1] - drift.t[0]) / (drift.t.length - 1)
-    : 1;
-  const span = drift.t.length > 1 ? drift.t[drift.t.length - 1] - drift.t[0] : 1;
   const periodMin = Math.max(2 * dt, 4);
   const periodMax = Math.max(periodMin * 4, span / 5);
   const pgram = spikeMagnitudePeriodogram(events, periodMin, periodMax);
@@ -399,11 +460,12 @@ export function analyzeSpikes(s: GuideSession, opts: SpikeAnalysisOptions): Spik
     axis: opts.axis,
     k: opts.k,
     direction,
+    filterPeriodSec,
     median,
     sigma,
     threshold,
     t: drift.t,
-    values: values instanceof Float64Array ? values : new Float64Array(values),
+    values,
     spikeMask,
     events,
     fftPeriod: pgram.period,
