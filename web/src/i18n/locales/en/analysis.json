@@ -110,7 +110,9 @@
     "harmonicDouble": "2× (super-harmonic)",
     "ratingStrong": "strong",
     "ratingModerate": "moderate",
-    "ratingWeak": "weak"
+    "ratingWeak": "weak",
+    "reset": "Reset to defaults",
+    "resetTooltip": "Reset every Burst-tab knob to its default value and re-run the analysis. Useful when you've tuned far from a sensible baseline and want to start over."
   },
   "show": "show",
   "showTooltip": "Toggle individual drift traces",

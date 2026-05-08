@@ -9,6 +9,7 @@ import type {
 interface BurstControlsProps {
   opts: BurstAnalysisOptions;
   setOpts: (patch: Partial<BurstAnalysisOptions>) => void;
+  onReset: () => void;
 }
 
 /** Multi-row knob grid for the Bursts tab. Each row groups related
@@ -16,10 +17,20 @@ interface BurstControlsProps {
  *  period search). Sliders are interactive — every change re-runs
  *  analyzeBursts. The runtime cost is small (a few ms on typical PHD2
  *  logs) so debouncing isn't needed yet. */
-export function BurstControls({ opts, setOpts }: BurstControlsProps) {
+export function BurstControls({ opts, setOpts, onReset }: BurstControlsProps) {
   const { t } = useTranslation('analysis');
   return (
     <div className="border-b border-slate-800 px-3 py-2 text-xs">
+      <div className="mb-2 flex items-center justify-end">
+        <button
+          type="button"
+          onClick={onReset}
+          title={t('burst.resetTooltip')}
+          className="rounded bg-slate-800 px-3 py-0.5 text-xs text-slate-200 ring-1 ring-slate-700 transition-colors hover:bg-rose-700 hover:text-white hover:ring-rose-600"
+        >
+          {t('burst.reset')}
+        </button>
+      </div>
       <div className="grid grid-cols-1 gap-x-4 gap-y-2 lg:grid-cols-3">
         {/* Row group 1: source axis + direction + energy method */}
         <div className="flex flex-wrap items-center gap-2">

@@ -202,6 +202,9 @@ interface Actions {
   /** Patch the burst options and re-run analyzeBursts. Pass any subset
    *  of BurstAnalysisOptions; existing fields are preserved. */
   setBurstOpts: (patch: Partial<BurstAnalysisOptions>) => void;
+  /** Reset every burst knob to its default value and re-run. Useful
+   *  after the user has tuned far from a sensible baseline. */
+  resetBurstOpts: () => void;
 }
 
 const DEFAULT_MAX_PERIOD_SEC = 600;
@@ -428,6 +431,17 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       mask: cur.burstSource.mask,
     };
     const run = analyzeBursts(cur.burstSource.session, opts);
+    set({ ...cur, burstOpts: opts, burstRun: run });
+  },
+  resetBurstOpts: () => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (!cur.burstSource) return;
+    const opts = defaultBurstOptions(cur.burstSource.range);
+    const run = analyzeBursts(cur.burstSource.session, {
+      ...opts,
+      mask: cur.burstSource.mask,
+    });
     set({ ...cur, burstOpts: opts, burstRun: run });
   },
 }));

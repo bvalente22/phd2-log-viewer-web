@@ -258,7 +258,7 @@ export function AnalysisModal() {
         // The shared toolbar (scale chips + Y-lock) doesn't apply here
         // because burst charts manage their own y-axes.
         <>
-          <BurstControls opts={burstOpts} setOpts={s.setBurstOpts} />
+          <BurstControls opts={burstOpts} setOpts={s.setBurstOpts} onReset={s.resetBurstOpts} />
           <div className="flex flex-1 flex-col overflow-hidden">
             <BurstChart run={burstRun} scaleMode={scaleMode} />
           </div>
