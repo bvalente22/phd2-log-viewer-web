@@ -115,7 +115,9 @@
     "resetTooltip": "Reset every Burst-tab knob to its default value and re-run the analysis. Useful when you've tuned far from a sensible baseline and want to start over.",
     "autoAdjust": "Auto adjust",
     "autoStop": "Stop",
-    "autoAdjustTooltip": "Start a continuous multi-axis search over the numeric knobs (HP, smooth, prominence, threshold, min spacing) to maximize the top candidate's confidence. Runs indefinitely — sliders move through coordinated 2-3 knob perturbations with simulated-annealing acceptance and periodic random restarts. Each visible improvement holds for ~3.5 s so you can react. Click 'Stop' to halt; if the best the search saw differs from where it ends, you'll be asked which to keep.",
+    "autoBest": "Best so far: {{pct}}%",
+    "autoBestTooltip": "Highest displayed confidence the running auto-adjust search has observed since the last Auto adjust click. Resets when you start a new run; persists after Stop until the next run.",
+    "autoAdjustTooltip": "Start a continuous multi-axis search over the numeric knobs (HP, smooth, prominence, threshold, min spacing) to maximize the top candidate's confidence. Runs indefinitely — sliders move through coordinated 2-3 knob perturbations with simulated-annealing acceptance and periodic random restarts. The 'Best so far' chip shows progress live. Click 'Stop' to halt; if the best the search saw differs from where it ends, you'll be asked which to keep.",
     "autoStopTooltip": "Stop the running search. If the best configuration found is better than where the search ends, you'll be offered the choice to restore it.",
     "settle": {
       "label": "Search stopped",

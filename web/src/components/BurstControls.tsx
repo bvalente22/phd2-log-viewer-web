@@ -12,6 +12,10 @@ interface BurstControlsProps {
   onReset: () => void;
   onAutoAdjust: () => void;
   autoAdjusting: boolean;
+  /** Highest displayed-percent confidence the running auto-adjust
+   *  search has observed since the last Auto adjust click; null when
+   *  no run has happened yet. */
+  autoBestPct: number | null;
 }
 
 /** Multi-row knob grid for the Bursts tab. Each row groups related
@@ -19,11 +23,19 @@ interface BurstControlsProps {
  *  period search). Sliders are interactive — every change re-runs
  *  analyzeBursts. The runtime cost is small (a few ms on typical PHD2
  *  logs) so debouncing isn't needed yet. */
-export function BurstControls({ opts, setOpts, onReset, onAutoAdjust, autoAdjusting }: BurstControlsProps) {
+export function BurstControls({ opts, setOpts, onReset, onAutoAdjust, autoAdjusting, autoBestPct }: BurstControlsProps) {
   const { t } = useTranslation('analysis');
   return (
     <div className="border-b border-slate-800 px-3 py-2 text-xs">
       <div className="mb-2 flex items-center justify-end gap-2">
+        {autoBestPct !== null && (
+          <span
+            className="rounded bg-slate-800 px-2 py-0.5 font-mono text-amber-300 ring-1 ring-slate-700"
+            title={t('burst.autoBestTooltip')}
+          >
+            {t('burst.autoBest', { pct: autoBestPct })}
+          </span>
+        )}
         <button
           type="button"
           onClick={onAutoAdjust}

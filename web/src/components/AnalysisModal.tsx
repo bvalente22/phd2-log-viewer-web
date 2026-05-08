@@ -104,7 +104,7 @@ export function AnalysisModal() {
   const {
     garun, garunOther, kind, showRa, showDec, scaleMode, maxPeriodSec, yMaxLockPx, yMaxViewPx,
     spikeSource, spikeRun, spikeAxis, spikeDirection, spikeK, spikeMinPeriodSec,
-    burstSource, burstRun, burstOpts, burstAutoAdjusting, burstPendingSettle,
+    burstSource, burstRun, burstOpts, burstAutoAdjusting, burstAutoBestPct, burstPendingSettle,
   } = s;
   // The active dataset PeriodogramChart should render. In spike mode we
   // adapt the SpikeRun; otherwise it's the regular GARun pair.
@@ -265,6 +265,7 @@ export function AnalysisModal() {
             onReset={s.resetBurstOpts}
             onAutoAdjust={s.autoAdjustBurstOpts}
             autoAdjusting={burstAutoAdjusting}
+            autoBestPct={burstAutoBestPct}
           />
           {burstPendingSettle && (
             <BurstSettleDialog

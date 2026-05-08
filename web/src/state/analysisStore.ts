@@ -137,6 +137,15 @@ interface OpenState {
    *  explicit cancel signal because total runtime is < ~2 s). */
   burstAutoAdjusting: boolean;
   /**
+   * Highest displayed-percent confidence the running auto-adjust search
+   * has ever observed (or null when no run has started yet on this
+   * modal open). Updated live during the search so the toolbar can
+   * show progress. Reset to null at the start of each new run; it is
+   * NOT cleared on stop, so the user can still see the high-water mark
+   * after halting until they kick off another run.
+   */
+  burstAutoBestPct: number | null;
+  /**
    * Set on stop when the auto-adjust search has a global best that
    * differs from the configuration the search ended at. Holds both so
    * the UI can render a "restore best vs keep current" dialog. The
@@ -280,6 +289,7 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       burstRun: null,
       burstOpts: null,
       burstAutoAdjusting: false,
+      burstAutoBestPct: null,
       burstPendingSettle: null,
     } as OpenState),
   close: () => set({ state: 'closed' } as ClosedState),
@@ -490,11 +500,17 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     }
     const src = initial.burstSource;
 
-    // Starting a new run — clear any leftover settle dialog and start
-    // tuning. (Reset is also disabled while running, so the only way
+    // Starting a new run — clear any leftover settle dialog, reset the
+    // running-best indicator so the user sees fresh progress, and start
+    // tuning. (Reset is disabled while running, so the only way
     // burstPendingSettle persists is if the user dismissed without
     // clicking either button, e.g. by switching tabs.)
-    set({ ...initial, burstAutoAdjusting: true, burstPendingSettle: null });
+    set({
+      ...initial,
+      burstAutoAdjusting: true,
+      burstAutoBestPct: null,
+      burstPendingSettle: null,
+    });
 
     let opts: BurstAnalysisOptions = initial.burstOpts ?? defaultBurstOptions(src.range);
 
@@ -542,25 +558,22 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     let bestOpts: BurstAnalysisOptions = { ...opts };
     let bestConf = currentConfidence();
 
-    // Pause for the user when a new best is found that's also a
-    // visible (≥ 1 percentage point) improvement on the displayed
-    // confidence. Gives them time to watch the new best, copy values
-    // off the sliders, or click Stop to keep this configuration.
-    // Polled in 80 ms ticks so a Stop click during the pause exits the
-    // search promptly instead of waiting out the full 3.5 s.
-    const VISIBLE_PAUSE_MS = 3500;
-    const noteIfImproved = async (newConf: number) => {
+    // Track the global best across the run. Visible improvements
+    // (where the displayed % ticks up) also publish to the store via
+    // burstAutoBestPct so the toolbar can show progress. There's no
+    // pause anymore — the post-stop settle dialog gives the user the
+    // option to restore the best, so the search can keep running
+    // continuously and let the user halt when they're satisfied.
+    const noteIfImproved = (newConf: number) => {
       if (newConf <= bestConf) return;
       const oldPct = Math.round(bestConf * 100);
       const newPct = Math.round(newConf * 100);
       bestConf = newConf;
       bestOpts = { ...opts };
-      if (newPct <= oldPct) return; // tiny sub-percent gain — don't pause
-      let elapsed = 0;
-      while (elapsed < VISIBLE_PAUSE_MS && !isStopped()) {
-        const tick = Math.min(80, VISIBLE_PAUSE_MS - elapsed);
-        await new Promise((r) => setTimeout(r, tick));
-        elapsed += tick;
+      if (newPct <= oldPct) return;
+      const after = get();
+      if (after.state === 'open' && after.burstAutoBestPct !== newPct) {
+        set({ ...after, burstAutoBestPct: newPct });
       }
     };
 
@@ -576,12 +589,12 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       const startConf = await apply({ [key]: startVal } as Partial<BurstAnalysisOptions>);
       let bestVal = startVal;
       let bestSweepConf = startConf;
-      await noteIfImproved(startConf);
+      noteIfImproved(startConf);
       for (const v of candidates) {
         if (isStopped()) return;
         if (v === bestVal) continue;
         const conf = await apply({ [key]: v } as Partial<BurstAnalysisOptions>);
-        await noteIfImproved(conf);
+        noteIfImproved(conf);
         if (conf > bestSweepConf + 0.01) {
           bestSweepConf = conf;
           bestVal = v;
@@ -682,7 +695,7 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
         }
         const jumpConf = await apply(jumpPatch);
         const beat = jumpConf > bestConf;
-        await noteIfImproved(jumpConf);
+        noteIfImproved(jumpConf);
         if (beat) {
           sinceImprovement = 0;
         } else {
@@ -707,7 +720,7 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       const conf = await apply(patch);
       if (isStopped()) break;
       const prevBest = bestConf;
-      await noteIfImproved(conf);
+      noteIfImproved(conf);
       const dE = conf - prevBest;
 
       if (dE > 0) {
