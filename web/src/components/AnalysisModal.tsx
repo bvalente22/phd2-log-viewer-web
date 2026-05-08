@@ -261,18 +261,22 @@ export function AnalysisModal() {
               title={t('spike.kSliderTooltip')}
             />
             <span className="font-mono text-amber-300">k={spikeK.toFixed(1)}σ</span>
-            <span className="ms-3 me-1 text-slate-500" title={t('spike.minPeriodTooltip')}>{t('spike.minPeriod')}:</span>
+            <span className="ms-3 me-1 text-slate-500" title={t('spike.hiFreqFilterTooltip')}>{t('spike.hiFreqFilter')}:</span>
             <input
-              type="number" min={0} step={5}
+              type="range" min={0} max={300} step={1}
               value={spikeMinPeriodSec ?? 0}
               onChange={(e) => {
                 const v = Number(e.target.value);
-                s.setSpikeMinPeriod(Number.isFinite(v) && v > 0 ? v : null);
+                s.setSpikeMinPeriod(v > 0 ? v : null);
               }}
-              className="w-20 rounded border border-slate-700 bg-slate-900 px-2 py-0.5 font-mono text-slate-200"
-              title={t('spike.minPeriodInputTooltip')}
+              className="h-1 w-32 accent-amber-500"
+              title={t('spike.hiFreqFilterSliderTooltip')}
             />
-            <span className="text-slate-500">{t('spike.minPeriodSuffix')}</span>
+            <span className="font-mono text-amber-300">
+              {(spikeMinPeriodSec ?? 0) > 0
+                ? t('spike.hiFreqFilterValue', { seconds: spikeMinPeriodSec ?? 0 })
+                : t('spike.hiFreqFilterOff')}
+            </span>
           </>
         ) : (
           <>
