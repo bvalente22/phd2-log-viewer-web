@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { GARun } from '../parser/analyze';
-import { analyzeSpikes, type SpikeAxis, type SpikeRun } from '../parser/spikeAnalysis';
+import { analyzeSpikes, type SpikeAxis, type SpikeDirection, type SpikeRun } from '../parser/spikeAnalysis';
 import type { GuideSession } from '../parser/types';
 
 export type AnalysisKind = 'all' | 'all-raw-ra' | 'unguided' | 'spike';
@@ -90,6 +90,10 @@ interface OpenState {
   spikeRun: SpikeRun | null;
   /** Active axis for spike analysis. */
   spikeAxis: SpikeAxis;
+  /** Direction filter — 'both' (default), 'positive' (above median), or
+   *  'negative' (below median). One-sided periodics show up cleaner
+   *  when the opposite direction's events aren't muddying the fold. */
+  spikeDirection: SpikeDirection;
   /** Sigma multiplier (k). UI exposes a slider over [1, 6]. */
   spikeK: number;
   /**
@@ -165,6 +169,9 @@ interface Actions {
   /** Switch which axis spike analysis is computed against. Triggers a
    *  re-run of analyzeSpikes against the saved source. */
   setSpikeAxis: (axis: SpikeAxis) => void;
+  /** Switch the direction filter (both/positive/negative). Triggers a
+   *  re-run since the spike-event set changes. */
+  setSpikeDirection: (dir: SpikeDirection) => void;
   /** Update the sigma multiplier and re-run analyzeSpikes. */
   setSpikeK: (k: number) => void;
   /** Optional minimum-period filter for the top-3 list. Null clears it. */
@@ -208,6 +215,7 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       spikeSource: spikeSource ?? null,
       spikeRun: null,
       spikeAxis: 'ra',
+      spikeDirection: 'both',
       spikeK: DEFAULT_SPIKE_K,
       spikeMinPeriodSec: DEFAULT_SPIKE_MIN_PERIOD_SEC,
       spikeHoverPeriod: null,
@@ -255,6 +263,7 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
         mask: cur.spikeSource.mask,
         axis: cur.spikeAxis,
         k: cur.spikeK,
+        direction: cur.spikeDirection,
       });
       set({ ...cur, kind, spikeRun: run });
       return;
@@ -312,10 +321,28 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       mask: cur.spikeSource.mask,
       axis,
       k: cur.spikeK,
+      direction: cur.spikeDirection,
     });
     // Reset Y-axis tracking on axis flip — the value scale (RA vs Dec)
     // can differ wildly and the previous zoom would be meaningless.
     set({ ...cur, spikeAxis: axis, spikeRun: run, yMaxLockPx: null, yMaxViewPx: null, periodXRangeViewLog: null });
+  },
+  setSpikeDirection: (dir) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (cur.spikeDirection === dir) return;
+    if (!cur.spikeSource) {
+      set({ ...cur, spikeDirection: dir });
+      return;
+    }
+    const run = analyzeSpikes(cur.spikeSource.session, {
+      range: cur.spikeSource.range,
+      mask: cur.spikeSource.mask,
+      axis: cur.spikeAxis,
+      k: cur.spikeK,
+      direction: dir,
+    });
+    set({ ...cur, spikeDirection: dir, spikeRun: run });
   },
   setSpikeK: (k) => {
     const cur = get();
@@ -330,6 +357,7 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       mask: cur.spikeSource.mask,
       axis: cur.spikeAxis,
       k,
+      direction: cur.spikeDirection,
     });
     set({ ...cur, spikeK: k, spikeRun: run });
   },
