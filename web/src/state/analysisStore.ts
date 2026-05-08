@@ -184,10 +184,11 @@ interface Actions {
 
 const DEFAULT_MAX_PERIOD_SEC = 600;
 const DEFAULT_SPIKE_K = 3;
-// HF filter slider default. The slider drives a low-pass on the drift-
-// corrected series, so off (= 0) means the user sees the unfiltered
-// data first; they opt in to smoothing by dragging right.
-const DEFAULT_SPIKE_MIN_PERIOD_SEC = 0;
+// Default minimum period for the spike top-3 filter. 8s drops Nyquist-
+// adjacent noise (typical PHD2 cadence is 1-3s) without hiding the
+// algorithmic-echo at ~10-20s, which the user might genuinely want to
+// see. They can tune this to ~30s if they want to exclude the echo.
+const DEFAULT_SPIKE_MIN_PERIOD_SEC = 8;
 
 /**
  * Tracks whether the Analysis modal is open and what GARun result it's
@@ -263,7 +264,6 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
         axis: cur.spikeAxis,
         k: cur.spikeK,
         direction: cur.spikeDirection,
-        filterPeriodSec: cur.spikeMinPeriodSec ?? 0,
       });
       set({ ...cur, kind, spikeRun: run });
       return;
@@ -322,7 +322,6 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       axis,
       k: cur.spikeK,
       direction: cur.spikeDirection,
-      filterPeriodSec: cur.spikeMinPeriodSec ?? 0,
     });
     // Reset Y-axis tracking on axis flip — the value scale (RA vs Dec)
     // can differ wildly and the previous zoom would be meaningless.
@@ -342,7 +341,6 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       axis: cur.spikeAxis,
       k: cur.spikeK,
       direction: dir,
-      filterPeriodSec: cur.spikeMinPeriodSec ?? 0,
     });
     set({ ...cur, spikeDirection: dir, spikeRun: run });
   },
@@ -360,30 +358,13 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       axis: cur.spikeAxis,
       k,
       direction: cur.spikeDirection,
-      filterPeriodSec: cur.spikeMinPeriodSec ?? 0,
     });
     set({ ...cur, spikeK: k, spikeRun: run });
   },
   setSpikeMinPeriod: (sec) => {
     const cur = get();
     if (cur.state !== 'open') return;
-    if (cur.spikeMinPeriodSec === sec) return;
-    if (!cur.spikeSource) {
-      set({ ...cur, spikeMinPeriodSec: sec });
-      return;
-    }
-    // The slider drives the low-pass cutoff applied to the drift-
-    // corrected series, so changing it requires a full re-run — spike
-    // detection, the chart trace, and the periodogram all change.
-    const run = analyzeSpikes(cur.spikeSource.session, {
-      range: cur.spikeSource.range,
-      mask: cur.spikeSource.mask,
-      axis: cur.spikeAxis,
-      k: cur.spikeK,
-      direction: cur.spikeDirection,
-      filterPeriodSec: sec ?? 0,
-    });
-    set({ ...cur, spikeMinPeriodSec: sec, spikeRun: run });
+    set({ ...cur, spikeMinPeriodSec: sec });
   },
   setSpikeHoverPeriod: (sec) => {
     const cur = get();
