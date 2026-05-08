@@ -493,65 +493,154 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       return run.candidates[0]?.confidence ?? 0;
     };
 
-    // Sweep one parameter through every candidate value, animating the
-    // slider through each in turn so the user can see the search.
-    // Tracks the best (key, value, confidence) seen during the sweep,
-    // then settles back at that value. The final settle is a separate
-    // apply with a longer pause so the eye registers the chosen value.
+    // ---------- Phase 1: warm-up coordinate descent ----------
+    // Quick single-axis sweeps in order of typical impact. Anchors the
+    // search in a sensible region before the multi-axis SA refines it.
     const sweep = async <K extends keyof BurstAnalysisOptions>(
       key: K,
       candidates: BurstAnalysisOptions[K][],
     ) => {
       const startVal = opts[key];
-      // Establish a baseline confidence at the current value before
-      // sweeping, so we don't switch on a sub-0.01 improvement.
       const startConf = await apply({ [key]: startVal } as Partial<BurstAnalysisOptions>);
       let bestVal = startVal;
       let bestConf = startConf;
       for (const v of candidates) {
         if (v === bestVal) continue;
-        // Show the trial value LIVE — the slider moves to v, the chart
-        // re-renders with the trial's analysis, then we measure.
         const conf = await apply({ [key]: v } as Partial<BurstAnalysisOptions>);
-        // Require a meaningful improvement to switch — otherwise tiny
-        // noise differences would push the slider around indefinitely.
         if (conf > bestConf + 0.01) {
           bestConf = conf;
           bestVal = v;
         }
-        if (bestConf >= 0.7) break; // strong enough — bail mid-sweep
+        if (bestConf >= 0.7) break;
       }
-      // Settle at the best value we found. If nothing beat the start,
-      // we still re-apply so the slider visibly returns home from the
-      // last trial position.
       if (opts[key] !== bestVal) {
         await apply({ [key]: bestVal } as Partial<BurstAnalysisOptions>, SETTLE_MS);
       }
     };
 
-    // Read the current top-candidate confidence without disturbing the
-    // store — used for the early-exit check between sweeps.
     const currentConfidence = (): number => {
       const run = analyzeBursts(src.session, { ...opts, range: src.range, mask: src.mask });
       return run.candidates[0]?.confidence ?? 0;
     };
 
-    // Coordinate-descent passes. Order params by typical impact:
-    // earlier choices change the optimal value of later ones (a wider
-    // envelope smoothing makes a different prominence threshold
-    // optimal), so multiple passes are valuable even though each
-    // individual sweep is greedy.
-    for (let pass = 0; pass < 3; pass++) {
-      await sweep('envelopeSmoothSec', [2, 4, 8, 12, 16, 24, 32, 48, 60, 80]);
-      if (currentConfidence() >= 0.7) break;
-      await sweep('highPassPeriodSec', [0, 30, 60, 120, 200, 300]);
-      if (currentConfidence() >= 0.7) break;
-      await sweep('peakProminenceSigma', [0.3, 0.5, 0.8, 1.0, 1.5, 2.0, 3.0]);
-      if (currentConfidence() >= 0.7) break;
-      await sweep('peakThresholdSigma', [-1, 0, 0.5, 1.0, 1.5, 2.0]);
-      if (currentConfidence() >= 0.7) break;
-      await sweep('minPeakSpacingSec', [5, 10, 15, 20, 30, 50, 80]);
-      if (currentConfidence() >= 0.7) break;
+    // Single warm-up pass — coordinate descent converges fast for the
+    // first round and the SA phase below picks up where it leaves off.
+    await sweep('envelopeSmoothSec', [2, 4, 8, 16, 24, 40, 60, 80]);
+    if (currentConfidence() < 0.7)
+      await sweep('highPassPeriodSec', [0, 60, 120, 200, 300]);
+    if (currentConfidence() < 0.7)
+      await sweep('peakProminenceSigma', [0.3, 0.5, 1.0, 1.5, 2.5]);
+    if (currentConfidence() < 0.7)
+      await sweep('peakThresholdSigma', [-0.5, 0.5, 1.0, 1.5, 2.5]);
+    if (currentConfidence() < 0.7)
+      await sweep('minPeakSpacingSec', [5, 15, 30, 50, 80]);
+
+    // ---------- Phase 2: multi-axis simulated annealing ----------
+    // At each step pick 2-3 random knobs and perturb them together so
+    // the user sees several sliders move at once. SA's acceptance
+    // criterion lets us escape the local optima coordinate descent
+    // gets stuck at — early steps may take worse moves on purpose
+    // (the temperature controls how often) but we always remember the
+    // best opts seen and settle there at the end.
+    interface ParamRange {
+      min: number;
+      max: number;
+      step: number;
+    }
+    const ranges: Record<string, ParamRange> = {
+      envelopeSmoothSec: { min: 0, max: 120, step: 1 },
+      highPassPeriodSec: { min: 0, max: 300, step: 5 },
+      peakProminenceSigma: { min: 0.1, max: 4, step: 0.1 },
+      peakThresholdSigma: { min: -1.5, max: 4, step: 0.1 },
+      minPeakSpacingSec: { min: 1, max: 200, step: 1 },
+    };
+    const tunable = Object.keys(ranges) as (keyof BurstAnalysisOptions & keyof typeof ranges)[];
+
+    // Mulberry32 PRNG so the search is reproducible across an SA run.
+    // Seeded from the current confidence so different starting points
+    // get different exploration paths.
+    let prngState = (Math.floor(currentConfidence() * 1e6) + 0x9e3779b9) >>> 0;
+    const rand = () => {
+      prngState = (prngState + 0x6d2b79f5) >>> 0;
+      let z = prngState;
+      z = Math.imul(z ^ (z >>> 15), z | 1);
+      z ^= z + Math.imul(z ^ (z >>> 7), z | 61);
+      return ((z ^ (z >>> 14)) >>> 0) / 4294967296;
+    };
+
+    const perturb = (current: number, r: ParamRange, temperature: number): number => {
+      // Move size scales with temperature: 50% of range when hot, ~5%
+      // when cold. Centered Gaussian-ish (sum of two uniforms) so most
+      // moves are small but occasional bigger jumps happen.
+      const span = r.max - r.min;
+      const scale = span * (0.05 + 0.45 * temperature);
+      const delta = (rand() + rand() - 1) * scale;
+      let v = current + delta;
+      if (v < r.min) v = r.min;
+      if (v > r.max) v = r.max;
+      v = Math.round(v / r.step) * r.step;
+      return v;
+    };
+
+    let bestOpts: BurstAnalysisOptions = { ...opts };
+    let bestConf = currentConfidence();
+    let temperature = 0.15;
+    let sinceImprovement = 0;
+    const SA_BUDGET = 60;
+
+    for (let step = 0; step < SA_BUDGET; step++) {
+      if (bestConf >= 0.75) break; // comfortably 'strong' — done.
+
+      // Pick 2 or 3 random knobs to perturb together.
+      const k = 2 + Math.floor(rand() * 2);
+      const shuffled = [...tunable].sort(() => rand() - 0.5);
+      const picked = shuffled.slice(0, k);
+
+      const patch: Partial<BurstAnalysisOptions> = {};
+      for (const p of picked) {
+        const cur = opts[p] as number;
+        (patch as Record<string, number>)[p] = perturb(cur, ranges[p], temperature);
+      }
+
+      const conf = await apply(patch);
+      const dE = conf - bestConf;
+
+      if (dE > 0) {
+        // Strict improvement — keep, update best.
+        bestConf = conf;
+        bestOpts = { ...opts };
+        sinceImprovement = 0;
+      } else if (rand() < Math.exp(dE / temperature)) {
+        // Worse but accepted (Metropolis criterion). Already applied;
+        // opts is now the worse candidate. Don't update best.
+        sinceImprovement++;
+      } else {
+        // Rejected — revert to bestOpts so the next perturbation is
+        // anchored at the current global best, not the bad trial.
+        await apply(bestOpts);
+        sinceImprovement++;
+      }
+
+      // Geometric cooling.
+      temperature *= 0.96;
+
+      // Re-heat if we've stalled — gives SA a fresh chance to escape
+      // a basin coordinate descent + SA both got stuck in.
+      if (sinceImprovement > 12) {
+        temperature = Math.min(0.18, temperature * 3);
+        sinceImprovement = 0;
+      }
+    }
+
+    // ---------- Final settle ----------
+    // Make sure we end at the best opts we ever saw. The slider visibly
+    // returns to the global-best position with a longer pause so the
+    // eye registers the chosen value.
+    const sameAsBest = tunable.every((k) => (opts[k] as number) === (bestOpts[k] as number));
+    if (!sameAsBest) {
+      const settlePatch: Partial<BurstAnalysisOptions> = {};
+      for (const k of tunable) (settlePatch as Record<string, number>)[k] = bestOpts[k] as number;
+      await apply(settlePatch, SETTLE_MS);
     }
 
     const final = get();
