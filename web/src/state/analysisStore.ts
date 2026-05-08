@@ -1,9 +1,15 @@
 import { create } from 'zustand';
 import type { GARun } from '../parser/analyze';
 import { analyzeSpikes, type SpikeAxis, type SpikeDirection, type SpikeRun } from '../parser/spikeAnalysis';
+import {
+  analyzeBursts,
+  defaultBurstOptions,
+  type BurstAnalysisOptions,
+  type BurstRun,
+} from '../parser/burstAnalysis';
 import type { GuideSession } from '../parser/types';
 
-export type AnalysisKind = 'all' | 'all-raw-ra' | 'unguided' | 'spike';
+export type AnalysisKind = 'all' | 'all-raw-ra' | 'unguided' | 'spike' | 'burst';
 
 interface ClosedState {
   state: 'closed';
@@ -111,6 +117,18 @@ interface OpenState {
    * under the cursor. Null when no hover is active.
    */
   spikeHoverPeriod: number | null;
+
+  /**
+   * Burst Analysis state. The burst tab is a heavier signal-analysis
+   * workbench (resample → detrend → energy → envelope → ACF + FFT +
+   * peak-spacing → ranked candidates with harmonic flagging). Source
+   * ref is kept so every knob change can re-run the pipeline against
+   * the same data. Lazy-populated when the user first switches to
+   * kind='burst'.
+   */
+  burstSource: SpikeSource | null;
+  burstRun: BurstRun | null;
+  burstOpts: BurstAnalysisOptions | null;
 }
 
 type AnalysisStateUnion = ClosedState | OpenState;
@@ -180,6 +198,10 @@ interface Actions {
    *  chart subscribes to this and re-renders aligned events
    *  highlighted whenever it's non-null. */
   setSpikeHoverPeriod: (sec: number | null) => void;
+
+  /** Patch the burst options and re-run analyzeBursts. Pass any subset
+   *  of BurstAnalysisOptions; existing fields are preserved. */
+  setBurstOpts: (patch: Partial<BurstAnalysisOptions>) => void;
 }
 
 const DEFAULT_MAX_PERIOD_SEC = 600;
@@ -219,6 +241,11 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       spikeK: DEFAULT_SPIKE_K,
       spikeMinPeriodSec: DEFAULT_SPIKE_MIN_PERIOD_SEC,
       spikeHoverPeriod: null,
+      // Burst tab uses the same source as the spike tab — both run on
+      // the drift-corrected series for the user's selected range.
+      burstSource: spikeSource ?? null,
+      burstRun: null,
+      burstOpts: null,
     } as OpenState),
   close: () => set({ state: 'closed' } as ClosedState),
   setShowRa: (b) => set((s) => (s.state === 'open' ? { ...s, showRa: b } : s)),
@@ -266,6 +293,21 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
         direction: cur.spikeDirection,
       });
       set({ ...cur, kind, spikeRun: run });
+      return;
+    }
+    // 'burst': lazily compute BurstRun on first open of the tab. Knob
+    // changes after this go through setBurstOpts. We reuse the cached
+    // burstOpts when present so re-entering the tab doesn't reset the
+    // user's tuning.
+    if (kind === 'burst') {
+      if (!cur.burstSource) return; // caller didn't provide source
+      const opts = cur.burstOpts ?? defaultBurstOptions(cur.burstSource.range);
+      const run = analyzeBursts(cur.burstSource.session, {
+        ...opts,
+        range: cur.burstSource.range,
+        mask: cur.burstSource.mask,
+      });
+      set({ ...cur, kind, burstOpts: opts, burstRun: run });
       return;
     }
     // 'unguided' isn't reachable from setKind — it's set at open() time.
@@ -371,5 +413,21 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     if (cur.state !== 'open') return;
     if (cur.spikeHoverPeriod === sec) return; // no-op
     set({ ...cur, spikeHoverPeriod: sec });
+  },
+  setBurstOpts: (patch) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (!cur.burstSource) return;
+    const base = cur.burstOpts ?? defaultBurstOptions(cur.burstSource.range);
+    const opts: BurstAnalysisOptions = {
+      ...base,
+      ...patch,
+      // Always use the source's range/mask — patch isn't allowed to
+      // override scope.
+      range: cur.burstSource.range,
+      mask: cur.burstSource.mask,
+    };
+    const run = analyzeBursts(cur.burstSource.session, opts);
+    set({ ...cur, burstOpts: opts, burstRun: run });
   },
 }));

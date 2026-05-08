@@ -4,6 +4,8 @@ import { useAnalysisStore, type AnalysisKind } from '../state/analysisStore';
 import { DriftChart } from './DriftChart';
 import { PeriodogramChart } from './PeriodogramChart';
 import { SpikeChart } from './SpikeChart';
+import { BurstChart, BurstCandidatesTable } from './BurstChart';
+import { BurstControls } from './BurstControls';
 import { fmtNumber } from '../i18n/format';
 import type { GARun } from '../parser/analyze';
 import { pickTopSpikePeriods, type SpikeRun } from '../parser/spikeAnalysis';
@@ -101,6 +103,7 @@ export function AnalysisModal() {
   const {
     garun, garunOther, kind, showRa, showDec, scaleMode, maxPeriodSec, yMaxLockPx, yMaxViewPx,
     spikeSource, spikeRun, spikeAxis, spikeDirection, spikeK, spikeMinPeriodSec,
+    burstSource, burstRun, burstOpts,
   } = s;
   // The active dataset PeriodogramChart should render. In spike mode we
   // adapt the SpikeRun; otherwise it's the regular GARun pair.
@@ -135,13 +138,18 @@ export function AnalysisModal() {
     ? t('mode.rawRa')
     : kind === 'spike'
     ? t('mode.spike')
+    : kind === 'burst'
+    ? t('mode.burst')
     : t('mode.selected');
   // 'all' / 'all-raw-ra' tabs always appear when their counterpart is
-  // available. Spike tab appears whenever the modal was opened with a
-  // spikeSource (i.e. for kind 'all' / 'all-raw-ra'; not for 'unguided').
+  // available. Spike + Bursts tabs appear whenever the modal was opened
+  // with a spikeSource (i.e. for kind 'all' / 'all-raw-ra'; not for
+  // 'unguided'). Both tabs reuse the same SpikeSource — the burst tab's
+  // own source pointer in the store is just an alias.
   const showResidualTabs = kind !== 'unguided' && !!garunOther;
   const showSpikeTab = kind !== 'unguided' && !!spikeSource;
-  const showAnyTabs = showResidualTabs || showSpikeTab;
+  const showBurstTab = kind !== 'unguided' && !!burstSource;
+  const showAnyTabs = showResidualTabs || showSpikeTab || showBurstTab;
 
   const ToggleChip = ({
     label, active, onClick, title: tip, disabled,
@@ -223,6 +231,10 @@ export function AnalysisModal() {
                 <ModeTab target="spike" current={kind} label={t('mode.spike')}
                   onClick={() => s.setKind('spike')} tip={t('mode.spikeTooltip')} />
               )}
+              {showBurstTab && (
+                <ModeTab target="burst" current={kind} label={t('mode.burst')}
+                  onClick={() => s.setKind('burst')} tip={t('mode.burstTooltip')} />
+              )}
             </div>
           )}
           <h2 className="text-sm font-medium" title={t('titleTooltip')}>
@@ -239,6 +251,34 @@ export function AnalysisModal() {
           <span className="ms-1 text-xs opacity-70">{t('esc')}</span>
         </button>
       </header>
+      {kind === 'burst' && burstRun && burstOpts ? (
+        // Bursts tab: completely different layout — its own controls
+        // pane (multi-row knob grid), then a vertically-stacked column
+        // of diagnostic charts, then the candidates table at the bottom.
+        // The shared toolbar (scale chips + Y-lock) doesn't apply here
+        // because burst charts manage their own y-axes.
+        <>
+          <BurstControls opts={burstOpts} setOpts={s.setBurstOpts} />
+          <div className="flex flex-1 flex-col overflow-hidden">
+            <BurstChart run={burstRun} scaleMode={scaleMode} />
+          </div>
+          <div className="border-t-2 border-amber-800 bg-slate-900/70 px-4 py-2 text-xs">
+            <div className="mb-1 flex items-center gap-3">
+              <span className="font-semibold uppercase tracking-wider text-slate-400">
+                {t('burst.candidates')}
+              </span>
+              <span className="text-slate-500" title={t('burst.runStatsTooltip')}>
+                {t('burst.runStats', {
+                  peaks: burstRun.peakIndices.length,
+                  dt: burstRun.dt.toFixed(2),
+                })}
+              </span>
+            </div>
+            <BurstCandidatesTable run={burstRun} scaleMode={scaleMode} />
+          </div>
+        </>
+      ) : (
+      <>
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-1 text-xs">
         {kind === 'spike' ? (
           // Spike mode: RA/Dec become an axis selector (mutex). The
@@ -433,6 +473,8 @@ export function AnalysisModal() {
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }
