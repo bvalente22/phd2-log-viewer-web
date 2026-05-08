@@ -507,6 +507,39 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       return s.state !== 'open' || !s.burstAutoAdjusting;
     };
 
+    const currentConfidence = (): number => {
+      const run = analyzeBursts(src.session, { ...opts, range: src.range, mask: src.mask });
+      return run.candidates[0]?.confidence ?? 0;
+    };
+
+    // Global best tracking. Updated whenever apply() returns a higher
+    // confidence than we've seen this run. The SA loop reads this for
+    // its Metropolis comparison and revert path.
+    let bestOpts: BurstAnalysisOptions = { ...opts };
+    let bestConf = currentConfidence();
+
+    // Pause for the user when a new best is found that's also a
+    // visible (≥ 1 percentage point) improvement on the displayed
+    // confidence. Gives them time to watch the new best, copy values
+    // off the sliders, or click Stop to keep this configuration.
+    // Polled in 80 ms ticks so a Stop click during the pause exits the
+    // search promptly instead of waiting out the full 3.5 s.
+    const VISIBLE_PAUSE_MS = 3500;
+    const noteIfImproved = async (newConf: number) => {
+      if (newConf <= bestConf) return;
+      const oldPct = Math.round(bestConf * 100);
+      const newPct = Math.round(newConf * 100);
+      bestConf = newConf;
+      bestOpts = { ...opts };
+      if (newPct <= oldPct) return; // tiny sub-percent gain — don't pause
+      let elapsed = 0;
+      while (elapsed < VISIBLE_PAUSE_MS && !isStopped()) {
+        const tick = Math.min(80, VISIBLE_PAUSE_MS - elapsed);
+        await new Promise((r) => setTimeout(r, tick));
+        elapsed += tick;
+      }
+    };
+
     // ---------- Phase 1: warm-up coordinate descent ----------
     // Quick single-axis sweeps in order of typical impact. Anchors the
     // search in a sensible region before the multi-axis SA refines it.
@@ -518,25 +551,22 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       const startVal = opts[key];
       const startConf = await apply({ [key]: startVal } as Partial<BurstAnalysisOptions>);
       let bestVal = startVal;
-      let bestConf = startConf;
+      let bestSweepConf = startConf;
+      await noteIfImproved(startConf);
       for (const v of candidates) {
         if (isStopped()) return;
         if (v === bestVal) continue;
         const conf = await apply({ [key]: v } as Partial<BurstAnalysisOptions>);
-        if (conf > bestConf + 0.01) {
-          bestConf = conf;
+        await noteIfImproved(conf);
+        if (conf > bestSweepConf + 0.01) {
+          bestSweepConf = conf;
           bestVal = v;
         }
-        if (bestConf >= 0.7) break;
+        if (bestSweepConf >= 0.7) break;
       }
       if (opts[key] !== bestVal && !isStopped()) {
         await apply({ [key]: bestVal } as Partial<BurstAnalysisOptions>, SETTLE_MS);
       }
-    };
-
-    const currentConfidence = (): number => {
-      const run = analyzeBursts(src.session, { ...opts, range: src.range, mask: src.mask });
-      return run.candidates[0]?.confidence ?? 0;
     };
 
     // Single warm-up pass — coordinate descent converges fast for the
@@ -600,8 +630,7 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       return v;
     };
 
-    let bestOpts: BurstAnalysisOptions = { ...opts };
-    let bestConf = currentConfidence();
+    // bestOpts/bestConf are tracked globally above; SA refines from there.
     let temperature = 0.15;
     let sinceImprovement = 0;
     let iteration = 0;
@@ -627,11 +656,10 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
           v = Math.round(v / r.step) * r.step;
           (jumpPatch as Record<string, number>)[p] = v;
         }
-        await apply(jumpPatch);
-        const jumpConf = currentConfidence();
-        if (jumpConf > bestConf) {
-          bestConf = jumpConf;
-          bestOpts = { ...opts };
+        const jumpConf = await apply(jumpPatch);
+        const beat = jumpConf > bestConf;
+        await noteIfImproved(jumpConf);
+        if (beat) {
           sinceImprovement = 0;
         } else {
           await apply(bestOpts);
@@ -654,11 +682,11 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
 
       const conf = await apply(patch);
       if (isStopped()) break;
-      const dE = conf - bestConf;
+      const prevBest = bestConf;
+      await noteIfImproved(conf);
+      const dE = conf - prevBest;
 
       if (dE > 0) {
-        bestConf = conf;
-        bestOpts = { ...opts };
         sinceImprovement = 0;
       } else if (rand() < Math.exp(dE / temperature)) {
         sinceImprovement++;
