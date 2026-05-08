@@ -105,6 +105,46 @@ test.describe('Spike Analysis (kind=spike)', () => {
     await expect(stats).not.toHaveText(raText, { timeout: 5000 });
   });
 
+  test('Min-period filter defaults to 8s', async ({ page }) => {
+    await openSpikeMode(page);
+    // The min-period number input lives in the spike-mode toolbar.
+    // Default should be 8 (per the user's request).
+    const minPeriod = page.locator('input[type=number]').first();
+    await expect(minPeriod).toHaveValue('8');
+  });
+
+  test('Hovering the periodogram highlights aligned events on the spike chart', async ({ page }) => {
+    await openSpikeMode(page);
+    // Behavior under test: hovering the periodogram should add an
+    // overlay trace to the spike chart with the events aligned to
+    // the hovered period. Trace count rises by 1 when hover is
+    // active, drops back when it clears.
+    const traceCounts = async () => {
+      return page.evaluate(() => {
+        const plots = document.querySelectorAll<HTMLElement>('.fixed.inset-0 .js-plotly-plot');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const upper = plots[0] as any;
+        return upper?._fullData?.length ?? 0;
+      });
+    };
+    const before = await traceCounts();
+    expect(before).toBeGreaterThan(0);
+    // Synthesize a periodogram hover at a believable spike period.
+    await page.evaluate(() => {
+      const plots = document.querySelectorAll<HTMLElement>('.fixed.inset-0 .js-plotly-plot');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const periodogram = plots[1] as any;
+      if (typeof periodogram.emit === 'function') {
+        // 100s is in the spike-period cluster on the Peak-86sec file.
+        periodogram.emit('plotly_hover', { points: [{ x: 100 }] });
+      }
+    });
+    await page.waitForTimeout(200);
+    const after = await traceCounts();
+    // Highlight overlay should add a trace.
+    expect(after).toBeGreaterThan(before);
+  });
+
   test('Sigma slider changes the spike count', async ({ page }) => {
     await openSpikeMode(page);
     const stats = page.locator('text=/\\d+ events · σ_robust/').first();

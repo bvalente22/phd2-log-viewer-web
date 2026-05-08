@@ -1,10 +1,9 @@
 import type { GuideSession } from './types';
 import { computeDriftCorrected } from './analyze';
 import { Spline } from './spline';
-import { forwardFftMagnitudes } from './fft';
 
-const MIN_ENTRIES = 24; // Need a bit more than the regular GA threshold so
-// the FFT bins below the longest period of interest have any meaning.
+const MIN_ENTRIES = 24; // Same lower bound the regular GA analyze uses,
+// plus a bit of slack so the spike periodogram has meaningful resolution.
 
 export type SpikeAxis = 'ra' | 'dec';
 
@@ -148,77 +147,140 @@ function clusterSpikes(
 }
 
 /**
- * Round `n` up to the next power of two, since `forwardFftMagnitudes`
- * (fft.js) only takes power-of-two lengths. Mirrors the helper inline
- * in analyze.ts.
+ * Default tolerance for phase-folded "aligned event" matching: ±15% of
+ * the candidate period is the half-window. Real-world spikes from
+ * mechanical sources (mount drive trains, dome rotation, etc.) aren't
+ * perfectly periodic — period jitter of 5-10% is common — so a tighter
+ * tolerance misses real alignments. 15% catches the structure while
+ * still discriminating the fundamental from its harmonics.
  */
-const nextPow2 = (n: number): number => {
-  let p = 1;
-  while (p < n) p <<= 1;
-  return p;
-};
+const ALIGN_TOL = 0.15;
 
 /**
- * Run the FFT pipeline against the absolute-deviation envelope of the
- * drift-corrected series. Spline-resample to a uniform grid (the
- * irregular sample cadence would otherwise smear the peaks), Hamming-
- * window, zero-pad to the next power of two, FFT, and convert magnitudes
- * to (period, amplitude) pairs sorted ascending by period.
- *
- * The envelope is `|values - median|` (not `|values|`) so a non-zero
- * baseline doesn't show up as a DC offset that shifts the periodogram
- * floor up. Subtracting the envelope MEAN before windowing further
- * removes the DC bin so the lowest-frequency bins reflect real
- * variability rather than the average envelope level.
+ * Number of phase offsets to scan per period. The classic epoch-
+ * folding trick from pulsar timing: for each candidate period T,
+ * try a coarse grid of offsets t0 in [0, T) and pick the one that
+ * lines up the most events. 32 offsets at 10% tolerance covers the
+ * full phase space with a bit of overlap.
  */
-function envelopeFFT(
-  t: Float64Array,
-  values: Float64Array,
-  median: number,
-): { fftPeriod: Float64Array; fftAmplitude: Float64Array; fftAmpMax: number } {
-  const n0 = t.length;
-  if (n0 < 2) {
-    return { fftPeriod: new Float64Array(0), fftAmplitude: new Float64Array(0), fftAmpMax: 0 };
-  }
-  const dt = (t[n0 - 1] - t[0]) / (n0 - 1);
-  const n = nextPow2(n0);
+const NUM_OFFSETS = 32;
 
-  // Build envelope and subtract its mean (centering removes the DC bin).
-  const env = new Float64Array(n0);
-  let envSum = 0;
-  for (let i = 0; i < n0; i++) {
-    env[i] = Math.abs(values[i] - median);
-    envSum += env[i];
+/**
+ * Build a "spike magnitude periodogram" — for each candidate period
+ * T, find the best phase-offset that aligns the most spike events,
+ * and report the SUM of aligned event magnitudes divided by total
+ * event count. The result reads directly in spike-magnitude units
+ * (px or arcsec when scaled), peaks where events cluster periodically,
+ * and dips elsewhere.
+ *
+ * Why this replaces the FFT-on-envelope approach: the FFT amplitude is
+ * spectral content per bin (≈ A × dt / T for sparse spikes — tiny),
+ * not the spike's actual magnitude. Users intuit "amplitude" as the
+ * spike's pixel size, not its Fourier coefficient. This periodogram
+ * gives them the magnitude they expect:
+ *
+ *    amplitude(T) = (sum of |x - median| for events aligned with T)
+ *                 / (total event count)
+ *
+ * For a perfect periodic spike train of magnitude A:
+ *   - At T = true period, ALL events align → amplitude = A
+ *   - At unrelated T, only a fraction align → amplitude << A
+ *   - At harmonics (T/2, 2T, ...) some subset aligns → intermediate
+ *
+ * This also makes the threshold slider meaningful: changing k changes
+ * which samples are flagged as events, which directly changes the
+ * periodogram values.
+ */
+function spikeMagnitudePeriodogram(
+  events: SpikeEvent[],
+  periodMin: number,
+  periodMax: number,
+  numBins = 400,
+): { period: Float64Array; amplitude: Float64Array; ampMax: number } {
+  if (events.length === 0 || periodMin >= periodMax) {
+    // Empty arrays — Spline (used downstream for hover-snap) refuses
+    // a zero-length or non-monotonic input, so we explicitly return
+    // empty rather than zero-filled. Callers must guard.
+    return {
+      period: new Float64Array(0),
+      amplitude: new Float64Array(0),
+      ampMax: 0,
+    };
   }
-  const envMean = envSum / n0;
-  for (let i = 0; i < n0; i++) env[i] -= envMean;
+  const period = new Float64Array(numBins);
+  const amplitude = new Float64Array(numBins);
+  // Log-spaced grid — most physically meaningful for periods, where
+  // human "doubling" intuition is logarithmic anyway.
+  const logMin = Math.log(periodMin);
+  const logMax = Math.log(periodMax);
+  const totalDev = events.reduce((a, e) => a + e.deviation, 0);
+  const totalCount = events.length;
 
-  // Spline-resample onto a uniform grid (mirrors analyze.ts).
-  const sp = new Spline(Array.from(t), Array.from(env));
-  const sig = new Float64Array(n);
-  const k = (Math.PI * 2) / (n0 - 1);
-  for (let i = 0; i < n0; i++) {
-    let x = t[0] + i * dt;
-    if (x > t[n0 - 1]) x = t[n0 - 1];
-    const hw = 0.54 - 0.46 * Math.cos(i * k);
-    sig[i] = hw * sp.at(x);
+  let ampMax = 0;
+  for (let i = 0; i < numBins; i++) {
+    const T = Math.exp(logMin + (i / (numBins - 1)) * (logMax - logMin));
+    period[i] = T;
+    const halfWindow = T * ALIGN_TOL;
+    let bestSum = 0;
+    for (let o = 0; o < NUM_OFFSETS; o++) {
+      const offset = (o / NUM_OFFSETS) * T;
+      let sum = 0;
+      for (const ev of events) {
+        const phase = ((ev.t - offset) % T + T) % T;
+        const dist = Math.min(phase, T - phase);
+        if (dist <= halfWindow) sum += ev.deviation;
+      }
+      if (sum > bestSum) bestSum = sum;
+    }
+    // Normalize so the headline interpretation is "average event
+    // magnitude, weighted by alignment fraction". For all events
+    // aligned this is the mean magnitude (≈ the typical spike size).
+    const a = bestSum / totalCount;
+    amplitude[i] = a;
+    if (a > ampMax) ampMax = a;
   }
+  void totalDev; // kept for potential future re-weighting; unused for now.
+  return { period, amplitude, ampMax };
+}
 
-  const mags = forwardFftMagnitudes(sig);
-  const scale = 4 / n0;
-  const nfft = n / 2 - 1;
-  const period = new Float64Array(nfft);
-  const amplitude = new Float64Array(nfft);
-  let amax = 0;
-  for (let i = 0; i < nfft; i++) {
-    const f = (i + 1) / (n * dt);
-    const p = 1 / f;
-    const a = mags[i + 1] * scale;
-    period[nfft - 1 - i] = p;
-    amplitude[nfft - 1 - i] = a;
-    if (a > amax) amax = a;
+/**
+ * Aligned-event lookup: for a given period and offset (or best
+ * offset if not provided), return the event indices whose phase falls
+ * within the alignment tolerance window. Used by the modal hover
+ * feature — when the user mouses over a peak in the periodogram, the
+ * spike chart highlights exactly the events contributing to that peak.
+ */
+export function alignedEventIndices(
+  events: SpikeEvent[],
+  periodSec: number,
+  tol = ALIGN_TOL,
+): number[] {
+  if (events.length === 0 || !Number.isFinite(periodSec) || periodSec <= 0) return [];
+  const halfWindow = periodSec * tol;
+  // Find the offset that maximizes the aligned event SUM (matches the
+  // periodogram's bestSum criterion above so the highlighted set is
+  // the same set the periodogram is reporting).
+  let bestOffset = 0;
+  let bestSum = -1;
+  for (let o = 0; o < NUM_OFFSETS; o++) {
+    const offset = (o / NUM_OFFSETS) * periodSec;
+    let sum = 0;
+    for (const ev of events) {
+      const phase = ((ev.t - offset) % periodSec + periodSec) % periodSec;
+      const dist = Math.min(phase, periodSec - phase);
+      if (dist <= halfWindow) sum += ev.deviation;
+    }
+    if (sum > bestSum) { bestSum = sum; bestOffset = offset; }
   }
-  return { fftPeriod: period, fftAmplitude: amplitude, fftAmpMax: amax };
+  // Collect indices at that best offset.
+  const out: number[] = [];
+  for (let i = 0; i < events.length; i++) {
+    const ev = events[i];
+    const phase = ((ev.t - bestOffset) % periodSec + periodSec) % periodSec;
+    const dist = Math.min(phase, periodSec - phase);
+    if (dist <= halfWindow) out.push(i);
+  }
+  return out;
 }
 
 /**
@@ -228,19 +290,20 @@ function envelopeFFT(
  *   3. Compute robust median + MAD-derived σ.
  *   4. Flag samples whose |value - median| exceeds k × σ.
  *   5. Cluster consecutive flagged samples into events.
- *   6. FFT the absolute-deviation envelope (envelopeFFT above).
+ *   6. Build the spike-magnitude periodogram (epoch-folding, NOT FFT)
+ *      so the y-axis reads in spike-magnitude units the user can
+ *      interpret directly.
  *
- * The result has the same axis-conventions as `GARun` (period in seconds,
- * ascending) so the existing PeriodogramChart can render the periodogram
- * with no shape changes.
+ * The (period, amplitude) shape matches `GARun.fftPeriod` / `fftAmplitude`
+ * so the existing PeriodogramChart can render the result with no
+ * structural changes — but the SEMANTICS differ. Here amplitude is
+ * "average event magnitude weighted by phase alignment" (px units),
+ * not FFT spectral coefficient.
  */
 export function analyzeSpikes(s: GuideSession, opts: SpikeAnalysisOptions): SpikeRun {
   if (opts.k <= 0) {
     throw new Error(`analyzeSpikes: k must be positive (got ${opts.k})`);
   }
-  // Reuse the existing drift-correction. We always need RA + Dec computed
-  // because the unguided / raw-RA code paths might use them too — for
-  // spike analysis we just pick which series feeds the rest.
   const drift = computeDriftCorrected(s, {
     range: opts.range,
     undoRaCorrections: false,
@@ -262,8 +325,31 @@ export function analyzeSpikes(s: GuideSession, opts: SpikeAnalysisOptions): Spik
   }
   const events = clusterSpikes(drift.t, values, median, spikeMask);
 
-  const fft = envelopeFFT(drift.t, values, median);
-  const fftSpline = new Spline(Array.from(fft.fftPeriod), Array.from(fft.fftAmplitude));
+  // Periodogram bounds:
+  //   - lower bound at 2 × cadence (Nyquist for the spike train).
+  //   - upper bound at one fifth of the session span — a periodic
+  //     signal needs at least ~5 cycles in the data to be reliably
+  //     detected, otherwise a wide alignment window will catch most
+  //     events at any long period (the alignment-based amplitude
+  //     saturates and produces spurious "peaks" near the span/2 bin).
+  const dt = drift.t.length > 1
+    ? (drift.t[drift.t.length - 1] - drift.t[0]) / (drift.t.length - 1)
+    : 1;
+  const span = drift.t.length > 1 ? drift.t[drift.t.length - 1] - drift.t[0] : 1;
+  const periodMin = Math.max(2 * dt, 4);
+  const periodMax = Math.max(periodMin * 4, span / 5);
+  const pgram = spikeMagnitudePeriodogram(events, periodMin, periodMax);
+  // Spline-construction needs ≥ 2 strictly increasing x values. When
+  // there are no spike events, the periodogram is empty — fall back
+  // to a 2-point flat spline over the search range so downstream
+  // hover-snap doesn't blow up.
+  const splineX = pgram.period.length >= 2
+    ? Array.from(pgram.period)
+    : [periodMin, periodMax];
+  const splineY = pgram.amplitude.length >= 2
+    ? Array.from(pgram.amplitude)
+    : [0, 0];
+  const fftSpline = new Spline(splineX, splineY);
 
   let valueMin = values[0];
   let valueMax = values[0];
@@ -282,9 +368,9 @@ export function analyzeSpikes(s: GuideSession, opts: SpikeAnalysisOptions): Spik
     values: values instanceof Float64Array ? values : new Float64Array(values),
     spikeMask,
     events,
-    fftPeriod: fft.fftPeriod,
-    fftAmplitude: fft.fftAmplitude,
-    fftAmpMax: fft.fftAmpMax,
+    fftPeriod: pgram.period,
+    fftAmplitude: pgram.amplitude,
+    fftAmpMax: pgram.ampMax,
     fftSpline,
     pixelScale: s.pixelScale,
     starts: s.startsMs,
@@ -296,22 +382,71 @@ export function analyzeSpikes(s: GuideSession, opts: SpikeAnalysisOptions): Spik
 export interface SpikePeriodPick {
   /** Period in seconds. */
   period: number;
-  /** FFT amplitude at this period (in raw pixel units, multiply by k for
-   *  arc-sec when needed). */
+  /**
+   * Periodogram value at this period — in raw pixel units, multiply
+   * by pixelScale for arc-sec. With the spike-magnitude periodogram
+   * this reads directly as the typical event magnitude weighted by
+   * alignment fraction (i.e. it'll equal the mean event |deviation|
+   * when ALL events align at this period).
+   */
   amplitude: number;
-  /** Number of detected spike events whose time mod period falls within
-   *  ±tolerance — i.e. how many of the event timestamps actually align
-   *  with this period. A high amplitude with a low alignment count is
-   *  probably a noise lobe; a moderate amplitude with high alignment is
-   *  a real periodic effect. */
+  /**
+   * Mean magnitude (px) across the events that actually align with
+   * this period — what a single typical spike at this period looks
+   * like. Computed at the best phase offset (matches what the
+   * periodogram reports). Equals `amplitude` only when every event
+   * aligns; for partial alignment it's larger because it averages
+   * fewer (presumably more representative) events.
+   */
+  meanMagnitude: number;
+  /** Number of events that phase-align with this period at the best offset. */
   alignedEvents: number;
 }
 
 /**
- * Pick the top-N spike periods from a SpikeRun's periodogram. Local-
- * maximum scan with optional min/max period filters; the count for each
- * period is augmented with how many of the run's spike events actually
- * fall on that period (phase-folded ±tolerance).
+ * Plateau-aware peak finder for the spike-magnitude periodogram. The
+ * spike-magnitude periodogram saturates at the mean event magnitude
+ * across a range of periods (any period that lets all events fit
+ * within the alignment tolerance window will produce the same value),
+ * so a strict-inequality "local maximum" test misses real peaks
+ * because their tops are flat. Walks rising → flat-top → falling
+ * regions and reports the midpoint of each plateau as the peak.
+ */
+function findPeaks(
+  period: Float64Array,
+  amplitude: Float64Array,
+): Array<{ period: number; amplitude: number; idx: number }> {
+  const peaks: Array<{ period: number; amplitude: number; idx: number }> = [];
+  const n = period.length;
+  if (n < 3) return peaks;
+  let i = 0;
+  while (i < n) {
+    // Skip flat / descending stretches to find the next ascending run.
+    while (i < n - 1 && amplitude[i + 1] <= amplitude[i]) i++;
+    // Now amplitude[i+1] > amplitude[i] (or i is at the end).
+    if (i >= n - 1) break;
+    // Walk up the slope.
+    while (i < n - 1 && amplitude[i + 1] > amplitude[i]) i++;
+    // i is at a local top — possibly the start of a plateau. Walk
+    // through the plateau until the value drops.
+    let j = i;
+    while (j < n - 1 && amplitude[j + 1] === amplitude[i]) j++;
+    // j is the last bin in the plateau (= i for a strict peak).
+    if (j < n - 1 && amplitude[j + 1] < amplitude[i]) {
+      const mid = (i + j) >> 1;
+      peaks.push({ period: period[mid], amplitude: amplitude[mid], idx: mid });
+    }
+    i = j + 1;
+  }
+  return peaks;
+}
+
+/**
+ * Pick the top-N spike periods from a SpikeRun's periodogram. Plateau-
+ * aware local-maximum scan with optional min/max period filters; for
+ * each peak we also compute the mean event magnitude AMONG the aligned
+ * events (different from the periodogram amplitude, which is
+ * normalized by the total event count rather than the aligned count).
  *
  * `minPeriodSec` is the user-tunable lower bound — useful for filtering
  * out PHD2's hysteresis "echo" peak that sits around 10-20 seconds.
@@ -319,46 +454,30 @@ export interface SpikePeriodPick {
 export function pickTopSpikePeriods(
   run: SpikeRun,
   n = 3,
-  opts: { minPeriodSec?: number; maxPeriodSec?: number; tolerance?: number } = {},
+  opts: { minPeriodSec?: number; maxPeriodSec?: number } = {},
 ): SpikePeriodPick[] {
   const minP = opts.minPeriodSec ?? 0;
   const maxP = opts.maxPeriodSec ?? Infinity;
-  const tol = opts.tolerance ?? 0.15; // ±15% of the period by default
 
-  // Collect local maxima within the period band.
-  const peaks: { period: number; amplitude: number }[] = [];
-  for (let i = 1; i < run.fftPeriod.length - 1; i++) {
-    const p = run.fftPeriod[i];
-    if (p < minP || p > maxP) continue;
-    const a = run.fftAmplitude[i];
-    if (a > run.fftAmplitude[i - 1] && a > run.fftAmplitude[i + 1]) {
-      peaks.push({ period: p, amplitude: a });
-    }
-  }
+  const allPeaks = findPeaks(run.fftPeriod, run.fftAmplitude);
+  const peaks = allPeaks.filter((pk) => pk.period >= minP && pk.period <= maxP);
   peaks.sort((a, b) => b.amplitude - a.amplitude);
   const top = peaks.slice(0, n);
 
-  // For each picked period, find the phase-offset that maximizes the
-  // number of aligned events. Phase-folding against a fixed reference
-  // (e.g. events[0].t) is brittle: a single noise event near the start
-  // shifts the reference and the genuine spike train falls outside the
-  // window. The offset search is the standard "epoch-folding" trick from
-  // pulsar timing — scan a coarse grid of t0 in [0, period) and pick the
-  // offset that the most events align with.
+  // Per-pick: the periodogram amplitude is "magnitude × alignment
+  // fraction"; the user often wants "magnitude of an aligned event"
+  // (what would I typically see when this period fires). Compute it
+  // by averaging deviations among aligned events.
   return top.map((pk) => {
-    const halfWindow = pk.period * tol;
-    const numOffsets = 40;
-    let best = 0;
-    for (let o = 0; o < numOffsets; o++) {
-      const offset = (o / numOffsets) * pk.period;
-      let aligned = 0;
-      for (const ev of run.events) {
-        const phase = ((ev.t - offset) % pk.period + pk.period) % pk.period;
-        const distToZero = Math.min(phase, pk.period - phase);
-        if (distToZero <= halfWindow) aligned++;
-      }
-      if (aligned > best) best = aligned;
-    }
-    return { period: pk.period, amplitude: pk.amplitude, alignedEvents: best };
+    const aligned = alignedEventIndices(run.events, pk.period);
+    let sum = 0;
+    for (const i of aligned) sum += run.events[i].deviation;
+    const meanMag = aligned.length > 0 ? sum / aligned.length : pk.amplitude;
+    return {
+      period: pk.period,
+      amplitude: pk.amplitude,
+      meanMagnitude: meanMag,
+      alignedEvents: aligned.length,
+    };
   });
 }

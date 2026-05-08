@@ -363,8 +363,19 @@ export function AnalysisModal() {
           ) : (
             <div className="grid grid-cols-1 gap-1 sm:grid-cols-3">
               {spikePeriods.map((p, i) => {
-                const aArc = p.amplitude * (spikeRun?.pixelScale ?? 1);
-                const aPx = p.amplitude;
+                // Two amplitudes per pick:
+                //   - meanMagnitude: average |deviation| across the
+                //     events that align with this period — a typical
+                //     spike's actual size.
+                //   - amplitude: the periodogram value, normalized by
+                //     total event count (= meanMagnitude × aligned
+                //     fraction). Ranks peaks but reads small.
+                // We surface meanMagnitude as the headline number
+                // because it matches the user's mental model
+                // ("how big is each spike at this period").
+                const ps = spikeRun?.pixelScale ?? 1;
+                const meanArc = p.meanMagnitude * ps;
+                const meanPx = p.meanMagnitude;
                 return (
                   <div
                     key={i}
@@ -377,7 +388,7 @@ export function AnalysisModal() {
                   >
                     <div className="text-[10px] uppercase tracking-wider text-amber-300">{t('peakIndex', { index: i + 1 })}</div>
                     <div>{t('period')}: {fmtNumber(p.period, 1)}s</div>
-                    <div>{t('amplitude')}: {fmtNumber(aArc, 3)}″ ({fmtNumber(aPx, 3)}px)</div>
+                    <div>{t('spike.magnitude')}: {fmtNumber(meanArc, 2)}″ ({fmtNumber(meanPx, 2)}px)</div>
                     <div>{t('spike.alignedEvents', { count: p.alignedEvents })}</div>
                   </div>
                 );

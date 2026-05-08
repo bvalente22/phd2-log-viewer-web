@@ -6,6 +6,7 @@ import Plotly from 'plotly.js/dist/plotly';
 import type { Data, Layout, Shape } from 'plotly.js';
 import type { GARun } from '../parser/analyze';
 import { useAnalysisStore, type AnalysisKind } from '../state/analysisStore';
+import { alignedEventIndices } from '../parser/spikeAnalysis';
 import { useChartGestures } from './useChartGestures';
 import { useViewStore } from '../state/viewStore';
 import { themeOf } from '../themes';
@@ -84,6 +85,14 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
   const [hover, setHover] = useState<string | null>(null);
   const themeId = useViewStore((s) => s.theme);
   const setYMaxView = useAnalysisStore((s) => s.setYMaxView);
+  // Spike-mode hover broadcasting: in spike mode the periodogram lives
+  // alongside a spike chart that wants to highlight the spike events
+  // aligned with whatever period the user is hovering. We push the
+  // hovered period into the analysis store and pull the spike-run
+  // events back out so we can compute the alignment count for the
+  // hover-readout text.
+  const setSpikeHoverPeriod = useAnalysisStore((s) => s.setSpikeHoverPeriod);
+  const spikeRun = useAnalysisStore((s) => (s.state === 'open' ? s.spikeRun : null));
   // Periodogram X is log-scale; we track the user's pan in log10 space
   // (Plotly's native unit for log axes) so re-applies match exactly.
   // Like the Y-view tracking and the drift X tracking, this prevents
@@ -219,17 +228,35 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     const { period, amplitude } = snapToPeak(x);
     const aPx = amplitude;
     const aArc = amplitude * garun.pixelScale;
-    const ppArc = 2 * aArc;
-    const ppPx = 2 * aPx;
-    const rmsArc = aArc / Math.SQRT2;
-    const rmsPx = aPx / Math.SQRT2;
-    setHover(
-      `Period: ${period.toFixed(1)}s  Amplitude: ${aArc.toFixed(2)}″ (${aPx.toFixed(2)}px)  ` +
-      `P-P: ${ppArc.toFixed(2)}″ (${ppPx.toFixed(2)}px)  ` +
-      `RMS: ${rmsArc.toFixed(2)}″ (${rmsPx.toFixed(2)}px)`,
-    );
+    if (kind === 'spike' && spikeRun) {
+      // Spike-mode readout: "Period · Spike magnitude · Aligned
+      // events". P-P / RMS aren't meaningful for spike-magnitude
+      // periodograms (the amplitude IS the typical event size, not
+      // the half-amplitude of a sinusoid).
+      const aligned = alignedEventIndices(spikeRun.events, period);
+      let meanMag = 0;
+      for (const i of aligned) meanMag += spikeRun.events[i].deviation;
+      meanMag = aligned.length > 0 ? meanMag / aligned.length : 0;
+      const meanArc = meanMag * spikeRun.pixelScale;
+      setHover(
+        `Period: ${period.toFixed(1)}s  ` +
+        `Spike magnitude: ${meanArc.toFixed(2)}″ (${meanMag.toFixed(2)}px)  ` +
+        `Aligned events: ${aligned.length}/${spikeRun.events.length}`,
+      );
+      setSpikeHoverPeriod(period);
+    } else {
+      const ppArc = 2 * aArc;
+      const ppPx = 2 * aPx;
+      const rmsArc = aArc / Math.SQRT2;
+      const rmsPx = aPx / Math.SQRT2;
+      setHover(
+        `Period: ${period.toFixed(1)}s  Amplitude: ${aArc.toFixed(2)}″ (${aPx.toFixed(2)}px)  ` +
+        `P-P: ${ppArc.toFixed(2)}″ (${ppPx.toFixed(2)}px)  ` +
+        `RMS: ${rmsArc.toFixed(2)}″ (${rmsPx.toFixed(2)}px)`,
+      );
+    }
     drawCursor(period);
-  }, [garun, snapToPeak, drawCursor]);
+  }, [garun, snapToPeak, drawCursor, kind, spikeRun, setSpikeHoverPeriod]);
 
   // Quiet the unused-variable warning for `unit/k` when scaleMode is PIXELS.
   useEffect(() => { void unit; void k; }, [unit, k]);
@@ -333,7 +360,13 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
           style={{ width: '100%', height: '100%' }}
           useResizeHandler
           onHover={onHover as never}
-          onUnhover={() => { setHover(null); clearCursor(); }}
+          onUnhover={() => {
+            setHover(null);
+            clearCursor();
+            // Clear the broadcast so the spike chart drops its
+            // highlight overlay. No-op outside spike mode.
+            if (kind === 'spike') setSpikeHoverPeriod(null);
+          }}
           onRelayout={onRelayout as never}
         />
       </div>
