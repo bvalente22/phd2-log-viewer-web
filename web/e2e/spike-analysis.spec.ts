@@ -75,15 +75,13 @@ test.describe('Spike Analysis (kind=spike)', () => {
     await openSpikeMode(page);
     // The cluster of real-data periods (per the offline analysis) sits
     // in 60-120s. Assert at least one of the surfaced top-3 periods
-    // falls in that window. The HF filter is now a low-pass on the
-    // signal itself (not just the display), and at the default 8s
-    // some content is already attenuated; turn it OFF (slider = 0) so
-    // we test against the unfiltered series. The HF filter is the
-    // second range input (first is the sigma slider).
+    // falls in that window. Filter out the algorithmic-echo by setting
+    // the HF filter slider to 30s. The HF filter is the second range
+    // input in the toolbar (the first is the sigma slider).
     const hfFilter = page.locator('.fixed.inset-0 input[type=range]').nth(1);
     await hfFilter.evaluate((el: HTMLInputElement) => {
       const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!;
-      setter.call(el, '0');
+      setter.call(el, '30');
       el.dispatchEvent(new Event('input', { bubbles: true }));
     });
     // Read out the period values from the top-3 panel cards. Each card
@@ -112,15 +110,14 @@ test.describe('Spike Analysis (kind=spike)', () => {
     await expect(stats).not.toHaveText(raText, { timeout: 5000 });
   });
 
-  test('HF-filter slider defaults to off (0)', async ({ page }) => {
+  test('HF-filter slider defaults to 8s', async ({ page }) => {
     await openSpikeMode(page);
-    // The HF filter slider drives a low-pass on the drift-corrected
-    // series, so the default is off — users opt in to smoothing.
-    // Slider is the second range input (first is the sigma slider).
+    // The HF filter slider lives in the spike-mode toolbar (second
+    // range input — first is the sigma slider). Default should be 8s.
     const hfFilter = page.locator('.fixed.inset-0 input[type=range]').nth(1);
-    await expect(hfFilter).toHaveValue('0');
-    // The readout reads "off" at slider=0.
-    await expect(page.locator('.fixed.inset-0').getByText('off', { exact: true })).toBeVisible();
+    await expect(hfFilter).toHaveValue('8');
+    // The readout shows "≥ 8s".
+    await expect(page.getByText(/≥\s*8s/)).toBeVisible();
   });
 
   test('Hovering the periodogram highlights aligned events on the spike chart', async ({ page }) => {
