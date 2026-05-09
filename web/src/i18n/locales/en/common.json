@@ -18,7 +18,9 @@
   },
   "calibrationTabs": {
     "calibrationResults": "Calibration Results",
-    "backlashAnalysis": "Backlash Analysis"
+    "calibrationResultsTooltip": "PHD2's calibration plot and the derived rates / angles / orthogonality stats — same view that was the entire calibration pane before.",
+    "backlashAnalysis": "Backlash Analysis",
+    "backlashAnalysisTooltip": "Drop a paired PHD2 DEBUG log to extract the Dec-axis Backlash Test results. Reports backlash in pixels and milliseconds plus per-step diagnostics."
   },
   "sidebar": {
     "title": "Logs & Sessions",

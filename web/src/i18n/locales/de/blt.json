@@ -1,0 +1,41 @@
+{
+  "dropTitle": "PHD2-DEBUG-Log hier ablegen",
+  "dropExpected": "Für das aktuell geöffnete Guide-Log ist das passende Debug-Log:",
+  "dropDescription": "PHD2 schreibt neben jedem Guide-Log ein separates DEBUG-Log; ersetze 'GuideLog' durch 'DebugLog' im Dateinamen. Backlash-Test-Ergebnisse (BLT) werden aus den BLT-getaggten Zeilen dieser Datei extrahiert.",
+  "pickFile": "oder Datei auswählen",
+  "pickFileTooltip": "Dateiauswahl öffnen, um ein PHD2-DEBUG-Log zu wählen (Geschwisterdatei zum Guide-Log; PHD2 nennt sie PHD2_DebugLog_<Datum>.txt).",
+  "runFallback": "Lauf {{index}}",
+  "runRowTooltip": "Details des BLT-Laufs {{timestamp}} anzeigen",
+  "loading": "Debug-Log wird verarbeitet…",
+  "loadedFrom": "Geladen aus:",
+  "fileSize": "{{mb}} MB",
+  "runCount": "{{count}} BLT-Lauf/Läufe",
+  "clear": "Löschen",
+  "clearTooltip": "Verwirft das geladene Debug-Log und kehrt zur Drop-Zone zurück. Auch der Cache für dieses Guide-Log wird gelöscht.",
+  "runsHeader": "BLT-Läufe",
+  "runSummary": "BL = {{px}} px / {{ms}} ms",
+  "north": "Nord",
+  "south": "Süd",
+  "xAxis": "Schritt",
+  "yAxis": "Dec-Offset (px)",
+  "result": {
+    "timestamp": "Zeitstempel",
+    "pulseSize": "Pulsdauer",
+    "southClearing": "Süd-Räumung",
+    "northRate": "Nord-Rate",
+    "southStepGoal": "Süd-Schritt-Ziel",
+    "blPx": "Backlash (px)",
+    "blMs": "Backlash (ms)"
+  },
+  "value": {
+    "ms": "{{value}} ms",
+    "px": "{{value}} px",
+    "steps": "{{value}} Schritte",
+    "pxPerSec": "{{value}} px/s"
+  },
+  "error": {
+    "notDebugLog": "Diese Datei sieht nicht wie ein PHD2-DEBUG-Log aus. Die erste Zeile sollte 'begins execution' oder 'continues execution' enthalten.",
+    "noSequences": "Keine Backlash-Test-Sequenzen in diesem Debug-Log gefunden. Der Test muss aus der Kalibrierungs-UI von PHD2 ausgeführt worden sein, damit BLT-getaggte Zeilen erzeugt werden.",
+    "parseFailed": "Debug-Log konnte nicht verarbeitet werden."
+  }
+}

@@ -16,6 +16,20 @@
     "highContrast": "高对比度",
     "night": "夜间模式"
   },
+  "calibrationTabs": {
+    "calibrationResults": "校准结果",
+    "calibrationResultsTooltip": "PHD2 校准图与导出的速率/角度/正交性统计 — 与之前整个校准面板相同的视图。",
+    "backlashAnalysis": "Backlash 分析",
+    "backlashAnalysisTooltip": "拖入配对的 PHD2 DEBUG 日志以提取 Dec 轴 Backlash Test 结果。报告以像素和毫秒计的 backlash，以及逐步诊断。"
+  },
+  "sidebar": {
+    "title": "日志与会话",
+    "hide": "隐藏",
+    "collapse": "折叠侧边栏",
+    "collapseTooltip": "折叠左侧面板让图表占据整个宽度。最近日志和会话列表将隐藏，直至再次展开。",
+    "expand": "展开",
+    "expandTooltip": "展开左侧面板以显示打开日志区域、最近日志与会话列表。"
+  },
   "dropZone": {
     "title": "将 PHD2 guide log 拖到此处",
     "tooltip": "将 PHD2 guide log 文件拖到此处。日志在本地解析,不会上传任何内容。",

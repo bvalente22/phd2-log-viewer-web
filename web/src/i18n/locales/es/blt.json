@@ -1,0 +1,41 @@
+{
+  "dropTitle": "Suelta aquí un log de DEBUG de PHD2",
+  "dropExpected": "Para el guide log abierto, el log de debug correspondiente es:",
+  "dropDescription": "PHD2 escribe un log de DEBUG separado junto a cada guide log; cambia 'GuideLog' por 'DebugLog' en el nombre. Los resultados del Backlash Test (BLT) se extraen de las líneas con tag BLT de ese archivo.",
+  "pickFile": "o elige un archivo",
+  "pickFileTooltip": "Abre el selector para escoger un log de DEBUG de PHD2 (el archivo hermano del guide log; PHD2 los nombra PHD2_DebugLog_<fecha>.txt).",
+  "runFallback": "Ejecución {{index}}",
+  "runRowTooltip": "Mostrar detalles de la ejecución BLT {{timestamp}}",
+  "loading": "Procesando log de debug…",
+  "loadedFrom": "Cargado de:",
+  "fileSize": "{{mb}} MB",
+  "runCount": "{{count}} ejecución(es) BLT",
+  "clear": "Borrar",
+  "clearTooltip": "Descarta el log de debug cargado y vuelve a la zona de carga. La caché para este guide log también se borra.",
+  "runsHeader": "Ejecuciones BLT",
+  "runSummary": "BL = {{px}} px / {{ms}} ms",
+  "north": "Norte",
+  "south": "Sur",
+  "xAxis": "paso",
+  "yAxis": "offset Dec (px)",
+  "result": {
+    "timestamp": "Marca de tiempo",
+    "pulseSize": "Pulso",
+    "southClearing": "Despeje sur",
+    "northRate": "Tasa norte",
+    "southStepGoal": "Paso sur objetivo",
+    "blPx": "Backlash (px)",
+    "blMs": "Backlash (ms)"
+  },
+  "value": {
+    "ms": "{{value}} ms",
+    "px": "{{value}} px",
+    "steps": "{{value}} pasos",
+    "pxPerSec": "{{value}} px/s"
+  },
+  "error": {
+    "notDebugLog": "Este archivo no parece un log de DEBUG de PHD2. La primera línea debería contener 'begins execution' o 'continues execution'.",
+    "noSequences": "No se encontraron secuencias de Backlash Test en este log de debug. El test debe haberse ejecutado desde la UI de calibración de PHD2 para producir líneas con tag BLT.",
+    "parseFailed": "No se pudo procesar el log de debug."
+  }
+}
