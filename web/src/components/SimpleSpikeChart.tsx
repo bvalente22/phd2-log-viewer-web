@@ -89,6 +89,9 @@ export function SimpleSpikeChart({ run, scaleMode }: SimpleSpikeChartProps) {
     paper_bgcolor: tc.paper,
     plot_bgcolor: tc.plot,
     font: { color: tc.font, size: 11 },
+    // Stable uirevision so re-renders triggered by toolbar toggles
+    // (direction filter, scale change) preserve the user's pan/zoom.
+    uirevision: `simple-${run.axis}-${scaleMode}`,
     xaxis: {
       title: { text: tChart('axes.time') },
       gridcolor: tc.grid,
