@@ -327,9 +327,12 @@ export function AnalysisModal() {
                     <div className="text-3xl font-bold">
                       {stats.count >= 2 ? `${fmtNumber(stats.meanPeriodSec, 1)}s` : t('manualSpike.periodNone')}
                     </div>
-                    {stats.count >= 3 && (
-                      <div className="mt-1 text-xs text-slate-400">
-                        {t('manualSpike.intervalStd', { std: fmtNumber(stats.intervalStdSec, 1) })}
+                    {stats.count >= 2 && (
+                      <div className="mt-1 space-y-0.5 text-xs text-slate-400">
+                        <div>{t('manualSpike.medianPeriod', { value: fmtNumber(stats.medianPeriodSec, 1) })}</div>
+                        {stats.count >= 3 && (
+                          <div>{t('manualSpike.intervalStd', { std: fmtNumber(stats.intervalStdSec, 1) })}</div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -342,6 +345,22 @@ export function AnalysisModal() {
                         ? `${fmtNumber(meanArc, 2)}″ (${fmtNumber(stats.meanAmplitude, 2)}px)`
                         : t('manualSpike.amplitudeNone')}
                     </div>
+                    {stats.count >= 2 && (
+                      <div className="mt-1 space-y-0.5 text-xs text-slate-400">
+                        <div>
+                          {t('manualSpike.minAmplitude', {
+                            arc: fmtNumber(stats.minAmplitude * ps, 2),
+                            px: fmtNumber(stats.minAmplitude, 2),
+                          })}
+                        </div>
+                        <div>
+                          {t('manualSpike.maxAmplitude', {
+                            arc: fmtNumber(stats.maxAmplitude * ps, 2),
+                            px: fmtNumber(stats.maxAmplitude, 2),
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

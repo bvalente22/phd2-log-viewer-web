@@ -25,9 +25,37 @@ describe('manualSpikeStats', () => {
     expect(stats).toEqual({
       count: 0,
       meanPeriodSec: 0,
+      medianPeriodSec: 0,
       intervalStdSec: 0,
       meanAmplitude: 0,
+      minAmplitude: 0,
+      maxAmplitude: 0,
     });
+  });
+
+  it('reports min/max/mean amplitude across selected points', () => {
+    // Median 0; selections at values 1.0, 2.0, 3.0 → amplitudes 1, 2, 3.
+    const run = makeRun([1.0, 2.0, 3.0, 0, 0]);
+    const stats = manualSpikeStats(run, [0, 1, 2]);
+    expect(stats.meanAmplitude).toBeCloseTo(2.0, 5);
+    expect(stats.minAmplitude).toBeCloseTo(1.0, 5);
+    expect(stats.maxAmplitude).toBeCloseTo(3.0, 5);
+  });
+
+  it('median interval matches mean for evenly-spaced selections', () => {
+    const run = makeRun([1, 0, 1, 0, 1]);
+    const stats = manualSpikeStats(run, [0, 2, 4]); // intervals 4, 4
+    expect(stats.medianPeriodSec).toBeCloseTo(4, 5);
+    expect(stats.meanPeriodSec).toBeCloseTo(4, 5);
+  });
+
+  it('median interval is robust to one outlier interval', () => {
+    // 4 picks with intervals 4, 4, 100. Mean ≈ 36; median = 4.
+    const run = makeRun(Array.from({ length: 60 }, () => 0));
+    // Indices 0, 2, 4, 54 at dt=2 → t = 2, 6, 10, 110. Intervals 4, 4, 100.
+    const stats = manualSpikeStats(run, [0, 2, 4, 54]);
+    expect(stats.meanPeriodSec).toBeCloseTo(36, 5);
+    expect(stats.medianPeriodSec).toBeCloseTo(4, 5);
   });
 
   it('amplitude only with one point', () => {

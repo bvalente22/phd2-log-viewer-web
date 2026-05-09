@@ -110,10 +110,16 @@ export interface ManualSpikeStats {
   count: number;
   /** Mean of consecutive-pair time intervals (s). 0 when fewer than 2 points. */
   meanPeriodSec: number;
+  /** Median of those intervals (s). Less sensitive to one stray pick than the mean. */
+  medianPeriodSec: number;
   /** Std-dev of those intervals. 0 when fewer than 2 intervals. */
   intervalStdSec: number;
   /** Mean of |detrended − median| across selected points (in pixels). 0 when none. */
   meanAmplitude: number;
+  /** Smallest |detrended − median| across selected points. 0 when none. */
+  minAmplitude: number;
+  /** Largest |detrended − median| across selected points. 0 when none. */
+  maxAmplitude: number;
 }
 
 export function manualSpikeStats(
@@ -121,17 +127,32 @@ export function manualSpikeStats(
   selected: ReadonlyArray<number>,
 ): ManualSpikeStats {
   if (selected.length === 0) {
-    return { count: 0, meanPeriodSec: 0, intervalStdSec: 0, meanAmplitude: 0 };
+    return {
+      count: 0,
+      meanPeriodSec: 0, medianPeriodSec: 0, intervalStdSec: 0,
+      meanAmplitude: 0, minAmplitude: 0, maxAmplitude: 0,
+    };
   }
   // Sort indices by time so consecutive intervals are well-defined.
   const sorted = [...selected].sort((a, b) => run.t[a] - run.t[b]);
-  // Mean amplitude.
+  // Per-point amplitude stats — mean, min, max.
   let ampSum = 0;
-  for (const i of sorted) ampSum += Math.abs(run.detrended[i] - run.median);
+  let minAmp = Infinity;
+  let maxAmp = -Infinity;
+  for (const i of sorted) {
+    const a = Math.abs(run.detrended[i] - run.median);
+    ampSum += a;
+    if (a < minAmp) minAmp = a;
+    if (a > maxAmp) maxAmp = a;
+  }
   const meanAmplitude = ampSum / sorted.length;
-  // Period: mean of consecutive time intervals.
+  // Period: mean + median of consecutive time intervals.
   if (sorted.length < 2) {
-    return { count: sorted.length, meanPeriodSec: 0, intervalStdSec: 0, meanAmplitude };
+    return {
+      count: sorted.length,
+      meanPeriodSec: 0, medianPeriodSec: 0, intervalStdSec: 0,
+      meanAmplitude, minAmplitude: minAmp, maxAmplitude: maxAmp,
+    };
   }
   const intervals: number[] = [];
   for (let i = 1; i < sorted.length; i++) {
@@ -141,5 +162,15 @@ export function manualSpikeStats(
   let varSum = 0;
   for (const v of intervals) varSum += (v - meanPeriodSec) ** 2;
   const intervalStdSec = intervals.length > 1 ? Math.sqrt(varSum / intervals.length) : 0;
-  return { count: sorted.length, meanPeriodSec, intervalStdSec, meanAmplitude };
+  // Median interval — sort and take the middle (or average of two middles).
+  const sortedIv = [...intervals].sort((a, b) => a - b);
+  const m = sortedIv.length;
+  const medianPeriodSec = m % 2 === 1
+    ? sortedIv[(m - 1) >> 1]
+    : (sortedIv[m / 2 - 1] + sortedIv[m / 2]) / 2;
+  return {
+    count: sorted.length,
+    meanPeriodSec, medianPeriodSec, intervalStdSec,
+    meanAmplitude, minAmplitude: minAmp, maxAmplitude: maxAmp,
+  };
 }
