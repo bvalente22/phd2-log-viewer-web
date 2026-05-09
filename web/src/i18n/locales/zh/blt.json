@@ -1,0 +1,41 @@
+{
+  "dropTitle": "将 PHD2 DEBUG 日志拖到此处",
+  "dropExpected": "对于当前打开的 guide log，对应的 debug log 是：",
+  "dropDescription": "PHD2 在每个 guide log 旁边都会写一个独立的 DEBUG 日志；把文件名中的 'GuideLog' 替换为 'DebugLog'。Backlash Test (BLT) 结果从该文件中带 BLT 标签的行中提取。",
+  "pickFile": "或选择文件",
+  "pickFileTooltip": "打开文件选择器以选择 PHD2 DEBUG 日志（与 guide log 配对的文件；PHD2 命名为 PHD2_DebugLog_<日期>.txt）。",
+  "runFallback": "运行 {{index}}",
+  "runRowTooltip": "显示 BLT 运行 {{timestamp}} 的详情",
+  "loading": "解析 debug 日志中…",
+  "loadedFrom": "加载自：",
+  "fileSize": "{{mb}} MB",
+  "runCount": "{{count}} 次 BLT 运行",
+  "clear": "清除",
+  "clearTooltip": "丢弃已加载的 debug 日志，返回拖放区。该 guide log 的缓存也会被清除。",
+  "runsHeader": "BLT 运行",
+  "runSummary": "BL = {{px}} px / {{ms}} ms",
+  "north": "北",
+  "south": "南",
+  "xAxis": "步骤",
+  "yAxis": "Dec 偏移 (px)",
+  "result": {
+    "timestamp": "时间戳",
+    "pulseSize": "脉冲长度",
+    "southClearing": "南向消除",
+    "northRate": "北向速率",
+    "southStepGoal": "南步长目标",
+    "blPx": "Backlash (px)",
+    "blMs": "Backlash (ms)"
+  },
+  "value": {
+    "ms": "{{value}} ms",
+    "px": "{{value}} px",
+    "steps": "{{value}} 步",
+    "pxPerSec": "{{value}} px/s"
+  },
+  "error": {
+    "notDebugLog": "该文件看起来不像 PHD2 DEBUG 日志。首行应包含 'begins execution' 或 'continues execution'。",
+    "noSequences": "在此 debug 日志中未找到 backlash test 序列。该测试必须从 PHD2 校准界面运行才会生成 BLT 标签的行。",
+    "parseFailed": "解析 debug 日志失败。"
+  }
+}
