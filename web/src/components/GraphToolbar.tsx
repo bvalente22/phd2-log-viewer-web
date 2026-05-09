@@ -4,6 +4,12 @@ import { useLogStore } from '../state/logStore';
 import type { TraceVisibility } from '../state/viewStore';
 import type { GuideSession } from '../parser';
 
+// Hide the RA/Dec pulse-direction "flip" toggles in row 1 of the
+// toolbar. Set this to `true` to restore them — the underlying
+// flipRaPulses / flipDecPulses store fields and setters stay live so
+// no functional change beyond UI visibility.
+const SHOW_FLIP_TOGGLES = false;
+
 /**
  * Build a CSV blob for the active section. Columns mirror the PHD2 log row
  * order (so the output is round-trippable for downstream tooling) plus an
@@ -250,35 +256,43 @@ export function GraphToolbar() {
       {/* Row 1 — DATA: what data is plotted on the chart. */}
       <div className="flex w-full flex-wrap items-center gap-2 px-3 py-1">
         {renderMasterGroup('RA',  'ra',  raAnyOn,  toggleRaAxis,  t('groups.raTooltip'),  raItems)}
-        <ToggleChip
-          label={t('traces.flipRaPulses')}
-          active={flipRaPulses}
-          onClick={() => setFlipRaPulses(!flipRaPulses)}
-          disabled={graphMode === 'SCATTER' || !traces.raPulses}
-          title={
-            graphMode === 'SCATTER'
-              ? t('traces.togglesScatterDisabled')
-              : !traces.raPulses
-              ? t('traces.flipPulsesDisabled')
-              : t('traces.flipRaPulsesTooltip')
-          }
-          tone="ra"
-        />
+        {/* Pulse-direction "flip" toggles are temporarily hidden — flip
+            the SHOW_FLIP_TOGGLES const back to true to restore. The
+            store fields (flipRaPulses / flipDecPulses) and the setters
+            stay live; nothing about the flip semantics changes. */}
+        {SHOW_FLIP_TOGGLES && (
+          <ToggleChip
+            label={t('traces.flipRaPulses')}
+            active={flipRaPulses}
+            onClick={() => setFlipRaPulses(!flipRaPulses)}
+            disabled={graphMode === 'SCATTER' || !traces.raPulses}
+            title={
+              graphMode === 'SCATTER'
+                ? t('traces.togglesScatterDisabled')
+                : !traces.raPulses
+                ? t('traces.flipPulsesDisabled')
+                : t('traces.flipRaPulsesTooltip')
+            }
+            tone="ra"
+          />
+        )}
         {renderMasterGroup('Dec', 'dec', decAnyOn, toggleDecAxis, t('groups.decTooltip'), decItems)}
-        <ToggleChip
-          label={t('traces.flipDecPulses')}
-          active={flipDecPulses}
-          onClick={() => setFlipDecPulses(!flipDecPulses)}
-          disabled={graphMode === 'SCATTER' || !traces.decPulses}
-          title={
-            graphMode === 'SCATTER'
-              ? t('traces.togglesScatterDisabled')
-              : !traces.decPulses
-              ? t('traces.flipPulsesDisabled')
-              : t('traces.flipDecPulsesTooltip')
-          }
-          tone="dec"
-        />
+        {SHOW_FLIP_TOGGLES && (
+          <ToggleChip
+            label={t('traces.flipDecPulses')}
+            active={flipDecPulses}
+            onClick={() => setFlipDecPulses(!flipDecPulses)}
+            disabled={graphMode === 'SCATTER' || !traces.decPulses}
+            title={
+              graphMode === 'SCATTER'
+                ? t('traces.togglesScatterDisabled')
+                : !traces.decPulses
+                ? t('traces.flipPulsesDisabled')
+                : t('traces.flipDecPulsesTooltip')
+            }
+            tone="dec"
+          />
+        )}
         {renderMasterGroup(t('groups.guideStar'), 'star', starAnyOn, toggleStarGroup, t('groups.guideStarTooltip'), starItems)}
         {renderTraceGroup(t('groups.events'),    t('groups.eventsTooltip'),    eventItems)}
         <span className="ms-3 me-1 text-slate-500" title={t('groups.coordTooltip')}>{t('groups.coord')}:</span>
