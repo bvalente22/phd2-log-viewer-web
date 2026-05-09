@@ -107,7 +107,9 @@ export function AnalysisModal() {
   const {
     garun, garunOther, kind, showRa, showDec, scaleMode, maxPeriodSec, yMaxLockPx, yMaxViewPx,
     spikeSource, spikeRun, spikeAxis, spikeDirection, spikeK, spikeMinPeriodSec,
-    burstSource, burstRun, burstOpts, burstAutoAdjusting, burstAutoBestPct, burstPendingSettle,
+    // burstSource intentionally not destructured — the Bursts tab is
+    // hidden, so we don't gate its tab visibility by this anymore.
+    burstRun, burstOpts, burstAutoAdjusting, burstAutoBestPct, burstPendingSettle,
     simpleSpikeRun, simpleSpikeAxis, simpleSpikeDirection,
     manualSpikeRun, manualSpikeAxis, manualSpikeSelections,
   } = s;
@@ -157,9 +159,13 @@ export function AnalysisModal() {
   // 'all-raw-ra'; not for 'unguided'). They all reuse the same source
   // ref — the per-tab pointers in the store are aliases.
   const showResidualTabs = kind !== 'unguided' && !!garunOther;
-  const showSpikeTab = kind !== 'unguided' && !!spikeSource;
-  const showBurstTab = kind !== 'unguided' && !!burstSource;
-  const showSimpleSpikeTab = kind !== 'unguided' && !!spikeSource;
+  // Spike, Burst, and Simple tabs are temporarily hidden — the user
+  // wants only Residual / Raw RA / Manual Spike for now. The code,
+  // state, and components are all still in place; flip these flags
+  // back to the original conditions to restore the tabs.
+  const showSpikeTab = false; // kind !== 'unguided' && !!spikeSource;
+  const showBurstTab = false; // kind !== 'unguided' && !!burstSource;
+  const showSimpleSpikeTab = false; // kind !== 'unguided' && !!spikeSource;
   const showManualSpikeTab = kind !== 'unguided' && !!spikeSource;
   const showAnyTabs = showResidualTabs || showSpikeTab || showBurstTab || showSimpleSpikeTab || showManualSpikeTab;
 

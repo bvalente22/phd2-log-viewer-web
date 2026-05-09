@@ -11,6 +11,7 @@ import { SectionHeader } from '../components/SectionHeader';
 import { SectionSummary } from '../components/SectionSummary';
 import { GraphToolbar } from '../components/GraphToolbar';
 import { GraphContextMenu } from '../components/ContextMenu';
+import { AnalysisButton } from '../components/AnalysisButton';
 import { RecentsDropdown } from '../components/RecentsDropdown';
 import { LogsFolderPane } from '../components/LogsFolderPane';
 import { LanguagePicker } from '../components/LanguagePicker';
@@ -175,8 +176,17 @@ export function ViewerPage() {
             )}
             <GAResultsPanel />
             <GraphContextMenu>
-              <div className="flex-1 overflow-hidden">
+              <div className="relative flex-1 overflow-hidden">
                 {graphMode === 'TIME' ? <GuideGraph /> : <ScatterView />}
+                {/* Analysis button overlays the lower-left of the
+                    chart area — functional equivalent of the
+                    right-click "Analysis" menu item. Positioned with a
+                    margin so it's clear of the chart's axis labels. */}
+                <div className="pointer-events-none absolute bottom-3 left-3 z-10">
+                  <div className="pointer-events-auto">
+                    <AnalysisButton />
+                  </div>
+                </div>
               </div>
             </GraphContextMenu>
             <div className="border-t border-slate-800 bg-slate-900/40">
