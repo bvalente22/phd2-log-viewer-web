@@ -93,6 +93,7 @@ export function BacklashTab() {
           <button
             type="button"
             onClick={onPick}
+            title={t('pickFileTooltip')}
             className="mt-2 rounded bg-amber-700 px-4 py-1.5 text-sm font-semibold text-amber-50 ring-1 ring-amber-600 hover:bg-amber-600"
           >
             {t('pickFile')}
@@ -152,13 +153,14 @@ export function BacklashTab() {
                   <button
                     type="button"
                     onClick={() => setSelectedIndex(i)}
+                    title={t('runRowTooltip', { timestamp: s.timestamp || t('runFallback', { index: i + 1 }) })}
                     className={`w-full px-3 py-2 text-left text-xs transition-colors ${
                       i === selectedIndex
                         ? 'bg-slate-800 text-amber-300'
                         : 'text-slate-300 hover:bg-slate-800'
                     }`}
                   >
-                    <div className="font-mono">{s.timestamp || `Run ${i + 1}`}</div>
+                    <div className="font-mono">{s.timestamp || t('runFallback', { index: i + 1 })}</div>
                     <div className="mt-0.5 text-[10px] text-slate-400">
                       {t('runSummary', {
                         px: s.blPx.toFixed(1),

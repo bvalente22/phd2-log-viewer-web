@@ -16,6 +16,20 @@
     "highContrast": "Hoher Kontrast",
     "night": "Nachtmodus"
   },
+  "calibrationTabs": {
+    "calibrationResults": "Kalibrierungsergebnisse",
+    "calibrationResultsTooltip": "PHD2-Kalibrierungsplot und die abgeleiteten Raten / Winkel / Orthogonalitäts-Statistiken — dieselbe Ansicht, die zuvor das gesamte Kalibrierungs-Pane war.",
+    "backlashAnalysis": "Backlash-Analyse",
+    "backlashAnalysisTooltip": "Lege ein zugehöriges PHD2-DEBUG-Log ab, um die Dec-Achsen-Backlash-Test-Ergebnisse zu extrahieren. Berichtet Backlash in Pixeln und Millisekunden plus Diagnosen pro Schritt."
+  },
+  "sidebar": {
+    "title": "Logs & Sitzungen",
+    "hide": "Ausblenden",
+    "collapse": "Seitenleiste einklappen",
+    "collapseTooltip": "Klappt das linke Panel ein, damit das Diagramm die volle Breite hat. Die Liste der letzten Logs und Sitzungen wird ausgeblendet, bis du sie wieder ausklappst.",
+    "expand": "Ausklappen",
+    "expandTooltip": "Klappt das linke Panel aus, um den Log-Bereich, die letzten Logs und die Sitzungsliste zu zeigen."
+  },
   "dropZone": {
     "title": "PHD2-Guidelog hier ablegen",
     "tooltip": "PHD2-Guidelog-Datei hier ablegen. Das Log wird lokal verarbeitet; nichts wird hochgeladen.",

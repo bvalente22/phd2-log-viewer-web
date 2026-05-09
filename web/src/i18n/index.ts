@@ -26,6 +26,7 @@ import esStats from './locales/es/stats.json';
 import esSections from './locales/es/sections.json';
 import esChart from './locales/es/chart.json';
 import esErrors from './locales/es/errors.json';
+import esBlt from './locales/es/blt.json';
 
 import deCommon from './locales/de/common.json';
 import deToolbar from './locales/de/toolbar.json';
@@ -34,6 +35,7 @@ import deStats from './locales/de/stats.json';
 import deSections from './locales/de/sections.json';
 import deChart from './locales/de/chart.json';
 import deErrors from './locales/de/errors.json';
+import deBlt from './locales/de/blt.json';
 
 import frCommon from './locales/fr/common.json';
 import frToolbar from './locales/fr/toolbar.json';
@@ -42,6 +44,7 @@ import frStats from './locales/fr/stats.json';
 import frSections from './locales/fr/sections.json';
 import frChart from './locales/fr/chart.json';
 import frErrors from './locales/fr/errors.json';
+import frBlt from './locales/fr/blt.json';
 
 import itCommon from './locales/it/common.json';
 import itToolbar from './locales/it/toolbar.json';
@@ -50,6 +53,7 @@ import itStats from './locales/it/stats.json';
 import itSections from './locales/it/sections.json';
 import itChart from './locales/it/chart.json';
 import itErrors from './locales/it/errors.json';
+import itBlt from './locales/it/blt.json';
 
 import zhCommon from './locales/zh/common.json';
 import zhToolbar from './locales/zh/toolbar.json';
@@ -58,6 +62,7 @@ import zhStats from './locales/zh/stats.json';
 import zhSections from './locales/zh/sections.json';
 import zhChart from './locales/zh/chart.json';
 import zhErrors from './locales/zh/errors.json';
+import zhBlt from './locales/zh/blt.json';
 
 export const SUPPORTED_LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -72,17 +77,13 @@ export type SupportedLanguageCode = (typeof SUPPORTED_LANGUAGES)[number]['code']
 
 const NAMESPACES = ['common', 'toolbar', 'analysis', 'stats', 'sections', 'chart', 'errors', 'blt'] as const;
 
-// English is the source of truth for the `blt` namespace (English-only
-// for now — other locales fall back to en per i18next's resolution
-// chain since they don't include this ns). Add per-locale catalogs
-// later if/when the feature stabilizes.
 const resources = {
   en:      { common: enCommon,    toolbar: enToolbar,    analysis: enAnalysis,    stats: enStats,    sections: enSections,    chart: enChart,    errors: enErrors,    blt: enBlt },
-  es:      { common: esCommon,    toolbar: esToolbar,    analysis: esAnalysis,    stats: esStats,    sections: esSections,    chart: esChart,    errors: esErrors,    blt: enBlt },
-  de:      { common: deCommon,    toolbar: deToolbar,    analysis: deAnalysis,    stats: deStats,    sections: deSections,    chart: deChart,    errors: deErrors,    blt: enBlt },
-  fr:      { common: frCommon,    toolbar: frToolbar,    analysis: frAnalysis,    stats: frStats,    sections: frSections,    chart: frChart,    errors: frErrors,    blt: enBlt },
-  it:      { common: itCommon,    toolbar: itToolbar,    analysis: itAnalysis,    stats: itStats,    sections: itSections,    chart: itChart,    errors: itErrors,    blt: enBlt },
-  zh:      { common: zhCommon,    toolbar: zhToolbar,    analysis: zhAnalysis,    stats: zhStats,    sections: zhSections,    chart: zhChart,    errors: zhErrors,    blt: enBlt },
+  es:      { common: esCommon,    toolbar: esToolbar,    analysis: esAnalysis,    stats: esStats,    sections: esSections,    chart: esChart,    errors: esErrors,    blt: esBlt },
+  de:      { common: deCommon,    toolbar: deToolbar,    analysis: deAnalysis,    stats: deStats,    sections: deSections,    chart: deChart,    errors: deErrors,    blt: deBlt },
+  fr:      { common: frCommon,    toolbar: frToolbar,    analysis: frAnalysis,    stats: frStats,    sections: frSections,    chart: frChart,    errors: frErrors,    blt: frBlt },
+  it:      { common: itCommon,    toolbar: itToolbar,    analysis: itAnalysis,    stats: itStats,    sections: itSections,    chart: itChart,    errors: itErrors,    blt: itBlt },
+  zh:      { common: zhCommon,    toolbar: zhToolbar,    analysis: zhAnalysis,    stats: zhStats,    sections: zhSections,    chart: zhChart,    errors: zhErrors,    blt: zhBlt },
 } as const;
 
 void i18n

@@ -16,10 +16,18 @@ export function CalibrationTabs() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex items-center gap-1 border-b border-slate-800 bg-slate-900/40 px-2 py-1">
-        <TabBtn active={tab === 'calibration'} onClick={() => setTab('calibration')}>
+        <TabBtn
+          active={tab === 'calibration'}
+          onClick={() => setTab('calibration')}
+          title={t('calibrationTabs.calibrationResultsTooltip')}
+        >
           {t('calibrationTabs.calibrationResults')}
         </TabBtn>
-        <TabBtn active={tab === 'backlash'} onClick={() => setTab('backlash')}>
+        <TabBtn
+          active={tab === 'backlash'}
+          onClick={() => setTab('backlash')}
+          title={t('calibrationTabs.backlashAnalysisTooltip')}
+        >
           {t('calibrationTabs.backlashAnalysis')}
         </TabBtn>
       </div>
@@ -41,13 +49,14 @@ export function CalibrationTabs() {
   );
 }
 
-function TabBtn({ active, onClick, children }: {
-  active: boolean; onClick: () => void; children: React.ReactNode;
+function TabBtn({ active, onClick, children, title }: {
+  active: boolean; onClick: () => void; children: React.ReactNode; title?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      title={title}
       aria-pressed={active}
       className={`rounded px-3 py-0.5 text-xs font-semibold transition-colors ${
         active
