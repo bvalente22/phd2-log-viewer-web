@@ -7,5 +7,10 @@ test-results
 *.tsbuildinfo
 src/**/*.js
 src/**/*.d.ts
+# version.d.ts is a hand-written ambient declaration for the
+# __APP_VERSION__ / __APP_GITHASH__ constants vite injects via define;
+# it must be tracked even though src/**/*.d.ts is otherwise ignored
+# (those exclusions target tsc's emitted output).
+!src/version.d.ts
 vite.config.js
 vite.config.d.ts
