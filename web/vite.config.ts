@@ -22,6 +22,13 @@ try {
 }
 
 export default defineConfig({
+  // GitHub Pages serves the site at https://<user>.github.io/<repo>/
+  // so all built asset URLs need that sub-path prefix. The trailing
+  // slash matters — without it, Vite emits paths that resolve to the
+  // org root and 404. Override with VITE_BASE_PATH=/ for root-served
+  // hosts (Cloudflare Pages, Netlify, Vercel, NAS at the top of a
+  // virtualhost).
+  base: process.env.VITE_BASE_PATH ?? '/phd2-log-viewer-web/',
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
