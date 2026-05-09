@@ -16,6 +16,10 @@
     "highContrast": "High contrast",
     "night": "Night mode"
   },
+  "calibrationTabs": {
+    "calibrationResults": "Calibration Results",
+    "backlashAnalysis": "Backlash Analysis"
+  },
   "sidebar": {
     "title": "Logs & Sessions",
     "hide": "Hide",

@@ -1,0 +1,38 @@
+{
+  "dropTitle": "Drop a PHD2 DEBUG log here",
+  "dropExpected": "For the currently-open guide log, the matching debug log is:",
+  "dropDescription": "PHD2 writes a separate DEBUG log alongside each guide log; replace 'GuideLog' with 'DebugLog' in the filename. Backlash Test (BLT) results are extracted from the BLT-tagged lines in that file.",
+  "pickFile": "or pick a file",
+  "loading": "Parsing debug log…",
+  "loadedFrom": "Loaded from:",
+  "fileSize": "{{mb}} MB",
+  "runCount": "{{count}} BLT run(s)",
+  "clear": "Clear",
+  "clearTooltip": "Discard the loaded debug log and return to the drop zone. The cache for this guide log is cleared too.",
+  "runsHeader": "BLT runs",
+  "runSummary": "BL = {{px}} px / {{ms}} ms",
+  "north": "North",
+  "south": "South",
+  "xAxis": "step",
+  "yAxis": "Dec offset (px)",
+  "result": {
+    "timestamp": "Timestamp",
+    "pulseSize": "Pulse size",
+    "southClearing": "South clearing",
+    "northRate": "North rate",
+    "southStepGoal": "South step goal",
+    "blPx": "Backlash (px)",
+    "blMs": "Backlash (ms)"
+  },
+  "value": {
+    "ms": "{{value}} ms",
+    "px": "{{value}} px",
+    "steps": "{{value}} steps",
+    "pxPerSec": "{{value}} px/s"
+  },
+  "error": {
+    "notDebugLog": "This file doesn't look like a PHD2 DEBUG log. The first line should contain 'begins execution' or 'continues execution'.",
+    "noSequences": "No backlash test sequences found in this debug log. The test must have been run from PHD2's calibration UI to produce 'BLT'-tagged lines.",
+    "parseFailed": "Failed to parse the debug log."
+  }
+}

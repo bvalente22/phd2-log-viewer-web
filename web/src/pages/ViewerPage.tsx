@@ -5,8 +5,7 @@ import { SectionList } from '../components/SectionList';
 import { StatsGrid } from '../components/StatsGrid';
 import { GuideGraph } from '../components/GuideGraph';
 import { ScatterView } from '../components/ScatterView';
-import { CalibrationPlot } from '../components/CalibrationPlot';
-import { CalibrationStats } from '../components/CalibrationStats';
+import { CalibrationTabs } from '../components/CalibrationTabs';
 import { SectionHeader } from '../components/SectionHeader';
 import { SectionSummary } from '../components/SectionSummary';
 import { GraphToolbar } from '../components/GraphToolbar';
@@ -206,12 +205,9 @@ export function ViewerPage() {
                 totalSections={log.sections.length}
               />
             )}
-            <div className="flex-1 overflow-hidden">
-              <CalibrationPlot />
-            </div>
-            <div className="border-t border-slate-800 bg-slate-900/40">
-              <CalibrationStats />
-            </div>
+            {/* Two-tab view: original Calibration plot+stats on tab 1,
+                Backlash Analysis on tab 2 (loads a paired DEBUG log). */}
+            <CalibrationTabs />
           </>
         )}
         {!log && (
