@@ -276,7 +276,10 @@ export function AnalysisModal() {
         // markers come from user clicks (left = add, right = remove).
         // Bottom panel shows the period + amplitude in BIG text.
         (() => {
-          const stats = manualSpikeStats(manualSpikeRun, manualSpikeSelections);
+          // Per-axis selections — switching axis brings up its own pick set.
+          const activeSelections = manualSpikeSelections[manualSpikeAxis];
+          const otherCount = manualSpikeSelections[manualSpikeAxis === 'ra' ? 'dec' : 'ra'].length;
+          const stats = manualSpikeStats(manualSpikeRun, activeSelections);
           const ps = manualSpikeRun.pixelScale;
           const meanArc = stats.meanAmplitude * ps;
           return (
@@ -291,7 +294,7 @@ export function AnalysisModal() {
                 <button
                   type="button"
                   onClick={s.resetManualSpikePoints}
-                  disabled={stats.count === 0}
+                  disabled={stats.count === 0 && otherCount === 0}
                   className="ms-3 rounded bg-slate-800 px-3 py-0.5 text-xs text-slate-200 ring-1 ring-slate-700 transition-colors hover:bg-rose-700 hover:text-white hover:ring-rose-600 disabled:cursor-not-allowed disabled:bg-slate-900 disabled:text-slate-600"
                   title={t('manualSpike.resetTooltip')}
                 >
@@ -305,7 +308,7 @@ export function AnalysisModal() {
                 <ManualSpikeChart
                   run={manualSpikeRun}
                   scaleMode={scaleMode}
-                  selectedIndices={manualSpikeSelections}
+                  selectedIndices={activeSelections}
                   onAddPoint={s.addManualSpikePoint}
                   onRemovePoint={s.removeManualSpikePoint}
                 />
@@ -316,7 +319,14 @@ export function AnalysisModal() {
                     {t('manualSpike.summary')}
                   </span>
                   <span className="text-slate-500">
-                    {t('manualSpike.runStats', { count: stats.count })}
+                    {otherCount > 0
+                      ? t('manualSpike.runStatsBothAxes', {
+                          count: stats.count,
+                          axis: manualSpikeAxis.toUpperCase(),
+                          otherCount,
+                          otherAxis: (manualSpikeAxis === 'ra' ? 'Dec' : 'RA'),
+                        })
+                      : t('manualSpike.runStats', { count: stats.count })}
                   </span>
                 </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

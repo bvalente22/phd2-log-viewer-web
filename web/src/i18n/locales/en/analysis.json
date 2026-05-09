@@ -156,7 +156,7 @@
   },
   "manualSpike": {
     "axis": "axis",
-    "axisTooltip": "Which guiding axis to analyze. Switching axes clears the current point selection because indices into the previous axis's data wouldn't apply to the new one.",
+    "axisTooltip": "Which guiding axis to analyze. Selections are remembered per-axis: switching to Dec preserves your RA picks (and vice versa). Reset clears both at once.",
     "axisRaTooltip": "Analyze RA",
     "axisDecTooltip": "Analyze Dec",
     "detrended": "Detrended",
@@ -173,8 +173,9 @@
     "minAmplitude": "min = {{arc}}″ ({{px}}px)",
     "maxAmplitude": "max = {{arc}}″ ({{px}}px)",
     "runStats": "{{count}} points selected",
+    "runStatsBothAxes": "{{count}} on {{axis}} · {{otherCount}} on {{otherAxis}}",
     "reset": "Reset",
-    "resetTooltip": "Clear all selected points and start over.",
+    "resetTooltip": "Clear all selected points across BOTH axes and start over.",
     "gestureHint": "left-click = add point · right-click = remove point · scroll = X zoom · drag = X pan + Y zoom"
   },
   "show": "show",
