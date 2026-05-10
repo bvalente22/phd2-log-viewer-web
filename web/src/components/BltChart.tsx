@@ -5,6 +5,7 @@ import type { Data, Layout } from 'plotly.js';
 import type { BltSequence } from '../parser/parseBlt';
 import { useViewStore } from '../state/viewStore';
 import { themeOf } from '../themes';
+import { useChartGestures } from './useChartGestures';
 
 /** App-palette colors for the BLT chart. The original C# tool uses
  *  red/green; we pick amber/cyan to avoid colliding with this app's
@@ -26,6 +27,10 @@ export function BltChart({ sequence }: BltChartProps) {
   const themeId = useViewStore((s) => s.theme);
   const tc = themeOf(themeId).plot;
   const id = useId().replace(/:/g, '_');
+
+  // Match the other analysis charts: drag pans X + zooms Y (centered),
+  // middle-wheel zooms X. No include/exclude editing on this tab.
+  useChartGestures(id, {}, { enableModifierSelect: false });
 
   const traces = useMemo<Data[]>(() => {
     const nc = sequence.northPoints.length;
@@ -83,6 +88,10 @@ export function BltChart({ sequence }: BltChartProps) {
     paper_bgcolor: tc.paper,
     plot_bgcolor: tc.plot,
     font: { color: tc.font, size: 11 },
+    // Re-keyed per sequence so switching runs in the left list resets the
+    // auto-fit y-range; within a single run, pan/zoom state is preserved
+    // across re-renders (e.g. theme changes).
+    uirevision: `blt-${sequence.timestamp || sequence.northPoints.length}`,
     xaxis: {
       title: { text: t('xAxis') },
       gridcolor: tc.grid,
@@ -95,10 +104,14 @@ export function BltChart({ sequence }: BltChartProps) {
       zerolinecolor: tc.zerolineStrong,
       zerolinewidth: 1,
       range: yRange,
-      fixedrange: false,
+      // fixedrange disables Plotly's built-in scroll-zoom on Y so the
+      // middle-wheel only zooms X. useChartGestures still drives drag-Y
+      // zoom via Plotly.relayout, which bypasses fixedrange.
+      fixedrange: true,
     },
     showlegend: true,
     legend: { orientation: 'h', y: 1.18 },
+    dragmode: false,
     hovermode: 'closest',
     shapes: phaseDivider,
   };
@@ -109,7 +122,7 @@ export function BltChart({ sequence }: BltChartProps) {
         divId={id}
         data={traces}
         layout={layout}
-        config={{ displayModeBar: false, responsive: true, scrollZoom: true, doubleClick: 'reset' }}
+        config={{ displayModeBar: false, responsive: true, scrollZoom: true, doubleClick: false }}
         style={{ width: '100%', height: '100%' }}
         useResizeHandler
       />
