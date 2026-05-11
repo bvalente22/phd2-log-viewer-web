@@ -228,19 +228,30 @@ export function analyze(s: GuideSession, opts: AnalyzeOptions): GARun {
   // populated samples) rather than n so the amplitude reflects the actual
   // signal energy, not the padded length.
   const scale = 4 / n0;
-  const nfft = n / 2 - 1;
+  // AnalysisWin.cpp uses an arbitrary-N GSL FFT, so its longest reported
+  // period is exactly n0*dt (one cycle in the recording window) — bin i=0
+  // at frequency 1/(n0*dt). We zero-pad to nextPow2(n0), and the lowest
+  // bins of the padded FFT correspond to periods LONGER than the recording
+  // itself, where the magnitude is just spectral leakage from the window's
+  // transition into the zero-pad tail. Skip them so the period axis matches
+  // the desktop's range and the smoothing spline doesn't fit ghost peaks at
+  // unresolvable long periods. Condition: keep bin i iff (i+1) >= n/n0,
+  // i.e. period <= n0*dt.
+  const iMin = Math.max(0, Math.ceil(n / n0 - 1));
+  const nfft = n / 2 - 1 - iMin;
   const period = new Float64Array(nfft);
   const amplitude = new Float64Array(nfft);
   let amax = 0;
-  for (let i = 0; i < nfft; i++) {
+  for (let j = 0; j < nfft; j++) {
+    const i = j + iMin;
     const f = (i + 1) / (n * dt);
     const p = 1 / f;
     const a = mags[i + 1] * scale;
     // Reverse-write so periods land in ascending order (longest period first
     // would otherwise be index 0). Matches the C++ ordering at
     // AnalysisWin.cpp:401-403.
-    period[nfft - 1 - i] = p;
-    amplitude[nfft - 1 - i] = a;
+    period[nfft - 1 - j] = p;
+    amplitude[nfft - 1 - j] = a;
     if (a > amax) amax = a;
   }
   const spline = new Spline(Array.from(period), Array.from(amplitude));
