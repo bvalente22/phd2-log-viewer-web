@@ -14,7 +14,8 @@
     "default": "Scuro",
     "paper": "Carta bianca",
     "highContrast": "Alto contrasto",
-    "night": "Modalità notte"
+    "night": "Modalità notte",
+    "monochrome": "Monocromatico"
   },
   "calibrationTabs": {
     "calibrationResults": "Risultati calibrazione",
