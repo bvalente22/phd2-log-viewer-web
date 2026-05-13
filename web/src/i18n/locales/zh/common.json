@@ -14,7 +14,8 @@
     "default": "深色",
     "paper": "纸白",
     "highContrast": "高对比度",
-    "night": "夜间模式"
+    "night": "夜间模式",
+    "monochrome": "单色"
   },
   "calibrationTabs": {
     "calibrationResults": "校准结果",
