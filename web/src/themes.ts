@@ -1,9 +1,10 @@
 /**
- * Theme system. Four themes: `default` (slate dark), `paper` (white +
+ * Theme system. Five themes: `default` (slate dark), `paper` (white +
  * dark text), `high-contrast` (pure black + pure white + bright lines),
- * and `night` (dim crimson surfaces, low blue-light for dark-adapted
- * astrophotographers using the viewer at the eyepiece). Each theme
- * exposes:
+ * `night` (dim crimson surfaces, low blue-light for dark-adapted
+ * astrophotographers using the viewer at the eyepiece), and `monochrome`
+ * (pure white chrome + pure black UI; only the plot traces carry color).
+ * Each theme exposes:
  *   - id           the value persisted in viewStore.theme
  *   - dataAttr     the `data-theme="..."` value placed on <html>; the
  *                  matching CSS in index.css overrides Tailwind's
@@ -19,7 +20,7 @@
  * block in index.css, add the i18n label key, done.
  */
 
-export type ThemeId = 'default' | 'paper' | 'high-contrast' | 'night';
+export type ThemeId = 'default' | 'paper' | 'high-contrast' | 'night' | 'monochrome';
 
 export interface PlotThemeColors {
   paper: string;
@@ -111,6 +112,37 @@ export const THEMES: Record<ThemeId, Theme> = {
       annotationFg: '#ffffff',
       traceMass: '#facc15',
       traceSnr: '#ffffff',
+    },
+  },
+  // Pure white page with all UI elements rendered in pure black —
+  // labels, borders, buttons, icons, plot axis lines, gridlines, axis
+  // titles. The chart itself stays in color so RA/Dec/Mass/SNR still
+  // encode meaning by hue. Mass and SNR fall back to the Paper palette
+  // for the same legibility reason (yellow and near-white vanish on
+  // white). Designed to read like a print figure: ink on paper, with
+  // colored data on top.
+  monochrome: {
+    id: 'monochrome',
+    i18nKey: 'monochrome',
+    dataAttr: 'monochrome',
+    plot: {
+      paper: '#ffffff',
+      plot: '#ffffff',
+      font: '#000000',
+      // Grid kept light so it reads as figure infrastructure, not noise
+      // — pure-black gridlines on white would visually compete with the
+      // colored traces. Axis labels, borders, and the zero-reference
+      // line itself are pure black to keep the print aesthetic.
+      grid: '#d4d4d4',
+      zeroline: '#737373',
+      zerolineStrong: '#000000',
+      annotationBg: 'rgba(255,255,255,0.95)',
+      annotationFg: '#000000',
+      // Same swap as the Paper theme: deep amber-orange Mass and dark
+      // slate SNR, since both are illegible on white at their dark-bg
+      // defaults but still read as "warm" and "neutral".
+      traceMass: '#b45309',
+      traceSnr: '#475569',
     },
   },
   // Astronomer night mode: very dark crimson surfaces and dim red text
