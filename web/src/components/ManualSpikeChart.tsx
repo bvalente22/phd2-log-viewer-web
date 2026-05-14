@@ -212,6 +212,13 @@ export function ManualSpikeChart({
       gridcolor: tc.grid,
       zerolinecolor: tc.zeroline,
       fixedrange: false,
+      // Always-on vertical-cursor spike on hover (theme-aware color).
+      showspikes: true,
+      spikemode: 'across',
+      spikethickness: 1.5,
+      spikedash: 'solid',
+      spikecolor: tc.hoverSpike,
+      spikesnap: 'cursor',
     },
     yaxis: {
       title: { text: unit },
@@ -223,7 +230,7 @@ export function ManualSpikeChart({
     showlegend: true,
     legend: { orientation: 'h', y: 1.18 },
     dragmode: false,
-    hovermode: 'closest',
+    hovermode: 'x',
     shapes: sigmaShapes,
   };
 

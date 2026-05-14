@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Plot from 'react-plotly.js';
 // @ts-expect-error -- no types for the dist bundle; we only call relayout.
 import Plotly from 'plotly.js/dist/plotly';
-import type { Data, Layout, Shape } from 'plotly.js';
+import type { Data, Layout } from 'plotly.js';
 import type { GARun } from '../parser/analyze';
 import { useAnalysisStore, type AnalysisKind } from '../state/analysisStore';
 import { alignedEventIndices } from '../parser/spikeAnalysis';
@@ -94,7 +94,6 @@ const COLOR_UNGUIDED = COLOR_RESIDUAL; // unguided has no comparison mode
 // Spike mode uses amber to match the SpikeChart marker color and the
 // analysis-modal banner accent — visual continuity across the modal.
 const COLOR_SPIKE = '#f59e0b';
-const CURSOR_COLOR = 'rgba(250, 204, 21, 0.7)';
 const INACTIVE_OPACITY = 0.28;
 
 interface PlotDiv extends HTMLDivElement {
@@ -290,19 +289,14 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     return { period: cursorPeriod, amplitude: garun.fftSpline.at(cursorPeriod) };
   }, [plotId, garun]);
 
-  // Cursor line drawn via Plotly.relayout (bypasses React render).
-  const drawCursor = useCallback((period: number) => {
-    const shape: Partial<Shape> = {
-      type: 'line', xref: 'x', yref: 'paper',
-      x0: period, x1: period, y0: 0, y1: 1,
-      line: { color: CURSOR_COLOR, width: 1, dash: 'dash' },
-    };
-    void Plotly.relayout(plotId, { shapes: [shape] });
-  }, [plotId]);
-
-  const clearCursor = useCallback(() => {
-    void Plotly.relayout(plotId, { shapes: [] });
-  }, [plotId]);
+  // Vertical-cursor line is provided natively by Plotly's
+  // `xaxis.showspikes` (configured below). It follows the cursor across
+  // every chart pixel without paying the cost of a `Plotly.relayout({
+  // shapes: [...] })` per hover event, so the prior `drawCursor` /
+  // `clearCursor` helpers — which used to issue one relayout per
+  // `plotly_hover` — are gone. The hover readout below still uses the
+  // snap-to-peak period in its text, matching the desktop's behavior at
+  // AnalysisWin.cpp:911-914.
 
   const onHover = useCallback((ev: { points?: Array<{ x?: number }> }) => {
     const x = ev.points?.[0]?.x;
@@ -337,8 +331,7 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
         `RMS: ${rmsArc.toFixed(2)}″ (${rmsPx.toFixed(2)}px)`,
       );
     }
-    drawCursor(period);
-  }, [garun, snapToPeak, drawCursor, kind, spikeRun, setSpikeHoverPeriod]);
+  }, [garun, snapToPeak, kind, spikeRun, setSpikeHoverPeriod]);
 
   // Quiet the unused-variable warning for `unit/k` when scaleMode is PIXELS.
   useEffect(() => { void unit; void k; }, [unit, k]);
@@ -406,13 +399,21 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
   //      the value already came from a real rendered max).
   //   2. yMaxViewPx (most recent rendered max, captured via
   //      onRelayout above — preserves drag-zoom across mode swaps).
-  //   3. autorange (first-paint fallback before any relayout fires).
-  // Both lock and view are stored in raw pixel units, so we apply the
-  // active scale factor here.
-  const yMaxApplied = yMaxLockPx ?? yMaxViewPx;
-  const yAxisCfg: Partial<Layout['yaxis']> = yMaxApplied !== null
-    ? { range: [0, yMaxApplied * k], autorange: false }
-    : { autorange: true };
+  //   3. fftAmpMax (initial paint — explicit [0, max*1.05] so the
+  //      bottom is anchored at exactly 0, NOT at Plotly's autorange
+  //      padding of a few units below zero. The bottom-anchored Y
+  //      zoom gesture captures `startYRange[0]` on pointerdown, so
+  //      autoranged starts at e.g. -8 would mean every first drag
+  //      "snapped" the axis to [0, …] mid-drag — visible to the user
+  //      as a reset jump. Using an explicit 0-based initial range
+  //      eliminates that snap.
+  // All three are in raw pixel units, so apply `k` to convert to the
+  // active display unit at layout time.
+  // Both traces share the Y axis; take the max of active + other so a
+  // big counterpart isn't clipped on first paint.
+  const initialFftMax = Math.max(garun.fftAmpMax, garunOther?.fftAmpMax ?? 0) * 1.05;
+  const yMaxApplied = yMaxLockPx ?? yMaxViewPx ?? initialFftMax;
+  const yAxisCfg: Partial<Layout['yaxis']> = { range: [0, yMaxApplied * k], autorange: false };
   const layout: Partial<Layout> = {
     autosize: true,
     margin: { l: 60, r: 30, t: 10, b: 40 },
@@ -424,7 +425,12 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       type: 'log',
       // Tracked range wins over the data-derived default. Persists
       // pan across hover-induced re-renders and across mode swaps.
+      // `autorange:false` is explicit alongside `range` so Plotly never
+      // re-derives a padded range mid-drag (which would otherwise cause
+      // the first drag to "snap" the X axis the same way the Y axis
+      // did before the autorange→0-anchored fix below).
       range: periodXRangeViewLog ?? xLogRange,
+      autorange: false,
       fixedrange: false,
       // Explicit ticks (see `buildLogTickLabels`) — show actual period
       // values at every decade subdivision instead of plotly's default
@@ -432,6 +438,18 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       tickmode: 'array',
       tickvals: periodTicks.tickvals,
       ticktext: periodTicks.ticktext,
+      // Vertical-cursor spike on hover (theme-aware color for visibility
+      // on every background). The custom snap-to-peak `drawCursor()`
+      // shape painted from `onHover` would have layered on top of this,
+      // so it was removed — the spike line provides the always-visible
+      // cursor and the hover readout below still shows the
+      // snap-to-peak period/amplitude.
+      showspikes: true,
+      spikemode: 'across',
+      spikethickness: 1.5,
+      spikedash: 'solid',
+      spikecolor: tc.hoverSpike,
+      spikesnap: 'cursor',
     },
     yaxis: {
       title: { text: unit === '″' ? tChart('axes.amplitudeArcsec') : tChart('axes.amplitudePixels') },
@@ -465,7 +483,7 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
           onHover={onHover as never}
           onUnhover={() => {
             setHover(null);
-            clearCursor();
+            // Spike line clears itself when Plotly's hover fades out.
             // Clear the broadcast so the spike chart drops its
             // highlight overlay. No-op outside spike mode.
             if (kind === 'spike') setSpikeHoverPeriod(null);

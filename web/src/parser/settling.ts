@@ -10,15 +10,26 @@ const DITHER_SETTLE_FRAMES = 5;
 /**
  * Build an exclusion mask covering frames during settling and post-dither
  * settle. Two paths:
- *   - If the log emits SETTLING STATE CHANGE state=1/0 events, exclude the
- *     entry range bounded by those events (matches the desktop's
- *     "Exclude frames settling" menu item).
- *   - As a fallback (newer logs may only emit DITHER), also exclude the
- *     N entries immediately following any DITHER event.
+ *   - If the log emits SETTLING STATE CHANGE events, exclude the entry range
+ *     bounded by "Settling started" / "Settling complete" markers (matches
+ *     the desktop's "Exclude frames settling" menu item).
+ *   - As a fallback (older logs that only emit DITHER markers without
+ *     settling state), also exclude the N entries immediately following any
+ *     DITHER event.
+ *
+ * `info.info` carries the SETTLING text the parser strips the
+ * `"SETTLING STATE CHANGE, "` prefix from (see `parseInfo.ts:14`), so the
+ * literal payloads we match against here are the human-readable
+ * `"Settling started"` / `"Settling complete"` strings PHD2 writes in
+ * current logs. Older logs that emitted the underlying state-machine
+ * payloads (`state=1` / `state=0`) are matched as a back-compat alias.
  *
  * The result is OR-merged with `base` when supplied, so callers can layer
  * this onto an existing user-edited mask.
  */
+const SETTLING_START = new Set(['Settling started', 'state=1']);
+const SETTLING_END = new Set(['Settling complete', 'state=0']);
+
 export function computeSettlingMask(s: GuideSession, base?: Uint8Array): Uint8Array {
   const m = base && base.length === s.entries.length
     ? new Uint8Array(base)
@@ -27,10 +38,10 @@ export function computeSettlingMask(s: GuideSession, base?: Uint8Array): Uint8Ar
   let inSettle = false;
   let startEntryIdx = 0;
   for (const info of s.infos) {
-    if (info.info === 'state=1' && !inSettle) {
+    if (SETTLING_START.has(info.info) && !inSettle) {
       inSettle = true;
       startEntryIdx = info.idx;
-    } else if (info.info === 'state=0' && inSettle) {
+    } else if (SETTLING_END.has(info.info) && inSettle) {
       for (let i = startEntryIdx; i < info.idx && i < s.entries.length; i++) m[i] = 1;
       inSettle = false;
     }
