@@ -174,11 +174,16 @@ function buildTraces(
   snrColor: string,
   flipRaPulses: boolean,
   flipDecPulses: boolean,
+  toX: (dt: number) => number,
 ): Data[] {
   // When AO data is present in the session, filter entries to the chosen
   // device. Mount-only sessions skip this filter (every entry is MOUNT).
   const visibleEntries = hasAo ? s.entries.filter((e) => e.mount === device) : s.entries;
-  const t = visibleEntries.map((e) => e.dt);
+  // X coordinate is `toX(e.dt)`. With clock-time mode this is ms-since-epoch
+  // (the native unit of Plotly's `type: 'date'` axis); in legacy seconds mode
+  // it's just `e.dt`. The mapping is transparent to the trace plumbing — the
+  // chart sees plain numbers either way.
+  const t = visibleEntries.map((e) => toX(e.dt));
   const out: Data[] = [];
   const k = scaleMode === 'ARCSEC' ? s.pixelScale : 1;
 
@@ -332,7 +337,7 @@ function buildTraces(
     for (const info of s.infos) {
       const entry = s.entries[info.idx];
       if (!entry) continue;
-      infoX.push(entry.dt);
+      infoX.push(toX(entry.dt));
       // High Y so the markers sit near the top edge regardless of zoom.
       infoY.push(yMax * 0.95);
       const repeats = info.repeats > 1 ? ` ×${info.repeats}` : '';
@@ -472,6 +477,7 @@ function buildShapes(
   mask: Uint8Array | undefined,
   traces: Traces,
   scaleMode: ScaleMode,
+  toX: (dt: number) => number,
 ): Partial<Shape>[] {
   const shapes: Partial<Shape>[] = [];
   const k = scaleMode === 'ARCSEC' ? s.pixelScale : 1;
@@ -487,7 +493,7 @@ function buildShapes(
       else if (!ex && runStart >= 0) {
         shapes.push({
           type: 'rect', xref: 'x', yref: 'paper',
-          x0: s.entries[runStart].dt, x1: s.entries[i - 1].dt,
+          x0: toX(s.entries[runStart].dt), x1: toX(s.entries[i - 1].dt),
           y0: 0, y1: 1,
           fillcolor: 'rgba(251, 146, 60, 0.18)',
           line: { color: 'rgba(251, 146, 60, 0.55)', width: 1 },
@@ -498,8 +504,9 @@ function buildShapes(
   }
 
   for (const info of s.infos) {
-    const t = s.entries[info.idx]?.dt;
-    if (t === undefined) continue;
+    const dt = s.entries[info.idx]?.dt;
+    if (dt === undefined) continue;
+    const t = toX(dt);
     const isDither = info.info.startsWith('DITHER');
     shapes.push({
       type: 'line', xref: 'x', yref: 'paper',
@@ -542,7 +549,12 @@ export function GuideGraph() {
   const [hoverInfo, setHoverInfo] = useState<string | null>(null);
 
   // Latest values used by the long-lived event handlers.
-  const dataRef = useRef<{ session: GuideSession; sessionIdx: number } | null>(null);
+  const dataRef = useRef<{
+    session: GuideSession;
+    sessionIdx: number;
+    toX: (dt: number) => number;
+    fromX: (x: number) => number;
+  } | null>(null);
   const measureTextPxRef = useRef<((text: string) => number) | null>(null);
   if (!measureTextPxRef.current) {
     const cache = new Map<string, number>();
@@ -609,6 +621,21 @@ export function GuideGraph() {
     const session = log.sessions[sec.idx];
     const mask = exclusions.get(sec.idx);
     const hasAo = session.entries.some((e) => e.mount === 'AO');
+    // Clock-time X axis (ms-since-epoch on Plotly `type:'date'`) when the
+    // log's session header parsed a real wall-clock start; legacy elapsed-
+    // seconds X otherwise so logs with unparseable headers still chart.
+    // Matches the original desktop's PaintScale logic at LogViewFrame.cpp:
+    // 1535-1549 — it draws labels using `wxDateTime(starts + dt*1000)` as
+    // `%H:%M`. We hand Plotly an ms-since-epoch number per point so its
+    // built-in date axis handles tick placement / formatting natively.
+    const startsMs = session.startsMs;
+    const useClockTime = startsMs !== null && Number.isFinite(startsMs);
+    const toX = useClockTime
+      ? (dt: number) => (startsMs as number) + dt * 1000
+      : (dt: number) => dt;
+    const fromX = useClockTime
+      ? (x: number) => (x - (startsMs as number)) / 1000
+      : (x: number) => x;
     // Compute the natural X extent from the entries themselves rather than
     // relying on Plotly's autorange. We pass this as the layout's xaxis.range
     // so Plotly always has an explicit, stable X range to scroll-zoom from.
@@ -616,8 +643,8 @@ export function GuideGraph() {
     // can occasionally anchor the zoom on x=0 rather than the cursor — the
     // bug that "jumps to the start of the data".)
     const xExtent: [number, number] = session.entries.length >= 2
-      ? [session.entries[0].dt, session.entries[session.entries.length - 1].dt]
-      : [0, 1];
+      ? [toX(session.entries[0].dt), toX(session.entries[session.entries.length - 1].dt)]
+      : [toX(0), toX(1)];
 
     // Compute initial Y range so we know mass/snr scaling. We sample only the
     // entries that will actually be visible (filtered by device when AO is
@@ -670,7 +697,11 @@ export function GuideGraph() {
         if (!entry) continue;
         const text = info.repeats > 1 ? `${info.info} ×${info.repeats}` : info.info;
         eventInputs.push({
-          timeSec: entry.dt,
+          // `timeSec` is the chart X coordinate, not necessarily seconds:
+          // in clock-time mode it carries ms-since-epoch. Inline-event
+          // layout downstream only does arithmetic in the chart coord
+          // (range span × pixel width), so it doesn't care what unit X is.
+          timeSec: toX(entry.dt),
           text,
           isDither: info.info.startsWith('DITHER'),
         });
@@ -683,14 +714,19 @@ export function GuideGraph() {
       hasAo,
       yMax,
       xExtent,
-      traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo, themeOf(themeId).plot.traceMass, themeOf(themeId).plot.traceSnr, flipRaPulses, flipDecPulses),
-      shapes: buildShapes(session, mask, traces, scaleMode),
+      useClockTime,
+      toX,
+      fromX,
+      traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo, themeOf(themeId).plot.traceMass, themeOf(themeId).plot.traceSnr, flipRaPulses, flipDecPulses, toX),
+      shapes: buildShapes(session, mask, traces, scaleMode, toX),
       eventInputs,
     };
   }, [log, sectionIdx, exclusions, scaleMode, traces, coordMode, device, autoScaleY, themeId, flipRaPulses, flipDecPulses]);
 
   useEffect(() => {
-    dataRef.current = data ? { session: data.session, sessionIdx: data.sessionIdx } : null;
+    dataRef.current = data
+      ? { session: data.session, sessionIdx: data.sessionIdx, toX: data.toX, fromX: data.fromX }
+      : null;
   }, [data]);
 
   // First-time-viewing default: auto-exclude dithers and settling windows so
@@ -863,9 +899,13 @@ export function GuideGraph() {
         const ctx = dataRef.current;
         if (!ctx) return null;
         const entries = ctx.session.entries;
+        // gesture handler compares values against `xa.range` from Plotly,
+        // which is in the same coordinate as the data — so emit dts in
+        // chart units (ms-since-epoch in clock-time mode, seconds in legacy).
+        const toX = ctx.toX;
         return {
           frames: entries.map((e) => e.frame),
-          dts: entries.map((e) => e.dt),
+          dts: entries.map((e) => toX(e.dt)),
         };
       },
       onDragStateChange: (active) => {
@@ -897,7 +937,9 @@ export function GuideGraph() {
     if (!data) return;
     const x = ev.points?.[0]?.x;
     if (typeof x !== 'number') return;
-    const entry = findClosestEntry(data.session.entries, x);
+    // In clock-time mode the chart X is ms-since-epoch; `findClosestEntry`
+    // bisects against `e.dt` (elapsed seconds) so we convert back first.
+    const entry = findClosestEntry(data.session.entries, data.fromX(x));
     if (!entry) return;
     pendingHoverRef.current = formatRowInfo(entry);
     if (hoverRafRef.current == null) {
@@ -926,15 +968,29 @@ export function GuideGraph() {
   // Plotly fires plotly_relayout for any user-driven range change (scroll
   // zoom, drag-zoom, etc.). Persist the new range into the per-section view
   // so the next time we revisit this section the same view is restored.
+  //
+  // Note on `type: 'date'` axes (clock-time mode): Plotly emits range values
+  // in the relayout event as ISO date strings (e.g. "2020-09-21 19:43:07"),
+  // even though `_fullLayout.xaxis.range` stores them as numeric ms. We
+  // coerce strings → ms here so the rest of the pipeline (sectionViews,
+  // gesture handlers, locked Y view) stays in numbers.
   const onRelayout = useCallback((ev: Readonly<Record<string, unknown>>) => {
     const idx = dataRef.current?.sessionIdx;
     if (idx === undefined) return;
     const cur = sectionViews.get(idx) ?? {};
     const next = { ...cur };
+    const toMs = (v: unknown): number | null => {
+      if (typeof v === 'number' && Number.isFinite(v)) return v;
+      if (typeof v === 'string') {
+        const t = Date.parse(v);
+        return Number.isFinite(t) ? t : null;
+      }
+      return null;
+    };
 
-    const xr0 = ev['xaxis.range[0]'];
-    const xr1 = ev['xaxis.range[1]'];
-    if (typeof xr0 === 'number' && typeof xr1 === 'number') {
+    const xr0 = toMs(ev['xaxis.range[0]']);
+    const xr1 = toMs(ev['xaxis.range[1]']);
+    if (xr0 !== null && xr1 !== null) {
       next.x = [xr0, xr1];
     }
     const yr0 = ev['yaxis.range[0]'];
@@ -958,8 +1014,8 @@ export function GuideGraph() {
     // barely move pixel-wise between ticks. `onDragStateChange(false)` in
     // useChartGestures fires a single settle pass on release.
     const xRangeChanged =
-      typeof ev['xaxis.range[0]'] === 'number' ||
-      typeof ev['xaxis.range[1]'] === 'number' ||
+      'xaxis.range[0]' in ev ||
+      'xaxis.range[1]' in ev ||
       ev['xaxis.autorange'] === true;
     if (xRangeChanged && !dragActiveRef.current) refreshAnnotationsRef.current?.();
   }, [scaleLocked]);
@@ -1003,6 +1059,13 @@ export function GuideGraph() {
       font: { color: tc.font, size: 11 },
       xaxis: {
         title: { text: tChart('axes.time') }, gridcolor: tc.grid, zerolinecolor: tc.zeroline,
+        // Date axis when the session has a parseable start timestamp — the
+        // X values in traces/shapes/annotations are ms-since-epoch, and
+        // Plotly's date axis formats ticks as wall-clock times. Falls back
+        // to a numeric axis when `startsMs` is null so logs without parsed
+        // headers still chart (legacy elapsed-seconds behavior).
+        type: data.useClockTime ? 'date' : 'linear',
+        tickformat: data.useClockTime ? '%H:%M' : undefined,
         // X is unfixed so Plotly's built-in scrollZoom (config below) can zoom
         // it via the wheel; Plotly handles cursor-anchored zoom correctly. Drag
         // gestures are owned by our custom handlers (Plotly dragmode:false),

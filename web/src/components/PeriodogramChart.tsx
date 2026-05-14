@@ -10,6 +10,78 @@ import { alignedEventIndices } from '../parser/spikeAnalysis';
 import { useChartGestures } from './useChartGestures';
 import { useViewStore } from '../state/viewStore';
 import { themeOf } from '../themes';
+import type { Spline } from '../parser/spline';
+
+const DENSE_POINTS = 1500;
+
+/**
+ * Resample an FFT periodogram onto a dense log-spaced X grid using the
+ * smoothing Akima spline. Mirrors AnalysisWin.cpp:1131-1143 where
+ * `PaintFFT` evaluates `s_fftpos.Eval(x)` (which delegates to
+ * `ga.ffts.Eval(p)`) once per chart pixel — the source of the desktop's
+ * visibly smooth periodogram curve. We resample to a fixed N rather than
+ * per-pixel because the chart is HTML-canvas-rasterized: 1500 points
+ * across a typical 1000-3000 px chart gives sub-pixel spacing without
+ * caring about the actual rendered width.
+ */
+function denseSpline(periods: Float64Array, spline: Spline): { x: number[]; y: number[] } {
+  if (periods.length < 2) {
+    const xs = Array.from(periods);
+    return { x: xs, y: xs.map((p) => spline.at(p)) };
+  }
+  const pMin = Math.max(periods[0], 1e-6);
+  const pMax = Math.max(periods[periods.length - 1], pMin * 10);
+  const logMin = Math.log10(pMin);
+  const logMax = Math.log10(pMax);
+  const x = new Array<number>(DENSE_POINTS);
+  const y = new Array<number>(DENSE_POINTS);
+  for (let i = 0; i < DENSE_POINTS; i++) {
+    const p = Math.pow(10, logMin + (i / (DENSE_POINTS - 1)) * (logMax - logMin));
+    x[i] = p;
+    y[i] = spline.at(p);
+  }
+  return { x, y };
+}
+
+/**
+ * Decade-by-decade tick positions for a log axis showing periods in
+ * seconds — mirrors `StartP` / `IncrP` at AnalysisWin.cpp:1065-1074:
+ *   IncrP(p) = 10^floor(log10(p))
+ *   StartP(p) = ceil(p/IncrP) * IncrP
+ * which yields the label set 7, 8, 9, 10, 20, 30, ..., 90, 100, 200, ...
+ * Plotly's default log-axis labels show only the mantissa ("2" between
+ * "10" and "100" really means 20) — visually confusing for users
+ * reading period-in-seconds. Explicit tickvals/ticktext makes every
+ * label the actual period value.
+ */
+function buildLogTickLabels(periodMin: number, periodMax: number): {
+  tickvals: number[];
+  ticktext: string[];
+} {
+  const tickvals: number[] = [];
+  const ticktext: string[] = [];
+  const lo = Math.max(periodMin, 1e-6);
+  const hi = Math.max(periodMax, lo * 10);
+  const startDecade = Math.floor(Math.log10(lo));
+  const endDecade = Math.ceil(Math.log10(hi));
+  for (let d = startDecade; d <= endDecade; d++) {
+    const base = Math.pow(10, d);
+    for (let n = 1; n < 10; n++) {
+      const v = n * base;
+      tickvals.push(v);
+      ticktext.push(formatPeriodLabel(v));
+    }
+  }
+  return { tickvals, ticktext };
+}
+
+function formatPeriodLabel(p: number): string {
+  if (p >= 100) return String(Math.round(p));
+  if (p >= 10) return String(Math.round(p));
+  if (p >= 1) return p.toFixed(0);
+  if (p >= 0.1) return p.toFixed(1);
+  return p.toFixed(2);
+}
 
 const PEAK_PX = 8;
 // Per-kind colors so the residual / raw-RA traces stay identifiable
@@ -118,9 +190,10 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     // Inactive (counterpart) drawn first so the active trace overlays it.
     const otherKind = otherKindOf(kind);
     if (garunOther && otherKind) {
+      const dense = denseSpline(garunOther.fftPeriod, garunOther.fftSpline);
       out.push({
-        x: Array.from(garunOther.fftPeriod),
-        y: Array.from(garunOther.fftAmplitude).map((v) => v * k),
+        x: dense.x,
+        y: dense.y.map((v) => v * k),
         type: 'scatter', mode: 'lines',
         name: labelOf(otherKind),
         line: { color: colorFor(otherKind), width: 1.25 },
@@ -131,9 +204,18 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
         hoverinfo: 'skip',
       } as Data);
     }
+    // Plot the Akima-spline-interpolated curve, not the raw FFT bins. The
+    // original desktop renders one Y per chart pixel by evaluating
+    // `ga.ffts.Eval(p)` at each pixel's period (AnalysisWin.cpp:1136-1143),
+    // which is what gives its periodogram the visibly smoother shape vs.
+    // a straight-line polyline through the discrete bin samples. Our spline
+    // is the same Akima fit (analyze.ts builds `fftSpline` from the bins).
+    // 1500 log-spaced points across the full period range gives sub-pixel
+    // resolution at chart widths up to ~3000 px without measurable cost.
+    const dense = denseSpline(garun.fftPeriod, garun.fftSpline);
     out.push({
-      x: Array.from(garun.fftPeriod),
-      y: Array.from(garun.fftAmplitude).map((v) => v * k),
+      x: dense.x,
+      y: dense.y.map((v) => v * k),
       type: 'scatter', mode: 'lines',
       name: labelOf(kind),
       line: { color: colorFor(kind), width: 1.5 },
@@ -303,6 +385,21 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     }
   }, [k, setYMaxView, setPeriodXRangeLog]);
 
+  // Decade-by-decade explicit tick labels — replace Plotly's default
+  // log-axis minor-tick labels (which show only the mantissa "2" / "3"
+  // between decades instead of the actual value "20" / "30"). Computed
+  // once per garun since the period range only depends on the FFT
+  // bounds — does NOT depend on zoom level, because each decade gets
+  // every integer multiple labelled, and Plotly thins automatically when
+  // labels would overlap.
+  const periodTicks = useMemo(() => {
+    if (garun.fftPeriod.length < 2) return { tickvals: [], ticktext: [] };
+    return buildLogTickLabels(
+      garun.fftPeriod[0],
+      garun.fftPeriod[garun.fftPeriod.length - 1],
+    );
+  }, [garun]);
+
   const tc = themeOf(themeId).plot;
   // Y-axis range source priority:
   //   1. yMaxLockPx (explicit user lock — pin it, no headroom needed,
@@ -329,6 +426,12 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       // pan across hover-induced re-renders and across mode swaps.
       range: periodXRangeViewLog ?? xLogRange,
       fixedrange: false,
+      // Explicit ticks (see `buildLogTickLabels`) — show actual period
+      // values at every decade subdivision instead of plotly's default
+      // "2 3 4 ... 100" mantissa-only labels.
+      tickmode: 'array',
+      tickvals: periodTicks.tickvals,
+      ticktext: periodTicks.ticktext,
     },
     yaxis: {
       title: { text: unit === '″' ? tChart('axes.amplitudeArcsec') : tChart('axes.amplitudePixels') },
