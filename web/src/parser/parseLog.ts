@@ -34,7 +34,15 @@ const getMinMo = (ln: string, lim: Limits): void => {
 const parseIsoCombined = (s: string): number | null => {
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
   if (!m) return null;
-  return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+  // PHD2 records local wall-clock time at the capture site (no timezone
+  // marker in the log). Treat the digits as local time so the chart's
+  // clock-time X axis shows the same hh:mm:ss the user saw when they
+  // captured the session, regardless of where the log is being viewed
+  // now. Matches the original wxWidgets desktop viewer, which uses
+  // `wxDateTime` constructed from the log digits (also local time), and
+  // is consistent with `filename.ts:37` which already uses local time
+  // for the on-disk filename timestamp.
+  return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime();
 };
 
 export function parseLog(text: string): GuideLog {
