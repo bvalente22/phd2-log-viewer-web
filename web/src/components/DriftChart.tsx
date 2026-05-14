@@ -172,6 +172,16 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
       // Tracked range wins over the data-derived default. Persists pan
       // across hover-induced re-renders and across mode swaps.
       range: driftXRangeView ?? xExtent,
+      // Always-on vertical-cursor spike on hover. See PeriodogramChart's
+      // matching block for the rationale (theme-aware contrast color,
+      // `spikemode:'across'` for full-height, `spikesnap:'cursor'` for
+      // pixel-accurate following).
+      showspikes: true,
+      spikemode: 'across',
+      spikethickness: 1.5,
+      spikedash: 'solid',
+      spikecolor: tc.hoverSpike,
+      spikesnap: 'cursor',
     },
     yaxis: { title: { text: unit }, gridcolor: tc.grid, zerolinecolor: tc.zerolineStrong, zerolinewidth: 1, fixedrange: true, range: yRange },
     showlegend: true,

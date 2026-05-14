@@ -1066,6 +1066,17 @@ export function GuideGraph() {
         // headers still chart (legacy elapsed-seconds behavior).
         type: data.useClockTime ? 'date' : 'linear',
         tickformat: data.useClockTime ? '%H:%M' : undefined,
+        // Vertical-cursor spike — `spikemode:'across'` spans the chart top
+        // to bottom, `spikesnap:'cursor'` follows the cursor pixel-for-
+        // pixel (vs. snapping to nearest data point), and the theme's
+        // `hoverSpike` color is picked for visibility on every background.
+        // `hovermode:'x'` (below) is what activates the spike on hover.
+        showspikes: true,
+        spikemode: 'across',
+        spikethickness: 1.5,
+        spikedash: 'solid',
+        spikecolor: tc.hoverSpike,
+        spikesnap: 'cursor',
         // X is unfixed so Plotly's built-in scrollZoom (config below) can zoom
         // it via the wheel; Plotly handles cursor-anchored zoom correctly. Drag
         // gestures are owned by our custom handlers (Plotly dragmode:false),
@@ -1130,6 +1141,15 @@ export function GuideGraph() {
       legend: { orientation: 'h', y: 1.1 },
       dragmode: false,
       barmode: 'overlay',
+      // `hovermode:'x'` is required for `xaxis.showspikes` to render
+      // the vertical cursor line on hover — without it the spike is
+      // suppressed even though the flag is set. The per-row info
+      // readout below the chart already shows the active frame, so
+      // the multi-trace hover tooltip Plotly enables on 'x' mode is
+      // suppressed via individual trace `hoverinfo:'none'` / blank
+      // `hovertemplate` would be invasive here; instead we keep the
+      // tooltip behavior unchanged and rely on the readout for detail.
+      hovermode: 'x',
       // uirevision keeps Plotly's UI-side caches stable across our
       // re-renders that don't change the data shape — anything keyed to
       // sessionIdx is the right granularity (a new section = new chart).

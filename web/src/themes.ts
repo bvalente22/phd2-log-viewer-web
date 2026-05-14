@@ -41,6 +41,14 @@ export interface PlotThemeColors {
    */
   traceMass: string;
   traceSnr: string;
+  /**
+   * Vertical-cursor "spike" color used by every line chart on hover.
+   * Picked to contrast with both the chart background and the saturated
+   * trace colors (RA blue / Dec red). Bright yellow on dark backgrounds,
+   * near-black on white, cyan on pure black, pale red on the night-mode
+   * crimson surfaces so dark adaptation is preserved.
+   */
+  hoverSpike: string;
 }
 
 export interface Theme {
@@ -71,6 +79,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       annotationFg: 'rgb(226,232,240)',
       traceMass: '#facc15',
       traceSnr: '#e2e8f0',
+      hoverSpike: '#facc15',
     },
   },
   // White background, dark text — for daylight use or printing. Plot
@@ -93,6 +102,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       // (neutral) but with enough contrast against the page.
       traceMass: '#b45309',
       traceSnr: '#475569',
+      hoverSpike: '#0f172a',
     },
   },
   // Pure-black + pure-white + high-saturation gridlines for users with
@@ -112,6 +122,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       annotationFg: '#ffffff',
       traceMass: '#facc15',
       traceSnr: '#ffffff',
+      hoverSpike: '#00ffff',
     },
   },
   // Pure white page with all UI elements rendered in pure black —
@@ -143,6 +154,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       // defaults but still read as "warm" and "neutral".
       traceMass: '#b45309',
       traceSnr: '#475569',
+      hoverSpike: '#0f172a',
     },
   },
   // Astronomer night mode: very dark crimson surfaces and dim red text
@@ -164,6 +176,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       annotationFg: '#ff8080',
       traceMass: '#facc15',
       traceSnr: '#e2e8f0',
+      hoverSpike: '#ffd0d0',
     },
   },
 };
