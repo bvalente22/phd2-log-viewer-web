@@ -4,10 +4,51 @@ import Plotly from 'plotly.js/dist/plotly';
 
 interface PlotDiv extends HTMLDivElement {
   _fullLayout?: {
-    xaxis?: { _offset: number; _length: number; range: [number, number] };
-    yaxis?: { _offset: number; _length: number; range: [number, number] };
+    xaxis?: {
+      _offset: number;
+      _length: number;
+      // Plotly stores range as numbers on linear/log axes and as
+      // ISO-8601 date strings ("YYYY-MM-DD HH:mm:ss.sss") on `type:'date'`
+      // axes. Reads must go through `numericRange()` below before any
+      // arithmetic.
+      range: [number | string, number | string];
+    };
+    yaxis?: {
+      _offset: number;
+      _length: number;
+      range: [number | string, number | string];
+    };
   };
 }
+
+/**
+ * Coerce a Plotly axis range to numeric ms.
+ *
+ * Plotly 2.x stores `_fullLayout.xaxis.range` as ISO date strings when the
+ * axis is `type:'date'` ("2020-09-21 20:43:08.000"), and as numbers for
+ * `type:'linear'` / `'log'`. The gesture handler's arithmetic
+ * (xSpan = range[1] - range[0]) silently produces NaN on string ranges,
+ * which then propagates through every relayout patch and snaps the chart
+ * to a 1970-epoch range — the visible "00:00 everywhere" symptom of the
+ * pre-fix regression. `Date.parse` of Plotly's date-string format gives
+ * local-time ms (same convention as parseLog's `parseIsoCombined`), so the
+ * round-trip is consistent. For already-numeric ranges this is a no-op.
+ */
+const toMs = (v: unknown): number => {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (v instanceof Date) return v.getTime();
+  if (typeof v === 'string') {
+    const t = Date.parse(v);
+    return Number.isFinite(t) ? t : NaN;
+  }
+  return NaN;
+};
+const numericRange = (
+  r: ArrayLike<unknown> | undefined,
+): [number, number] => {
+  if (!r || r.length < 2) return [NaN, NaN];
+  return [toMs(r[0]), toMs(r[1])];
+};
 
 const INCLUDE_FILL = 'rgba(34, 197, 94, 0.18)';
 const INCLUDE_BORDER = 'rgba(34, 197, 94, 0.7)';
@@ -206,11 +247,11 @@ export function useChartGestures(
       // implicitly centered (its y range is symmetric around 0). Anchoring
       // on the chart center makes the zoom feel identical regardless of
       // where on the chart the user clicked or whether Y has been panned.
-      const [y0, y1] = ya.range;
+      const [y0, y1] = numericRange(ya.range);
       startClientX = e.clientX;
       startClientY = e.clientY;
       startYRange = [y0, y1];
-      startXRange = [...xa.range] as [number, number];
+      startXRange = numericRange(xa.range);
       if (hideSlider) {
         void Plotly.relayout(div, { 'xaxis.rangeslider.visible': false });
         sliderHidden = true;
@@ -298,7 +339,7 @@ export function useChartGestures(
         const a = Math.min(xStartFrac, endFrac);
         const b = Math.max(xStartFrac, endFrac);
         if (b - a >= 0.005) {
-          const [x0, x1] = xa.range;
+          const [x0, x1] = numericRange(xa.range);
           const tA = x0 + a * (x1 - x0);
           const tB = x0 + b * (x1 - x0);
           const ctx = cbRef.current.rangeContext();
