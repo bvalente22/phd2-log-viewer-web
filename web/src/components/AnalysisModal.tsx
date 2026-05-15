@@ -112,7 +112,11 @@ export function AnalysisModal() {
     burstRun, burstOpts, burstAutoAdjusting, burstAutoBestPct, burstPendingSettle,
     simpleSpikeRun, simpleSpikeAxis, simpleSpikeDirection,
     manualSpikeRun, manualSpikeAxis, manualSpikeSelections,
+    useAllFramesForFFT, originalMask,
   } = s;
+  // The "all frames" toggle is only meaningful when there's actually a
+  // mask to bypass. Hide it otherwise (logs without dithers/settles).
+  const hasMask = originalMask !== undefined && originalMask.some((v) => v === 1);
   // The active dataset PeriodogramChart should render. In spike mode we
   // adapt the SpikeRun; otherwise it's the regular GARun pair.
   const activePerioRun: GARun = kind === 'spike' && spikeRun
@@ -239,10 +243,16 @@ export function AnalysisModal() {
             <div className="flex items-center gap-1" role="tablist" aria-label={t('mode.tabsLabel')}>
               {showResidualTabs && (
                 <>
-                  <ModeTab target="all" current={kind} label={t('mode.selected')}
-                    onClick={() => s.setKind('all')} tip={t('mode.selectedTooltip')} />
+                  {/* Tab order: Raw RA first (the default opened tab,
+                      matching the desktop's startup view), then Residual
+                      error second. Reorder reflects how users typically
+                      diagnose PE — read the raw signal first, then
+                      compare against the residual-after-correction
+                      signal. */}
                   <ModeTab target="all-raw-ra" current={kind} label={t('mode.rawRa')}
                     onClick={() => s.setKind('all-raw-ra')} tip={t('mode.rawRaTooltip')} />
+                  <ModeTab target="all" current={kind} label={t('mode.selected')}
+                    onClick={() => s.setKind('all')} tip={t('mode.selectedTooltip')} />
                 </>
               )}
               {showSpikeTab && (
@@ -538,6 +548,22 @@ export function AnalysisModal() {
         <span className="ms-3 me-1 text-slate-500" title={t('scaleTooltip')}>{t('scale')}:</span>
         <ToggleChip label="arc-sec" active={scaleMode === 'ARCSEC'} onClick={() => s.setScaleMode('ARCSEC')} title={t('arcsecTooltip')} />
         <ToggleChip label="pixels" active={scaleMode === 'PIXELS'} onClick={() => s.setScaleMode('PIXELS')} title={t('pixelsTooltip')} />
+        {/* "All frames" toggle — bypasses the auto-applied
+            dither/settling exclusion mask for the FFT analysis only.
+            ON matches the original desktop's default behavior (it
+            never auto-applied the mask). Hidden when there's no mask
+            to bypass. */}
+        {kind !== 'spike' && hasMask && (
+          <>
+            <span className="ms-3 me-1 text-slate-500" title={t('allFramesTooltip')}>{t('allFrames')}:</span>
+            <ToggleChip
+              label={useAllFramesForFFT ? t('allFramesOn') : t('allFramesOff')}
+              active={useAllFramesForFFT}
+              onClick={() => s.setUseAllFramesForFFT(!useAllFramesForFFT)}
+              title={useAllFramesForFFT ? t('allFramesOnTooltip') : t('allFramesOffTooltip')}
+            />
+          </>
+        )}
         {/* Periodogram-only Y-axis lock. */}
         <span className="ms-3 me-1 text-slate-500" title={t('yLockTooltip')}>{t('yLock')}:</span>
         <ToggleChip

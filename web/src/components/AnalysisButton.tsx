@@ -6,10 +6,15 @@ import { canAnalyze, analyze } from '../parser/analyze';
 
 /** Standalone "Analysis" button for the guiding-section UI. Functional
  *  equivalent of the right-click context-menu's "Analysis" item: opens
- *  the Analysis modal on the active session with kind='all' (residual
- *  error). The user can flip to Raw RA / Manual Spike from inside the
- *  modal via the tabs. Hidden when no guiding section is selected or
- *  the session has too few entries for analyze() to run. */
+ *  the Analysis modal on the active session with kind='all-raw-ra' (Raw
+ *  RA). The user can flip to Residual error / Manual Spike from inside
+ *  the modal via the tabs. Hidden when no guiding section is selected or
+ *  the session has too few entries for analyze() to run.
+ *
+ *  Default tab is Raw RA — matches the original desktop's startup view
+ *  and is the more useful one when comparing guided vs. unguided
+ *  tracking; users diagnosing PE typically want to see the raw signal
+ *  first and only then drill into the residual after RA corrections. */
 export function AnalysisButton() {
   const { t } = useTranslation('toolbar');
   const log = useLogStore((s) => s.log);
@@ -29,12 +34,13 @@ export function AnalysisButton() {
   const onClick = () => {
     if (!enabled) return;
     try {
-      const garun = analyze(session, { range, undoRaCorrections: false, mask: sessionMask });
-      // Pre-compute the Raw RA counterpart so the in-modal tab swap is
+      // Active garun = Raw RA (undoRaCorrections:true); counterpart = Residual.
+      const garun = analyze(session, { range, undoRaCorrections: true, mask: sessionMask });
+      // Pre-compute the Residual counterpart so the in-modal tab swap is
       // instant — same eager-pair pattern as the context menu.
-      const garunOther = analyze(session, { range, undoRaCorrections: true, mask: sessionMask });
+      const garunOther = analyze(session, { range, undoRaCorrections: false, mask: sessionMask });
       openAnalysis({
-        garun, garunOther, kind: 'all',
+        garun, garunOther, kind: 'all-raw-ra',
         initialScaleMode: scaleMode,
         spikeSource: { session, range, mask: sessionMask },
       });

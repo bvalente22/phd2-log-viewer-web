@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GARun } from '../parser/analyze';
+import { analyze, type GARun } from '../parser/analyze';
 import { analyzeSpikes, type SpikeAxis, type SpikeDirection, type SpikeRun } from '../parser/spikeAnalysis';
 import {
   analyzeBursts,
@@ -98,6 +98,28 @@ interface OpenState {
    * if not filtered.
    */
   maxPeriodSec: number;
+  /**
+   * When true, the FFT (`garun` + `garunOther`) is recomputed on every
+   * `included` frame regardless of the auto-applied dither/settling
+   * mask — matching the original desktop's behavior where the
+   * Exclude-dithers/settling action was manual, never auto. Default
+   * false (use the captured `originalMask`, which is the session's
+   * exclusion mask at open time including any auto-applied entries).
+   *
+   * Toggling this in-modal re-runs `analyze()` for both garun + the
+   * counterpart so the user can compare the masked vs. unmasked FFT
+   * without leaving the modal. The Spike / Burst / Manual Spike tabs
+   * keep using the original mask — they're web-only features without
+   * a desktop reference to match.
+   */
+  useAllFramesForFFT: boolean;
+  /**
+   * Mask captured at open time (or null when none was provided). Held
+   * alongside `useAllFramesForFFT` so toggling back from "All frames"
+   * can restore the originally-active exclusions without round-tripping
+   * through the view store. Never mutated after open().
+   */
+  originalMask: Uint8Array | undefined;
   /**
    * Spike Analysis state. Populated lazily when the user first switches
    * to kind='spike'. The source ref is kept so the k slider and RA/Dec
@@ -244,6 +266,14 @@ interface Actions {
   setDriftXRange: (range: [number, number] | null) => void;
   /** Update the periodogram's tracked X range (log10 space). */
   setPeriodXRangeLog: (range: [number, number] | null) => void;
+  /**
+   * Toggle whether the FFT analyses (`garun` + `garunOther`) use all
+   * `included` frames, ignoring the auto-applied dither/settling
+   * exclusion mask. When ON, the FFT matches what the original desktop
+   * would compute (no auto-mask). When OFF, the original mask captured
+   * at open time is used. Re-runs `analyze()` for both GARuns.
+   */
+  setUseAllFramesForFFT: (useAll: boolean) => void;
   /** Switch which axis spike analysis is computed against. Triggers a
    *  re-run of analyzeSpikes against the saved source. */
   setSpikeAxis: (axis: SpikeAxis) => void;
@@ -323,6 +353,8 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       driftXRangeView: null,
       periodXRangeViewLog: null,
       maxPeriodSec: DEFAULT_MAX_PERIOD_SEC,
+      useAllFramesForFFT: false,
+      originalMask: spikeSource?.mask,
       spikeSource: spikeSource ?? null,
       spikeRun: null,
       spikeAxis: 'ra',
@@ -473,6 +505,39 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     const cur = get();
     if (cur.state !== 'open') return;
     set({ ...cur, periodXRangeViewLog: range });
+  },
+  setUseAllFramesForFFT: (useAll) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    if (cur.useAllFramesForFFT === useAll) return;
+    if (!cur.spikeSource) {
+      // No source ref → can't re-analyze. Update the flag only.
+      set({ ...cur, useAllFramesForFFT: useAll });
+      return;
+    }
+    const { session, range } = cur.spikeSource;
+    // Effective mask: undefined when bypassing, original when restoring.
+    const mask = useAll ? undefined : cur.originalMask;
+    // Keep the active kind's `undoRaCorrections` so the toggle doesn't
+    // also swap Raw RA ↔ Residual. Recompute both GARuns with the new
+    // mask so the in-modal tab swap stays instant.
+    const undoActive = cur.garun.undoRaCorrections;
+    const newGarun = analyze(session, { range, undoRaCorrections: undoActive, mask });
+    const newOther = cur.garunOther
+      ? analyze(session, { range, undoRaCorrections: !undoActive, mask })
+      : null;
+    // Drop tracked X / Y ranges — they were measured against the old
+    // periodogram extent, which can shift substantially when bins
+    // appear/disappear with the mask change. Plotly will recompute the
+    // default range from the new garun data on next render.
+    set({
+      ...cur,
+      useAllFramesForFFT: useAll,
+      garun: newGarun,
+      garunOther: newOther,
+      yMaxViewPx: null,
+      periodXRangeViewLog: null,
+    });
   },
   setSpikeAxis: (axis) => {
     const cur = get();
