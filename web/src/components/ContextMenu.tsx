@@ -175,12 +175,13 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
             {t('contextMenu.resetZoom')}
           </Item>
           <RCM.Separator className="my-1 h-px bg-slate-700" />
-          {/* Single Analysis entry. Defaults to mode='all' (selected
-              frames); the user toggles to 'all-raw-ra' (RA corrections
-              removed) from inside the modal via the mode tabs. */}
+          {/* Single Analysis entry. Defaults to mode='all-raw-ra' (Raw
+              RA, undoRaCorrections=true) — matches the original
+              desktop's startup view. The user toggles to 'all'
+              (Residual error) from inside the modal via the mode tabs. */}
           <Item
             disabled={!session || !canAnalyzeSession}
-            onSelect={() => session && runAnalysis('all', false)}
+            onSelect={() => session && runAnalysis('all-raw-ra', true)}
             title={t('contextMenu.analysisTooltip')}
           >
             {t('contextMenu.analysis')}
