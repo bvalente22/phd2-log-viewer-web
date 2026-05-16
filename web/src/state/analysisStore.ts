@@ -99,12 +99,14 @@ interface OpenState {
    */
   maxPeriodSec: number;
   /**
-   * When true, the FFT (`garun` + `garunOther`) is recomputed on every
+   * When true, the FFT (`garun` + `garunOther`) is computed on every
    * `included` frame regardless of the auto-applied dither/settling
    * mask — matching the original desktop's behavior where the
-   * Exclude-dithers/settling action was manual, never auto. Default
-   * false (use the captured `originalMask`, which is the session's
-   * exclusion mask at open time including any auto-applied entries).
+   * Exclude-dithers/settling action was manual, never auto. Defaults
+   * to true so the FFT output matches what the desktop produces out
+   * of the box; flip it off to apply the section's exclusion mask
+   * (auto-detected dithers + any user ctrl-drag exclusions) to the
+   * FFT input.
    *
    * Toggling this in-modal re-runs `analyze()` for both garun + the
    * counterpart so the user can compare the masked vs. unmasked FFT
@@ -353,7 +355,12 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       driftXRangeView: null,
       periodXRangeViewLog: null,
       maxPeriodSec: DEFAULT_MAX_PERIOD_SEC,
-      useAllFramesForFFT: false,
+      // Default ON so the modal opens with the same FFT input the
+      // original desktop computes. AnalysisButton/ContextMenu pass
+      // `garun` already analyzed WITHOUT the mask to match this
+      // default; the mask is kept in `originalMask` for the toggle's
+      // "auto-mask" position to restore.
+      useAllFramesForFFT: true,
       originalMask: spikeSource?.mask,
       spikeSource: spikeSource ?? null,
       spikeRun: null,
