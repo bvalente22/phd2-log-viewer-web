@@ -29,16 +29,28 @@ export function AnalysisButton() {
   const session = log!.sessions[sec.idx];
   const sessionMask = exclusions.get(sec.idx);
   const range = { begin: 0, end: session.entries.length };
-  const enabled = canAnalyze(session, { range, undoRaCorrections: false, mask: sessionMask });
+  // Gate on the same unmasked input the analyze() call below uses —
+  // matches the original desktop's default analysis input.
+  const enabled = canAnalyze(session, { range, undoRaCorrections: false, mask: undefined });
 
   const onClick = () => {
     if (!enabled) return;
     try {
+      // Initial garun is computed WITHOUT the section's auto-applied
+      // mask so the FFT input matches the original desktop's default
+      // (the desktop only excludes settling/dithers when the user
+      // clicks the menu item — never automatically). The modal's
+      // "all frames" toolbar toggle defaults to ON for the same
+      // reason; it flips to "auto-mask" to re-analyze WITH
+      // `sessionMask` for users who want the masked view.
+      // `spikeSource.mask` still holds the section's mask so toggling
+      // OFF and the Spike/Burst/Manual Spike tabs all have access to
+      // the original exclusion set.
       // Active garun = Raw RA (undoRaCorrections:true); counterpart = Residual.
-      const garun = analyze(session, { range, undoRaCorrections: true, mask: sessionMask });
+      const garun = analyze(session, { range, undoRaCorrections: true, mask: undefined });
       // Pre-compute the Residual counterpart so the in-modal tab swap is
       // instant — same eager-pair pattern as the context menu.
-      const garunOther = analyze(session, { range, undoRaCorrections: false, mask: sessionMask });
+      const garunOther = analyze(session, { range, undoRaCorrections: false, mask: undefined });
       openAnalysis({
         garun, garunOther, kind: 'all-raw-ra',
         initialScaleMode: scaleMode,

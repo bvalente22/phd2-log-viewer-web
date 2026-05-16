@@ -50,11 +50,14 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
   const scaleModeForAnalysis = useViewStore((s) => s.scaleMode);
   const sessionMask = sessionIdx >= 0 ? exclusions.get(sessionIdx) : undefined;
 
+  // Gate on the same unmasked input runAnalysis() uses below — the
+  // initial analyze() call ignores `sessionMask` to match the
+  // original desktop's default FFT input.
   const canAnalyzeSession = session
     ? canAnalyze(session, {
         range: { begin: 0, end: session.entries.length },
         undoRaCorrections: false,
-        mask: sessionMask,
+        mask: undefined,
       })
     : false;
 
@@ -84,14 +87,24 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
   const canAnalyzeUnguided = !!session && !!firstUnguidedRange && canAnalyze(session, {
     range: firstUnguidedRange,
     undoRaCorrections: false,
-    mask: sessionMask,
+    mask: undefined,
   });
 
   const runAnalysis = (kind: AnalysisKind, undoRaCorrections: boolean, range?: { begin: number; end: number }) => {
     if (!session) return;
     const r = range ?? { begin: 0, end: session.entries.length };
     try {
-      const garun = analyze(session, { range: r, undoRaCorrections, mask: sessionMask });
+      // Initial garun is computed WITHOUT the section's auto-applied
+      // mask so the FFT input matches the original desktop's default
+      // (the desktop only excludes settling/dithers when the user
+      // clicks the menu item — never automatically). The modal's
+      // "all frames" toolbar toggle defaults to ON for the same
+      // reason; it flips to "auto-mask" to re-analyze WITH
+      // `sessionMask` for users who want the masked view.
+      // `spikeSource.mask` still holds the section's mask so toggling
+      // OFF and the Spike/Burst/Manual Spike tabs all have access to
+      // the original exclusion set.
+      const garun = analyze(session, { range: r, undoRaCorrections, mask: undefined });
       // Pre-compute the counterpart for the switchable kinds so the
       // periodogram can render both at once and the mode tabs swap
       // instantly. analyze() is fast (sub-millisecond on typical
@@ -99,7 +112,7 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
       // 'unguided' has no flipped counterpart.
       let garunOther: typeof garun | null = null;
       if (kind === 'all' || kind === 'all-raw-ra') {
-        garunOther = analyze(session, { range: r, undoRaCorrections: !undoRaCorrections, mask: sessionMask });
+        garunOther = analyze(session, { range: r, undoRaCorrections: !undoRaCorrections, mask: undefined });
       }
       // Spike analysis runs lazily inside the modal (the user may never
       // open the spike tab), so we just hand over the source params.
