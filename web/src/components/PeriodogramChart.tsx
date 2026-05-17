@@ -416,13 +416,23 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
   const yAxisCfg: Partial<Layout['yaxis']> = { range: [0, yMaxApplied * k], autorange: false };
   const layout: Partial<Layout> = {
     autosize: true,
-    margin: { l: 60, r: 30, t: 10, b: 40 },
+    // Swap top/bottom margins now that the X axis labels live at the top.
+    // The bottom no longer needs room for tick labels; the top needs
+    // enough space for tick labels + the (optional) legend strip below
+    // them.
+    margin: { l: 60, r: 30, t: 40, b: 10 },
     paper_bgcolor: tc.paper,
     plot_bgcolor: tc.plot,
     font: { color: tc.font, size: 11 },
     xaxis: {
-      title: { text: tChart('axes.period') }, gridcolor: tc.grid, zerolinecolor: tc.zeroline,
+      title: { text: tChart('axes.period'), standoff: 6 }, gridcolor: tc.grid, zerolinecolor: tc.zeroline,
       type: 'log',
+      // Labels and title at the TOP of the chart, matching the original
+      // PHD2 desktop's PaintFFT which draws tick labels at
+      // `s_fftpos.y1 + 1` (just below the top edge — AnalysisWin.cpp:1093).
+      // The desktop's drift chart does the same, so we keep both charts
+      // consistent.
+      side: 'top',
       // Tracked range wins over the data-derived default. Persists
       // pan across hover-induced re-renders and across mode swaps.
       // `autorange:false` is explicit alongside `range` so Plotly never
@@ -462,8 +472,10 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       fixedrange: true,
     },
     showlegend: !!garunOther, // legend is meaningful when comparing two traces
+    // Legend moved to the BOTTOM of the chart now that the X axis labels
+    // occupy the top. Without this the legend overlaps the new tick row.
     legend: {
-      orientation: 'h', x: 0, y: 1.02, yanchor: 'bottom', xanchor: 'left',
+      orientation: 'h', x: 0, y: -0.05, yanchor: 'top', xanchor: 'left',
       font: { size: 10 }, bgcolor: 'rgba(0,0,0,0)',
     },
     dragmode: false,
