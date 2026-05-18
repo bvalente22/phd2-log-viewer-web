@@ -176,6 +176,13 @@
     "runStatsBothAxes": "{{count}} 在 {{axis}} · {{otherCount}} 在 {{otherAxis}}",
     "reset": "重置",
     "resetTooltip": "清除两个轴上的所有已选点。",
+    "threshold": "阈值",
+    "thresholdTooltip": "自动选择当前轴上所有去趋势后 Y 值跨过此阈值（以角秒为单位）的样本。正值选中位数正侧上等于或大于阈值的样本；负值选负侧上等于或小于阈值的样本。会替换当前轴的选择，而不是追加。",
+    "thresholdPlaceholder": "± 角秒",
+    "thresholdInputTooltip": "阈值（角秒）。正值 = 选取高于中位数的尖峰；负值 = 选取低于中位数的尖峰。按 Enter 或点击「选择」应用。",
+    "thresholdUnitTooltip": "角秒",
+    "select": "选择",
+    "selectTooltip": "选择当前轴上所有偏离中位数超过阈值的样本（正值 = 上方；负值 = 下方）。替换当前轴的选择；另一轴保持不变。",
     "gestureHint": "左键 = 添加 · 右键 = 移除 · 滚轮 = X 缩放 · 拖动 = X 平移 + Y 缩放"
   },
   "show": "显示",

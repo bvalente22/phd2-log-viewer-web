@@ -323,6 +323,12 @@ interface Actions {
   removeManualSpikePoint: (index: number) => void;
   /** Clear the entire Manual Spike selection set. */
   resetManualSpikePoints: () => void;
+  /** Replace the active-axis Manual Spike selection with every sample
+   *  whose detrended Y crosses the given threshold (in arc-seconds).
+   *  Positive `thresholdArc` selects samples at or above the line on
+   *  the positive side of the median; negative selects samples at or
+   *  below on the negative side. */
+  selectManualSpikePointsByThreshold: (thresholdArc: number) => void;
 }
 
 const DEFAULT_MAX_PERIOD_SEC = 600;
@@ -999,6 +1005,35 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     if (cur.manualSpikeSelections.ra.length === 0
         && cur.manualSpikeSelections.dec.length === 0) return;
     set({ ...cur, manualSpikeSelections: { ra: [], dec: [] } });
+  },
+  selectManualSpikePointsByThreshold: (thresholdArc) => {
+    const cur = get();
+    if (cur.state !== 'open' || !cur.manualSpikeRun) return;
+    if (!Number.isFinite(thresholdArc) || thresholdArc === 0) return;
+    const run = cur.manualSpikeRun;
+    // Chart Y values are (detrended - median) * (pixelScale when ARCSEC,
+    // else 1). The threshold the user types is always in arc-seconds —
+    // convert to pixel-space once so we can compare against the raw
+    // detrended buffer directly.
+    const thresholdPx = thresholdArc / run.pixelScale;
+    const axis = cur.manualSpikeAxis;
+    const picked: number[] = [];
+    if (thresholdPx > 0) {
+      for (let i = 0; i < run.detrended.length; i++) {
+        if (run.detrended[i] - run.median >= thresholdPx) picked.push(i);
+      }
+    } else {
+      for (let i = 0; i < run.detrended.length; i++) {
+        if (run.detrended[i] - run.median <= thresholdPx) picked.push(i);
+      }
+    }
+    set({
+      ...cur,
+      manualSpikeSelections: {
+        ...cur.manualSpikeSelections,
+        [axis]: picked,
+      },
+    });
   },
   resolveBurstPendingSettle: (keepBest) => {
     const cur = get();

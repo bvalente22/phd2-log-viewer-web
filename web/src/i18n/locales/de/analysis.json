@@ -176,6 +176,13 @@
     "runStatsBothAxes": "{{count}} auf {{axis}} · {{otherCount}} auf {{otherAxis}}",
     "reset": "Zurücksetzen",
     "resetTooltip": "Löscht alle ausgewählten Punkte auf BEIDEN Achsen.",
+    "threshold": "Schwelle",
+    "thresholdTooltip": "Wählt automatisch alle Samples auf der aktiven Achse aus, deren detrendete Y-Werte diese Grenze (in Bogensekunden) überschreiten. Positive Werte wählen Samples auf oder über dem Median; negative Werte wählen Samples auf oder unter dem Median. Ersetzt die aktive Achsenauswahl — sie wird nicht ergänzt.",
+    "thresholdPlaceholder": "± arcsec",
+    "thresholdInputTooltip": "Schwellenwert in Bogensekunden. Positiv = Spikes über dem Median; negativ = Spikes unter dem Median. Enter drücken oder Auswählen klicken, um anzuwenden.",
+    "thresholdUnitTooltip": "Bogensekunden",
+    "select": "Auswählen",
+    "selectTooltip": "Wählt alle Samples auf der aktiven Achse aus, deren Abweichung vom Median die Schwelle überschreitet (positiver Wert = darüber; negativer Wert = darunter). Ersetzt die aktuelle Auswahl der aktiven Achse; die andere Achse bleibt unverändert.",
     "gestureHint": "Linksklick = Punkt hinzufügen · Rechtsklick = Punkt entfernen · Rad = X-Zoom · Ziehen = X-Pan + Y-Zoom"
   },
   "show": "anzeigen",
