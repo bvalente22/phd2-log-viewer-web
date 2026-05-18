@@ -62,9 +62,22 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
   const traces = useMemo<Data[]>(() => {
     const out: Data[] = [];
     const x = Array.from(garun.t);
+    // Display convention: positive RA (east drift) plots BELOW the
+    // centerline, positive Dec (north drift) plots ABOVE — the
+    // astronomical "north up, east down" orientation. The desktop's
+    // PaintDrift gets this from wxDC's Y-down coordinate system:
+    //   y_screen = ymid + rac*scy   → positive rac → LARGER y → DOWN
+    //   y_screen = ymid - decc*scy  → positive decc → SMALLER y → UP
+    //   (AnalysisWin.cpp:1050,1059)
+    // Plotly's Y axis goes UP, so to reproduce that visual we negate
+    // RA and leave Dec alone (mirror image of the desktop's sign
+    // pattern). A prior version of this code did the OPPOSITE — kept RA
+    // as-is and negated Dec — which inverted both traces vs the
+    // desktop reference; user-visible as the analysis drift chart
+    // looking upside-down compared to the original.
     if (showRa) {
       out.push({
-        x, y: Array.from(garun.rac).map((v) => v * k),
+        x, y: Array.from(garun.rac).map((v) => -v * k),
         type: 'scattergl', mode: 'lines',
         name: 'RA', line: { color: RA_COLOR, width: 1.5 },
       } as Data);
@@ -72,8 +85,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
     if (showDec) {
       out.push({
         x,
-        // Display-time negation matches AnalysisWin.cpp:1059 (`ymid - decc[i]`).
-        y: Array.from(garun.decc).map((v) => -v * k),
+        y: Array.from(garun.decc).map((v) => v * k),
         type: 'scattergl', mode: 'lines',
         name: 'Dec', line: { color: DEC_COLOR, width: 1.5 },
       } as Data);
