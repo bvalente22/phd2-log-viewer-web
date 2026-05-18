@@ -228,16 +228,19 @@ export function analyze(s: GuideSession, opts: AnalyzeOptions): GARun {
   // populated samples) rather than n so the amplitude reflects the actual
   // signal energy, not the padded length.
   const scale = 4 / n0;
-  // AnalysisWin.cpp uses an arbitrary-N GSL FFT, so its longest reported
-  // period is exactly n0*dt (one cycle in the recording window) — bin i=0
-  // at frequency 1/(n0*dt). We zero-pad to nextPow2(n0), and the lowest
-  // bins of the padded FFT correspond to periods LONGER than the recording
-  // itself, where the magnitude is just spectral leakage from the window's
-  // transition into the zero-pad tail. Skip them so the period axis matches
-  // the desktop's range and the smoothing spline doesn't fit ghost peaks at
-  // unresolvable long periods. Condition: keep bin i iff (i+1) >= n/n0,
-  // i.e. period <= n0*dt.
-  const iMin = Math.max(0, Math.ceil(n / n0 - 1));
+  // Keep every non-DC bin (i=0..n/2-2). The zero-pad pushes our lowest
+  // bin frequency down to 1/(n*dt), so periods between `n0*dt` and
+  // `n*dt` show up — the original desktop (which uses an arbitrary-N
+  // FFT) tops out at exactly `n0*dt`, but those zero-padded bins are
+  // still valid DTFT samples of the windowed signal at finer frequency
+  // resolution, not pure noise. The Hamming window already in `sig`
+  // suppresses DC leakage by ~43 dB so the long-period bins read the
+  // genuine slow trend in the residual rather than an artefact. An
+  // earlier version (PR #30) skipped these bins on the leakage theory,
+  // which truncated the chart well before the recording's longest
+  // resolvable period — the user observed our trace dropping at
+  // ~3,700s while the desktop's same data kept rising past 5,000s.
+  const iMin = 0;
   const nfft = n / 2 - 1 - iMin;
   const period = new Float64Array(nfft);
   const amplitude = new Float64Array(nfft);
