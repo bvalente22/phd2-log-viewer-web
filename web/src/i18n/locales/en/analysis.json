@@ -176,6 +176,13 @@
     "runStatsBothAxes": "{{count}} on {{axis}} · {{otherCount}} on {{otherAxis}}",
     "reset": "Reset",
     "resetTooltip": "Clear all selected points across BOTH axes and start over.",
+    "threshold": "threshold",
+    "thresholdTooltip": "Auto-select every sample on the active axis whose detrended Y crosses this value (in arc-seconds). Positive picks samples at or above the line on the positive side; negative picks samples at or below on the negative side. Replaces — not adds to — the active-axis pick set.",
+    "thresholdPlaceholder": "± arcsec",
+    "thresholdInputTooltip": "Threshold value in arc-seconds. Positive = pick spikes above the median; negative = pick spikes below. Press Enter or click Select to apply.",
+    "thresholdUnitTooltip": "arc-seconds",
+    "select": "Select",
+    "selectTooltip": "Select every sample on the active axis whose deviation from the median crosses the threshold (positive value = above; negative value = below). Replaces the current active-axis selection; the other axis is untouched.",
     "gestureHint": "left-click = add point · right-click = remove point · scroll = X zoom · drag = X pan + Y zoom"
   },
   "show": "show",

@@ -176,6 +176,13 @@
     "runStatsBothAxes": "{{count}} sur {{axis}} · {{otherCount}} sur {{otherAxis}}",
     "reset": "Réinitialiser",
     "resetTooltip": "Efface tous les points sélectionnés sur LES DEUX axes.",
+    "threshold": "seuil",
+    "thresholdTooltip": "Sélectionne automatiquement tous les échantillons de l'axe actif dont l'Y détrendé franchit cette valeur (en secondes d'arc). Une valeur positive sélectionne les échantillons à ou au-dessus de la médiane du côté positif ; une valeur négative sélectionne les échantillons à ou en dessous du côté négatif. Remplace la sélection de l'axe actif — elle n'est pas ajoutée.",
+    "thresholdPlaceholder": "± arcsec",
+    "thresholdInputTooltip": "Valeur du seuil en secondes d'arc. Positif = pics au-dessus de la médiane ; négatif = pics en dessous. Appuie sur Entrée ou clique sur Sélectionner pour appliquer.",
+    "thresholdUnitTooltip": "secondes d'arc",
+    "select": "Sélectionner",
+    "selectTooltip": "Sélectionne tous les échantillons de l'axe actif dont l'écart à la médiane franchit le seuil (positif = au-dessus ; négatif = en dessous). Remplace la sélection actuelle de l'axe actif ; l'autre axe reste intact.",
     "gestureHint": "clic gauche = ajouter · clic droit = retirer · molette = zoom X · glisser = pan X + zoom Y"
   },
   "show": "afficher",

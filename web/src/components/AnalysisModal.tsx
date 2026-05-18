@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAnalysisStore, type AnalysisKind } from '../state/analysisStore';
 import { DriftChart } from './DriftChart';
@@ -79,6 +79,10 @@ function spikeAsGARun(run: SpikeRun): GARun {
 export function AnalysisModal() {
   const { t } = useTranslation('analysis');
   const s = useAnalysisStore();
+  // Threshold input for Manual Spike auto-select (in arc-seconds). Kept
+  // as a string so the user can type a leading "-" or a partial decimal
+  // without React clobbering the field. Parsed at Select-click time.
+  const [manualSpikeThresholdInput, setManualSpikeThresholdInput] = useState('');
   useEffect(() => {
     if (s.state !== 'open') return;
     const onKey = (e: KeyboardEvent) => {
@@ -315,6 +319,41 @@ export function AnalysisModal() {
                   title={t('manualSpike.resetTooltip')}
                 >
                   {t('manualSpike.reset')}
+                </button>
+                {/* Auto-select-by-threshold: positive values pick samples
+                    at or above the threshold; negative values pick at or
+                    below. Replaces (not adds to) the active-axis pick set. */}
+                <span className="ms-3 me-1 text-slate-500" title={t('manualSpike.thresholdTooltip')}>
+                  {t('manualSpike.threshold')}:
+                </span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  value={manualSpikeThresholdInput}
+                  placeholder={t('manualSpike.thresholdPlaceholder')}
+                  onChange={(e) => setManualSpikeThresholdInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const v = parseFloat(manualSpikeThresholdInput);
+                      if (Number.isFinite(v) && v !== 0) s.selectManualSpikePointsByThreshold(v);
+                    }
+                  }}
+                  className="w-20 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-200 ring-1 ring-slate-700 focus:outline-none focus:ring-amber-600"
+                  title={t('manualSpike.thresholdInputTooltip')}
+                />
+                <span className="text-slate-500" title={t('manualSpike.thresholdUnitTooltip')}>″</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const v = parseFloat(manualSpikeThresholdInput);
+                    if (Number.isFinite(v) && v !== 0) s.selectManualSpikePointsByThreshold(v);
+                  }}
+                  disabled={!Number.isFinite(parseFloat(manualSpikeThresholdInput)) || parseFloat(manualSpikeThresholdInput) === 0}
+                  className="rounded bg-slate-800 px-3 py-0.5 text-xs text-slate-200 ring-1 ring-slate-700 transition-colors hover:bg-sky-700 hover:text-white hover:ring-sky-600 disabled:cursor-not-allowed disabled:bg-slate-900 disabled:text-slate-600"
+                  title={t('manualSpike.selectTooltip')}
+                >
+                  {t('manualSpike.select')}
                 </button>
                 <span className="ms-auto text-slate-600">
                   {t('manualSpike.gestureHint')}
