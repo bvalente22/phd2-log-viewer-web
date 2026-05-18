@@ -176,6 +176,13 @@
     "runStatsBothAxes": "{{count}} en {{axis}} · {{otherCount}} en {{otherAxis}}",
     "reset": "Restablecer",
     "resetTooltip": "Borra todos los puntos seleccionados en AMBOS ejes y empieza de nuevo.",
+    "threshold": "umbral",
+    "thresholdTooltip": "Selecciona automáticamente cada muestra del eje activo cuyo Y (tras detrend) cruce este valor (en segundos de arco). Valor positivo selecciona muestras en o por encima de la mediana por el lado positivo; negativo selecciona muestras en o por debajo por el lado negativo. Sustituye la selección del eje activo — no la añade.",
+    "thresholdPlaceholder": "± arcsec",
+    "thresholdInputTooltip": "Valor de umbral en segundos de arco. Positivo = picos por encima de la mediana; negativo = picos por debajo. Pulsa Enter o haz clic en Seleccionar para aplicar.",
+    "thresholdUnitTooltip": "segundos de arco",
+    "select": "Seleccionar",
+    "selectTooltip": "Selecciona cada muestra del eje activo cuya desviación de la mediana cruce el umbral (positivo = encima; negativo = debajo). Sustituye la selección actual del eje activo; el otro eje no se toca.",
     "gestureHint": "clic izq = añadir punto · clic der = quitar punto · rueda = zoom X · arrastrar = pan X + zoom Y"
   },
   "show": "mostrar",
