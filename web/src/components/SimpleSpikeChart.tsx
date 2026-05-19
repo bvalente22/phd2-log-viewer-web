@@ -48,6 +48,7 @@ export function SimpleSpikeChart({ run, scaleMode }: SimpleSpikeChartProps) {
         type: 'scattergl', mode: 'lines',
         name: t('simpleSpike.detrended'),
         line: { color: traceColor, width: 1 },
+        hovertemplate: `t=%{x:.2f}s · y=%{y:.2f}${unit}<extra></extra>`,
       } as Data,
     ];
     if (run.spikeIndices.length > 0) {
@@ -62,6 +63,7 @@ export function SimpleSpikeChart({ run, scaleMode }: SimpleSpikeChartProps) {
           size: 8,
           line: { width: 1, color: 'rgba(0,0,0,0.4)' },
         },
+        hovertemplate: `t=%{x:.2f}s · y=%{y:.2f}${unit}<extra></extra>`,
       } as Data);
     }
     return out;
