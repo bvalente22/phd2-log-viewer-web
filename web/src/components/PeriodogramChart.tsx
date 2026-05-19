@@ -320,7 +320,26 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
         `Aligned events: ${aligned.length}/${spikeRun.events.length}`,
       );
       setSpikeHoverPeriod(period);
+    } else if (garunOther && (kind === 'all' || kind === 'all-raw-ra')) {
+      // Residual ↔ Raw-RA pair: surface BOTH amplitudes at the snapped
+      // period so the user can compare modes without flipping tabs. Raw
+      // RA always listed first so the two values appear in the same
+      // order regardless of which tab is active. Single-unit display
+      // ("″" or "pix") tracks the scale toggle.
+      const aOtherPx = garunOther.fftSpline.at(period);
+      const rawRaPx = kind === 'all-raw-ra' ? aPx : aOtherPx;
+      const residualPx = kind === 'all' ? aPx : aOtherPx;
+      const rawRaDisp = scaleMode === 'ARCSEC' ? rawRaPx * garun.pixelScale : rawRaPx;
+      const residualDisp = scaleMode === 'ARCSEC' ? residualPx * garun.pixelScale : residualPx;
+      const u = scaleMode === 'ARCSEC' ? '″' : 'pix';
+      setHover(
+        `Period: ${period.toFixed(1)}s    ` +
+        `${t('mode.rawRa')}: ${rawRaDisp.toFixed(2)}${u}    ` +
+        `${t('mode.selected')}: ${residualDisp.toFixed(2)}${u}`,
+      );
     } else {
+      // Unguided / single-trace fallback. No counterpart to compare
+      // against, so report amplitude + the desktop's derived P-P / RMS.
       const ppArc = 2 * aArc;
       const ppPx = 2 * aPx;
       const rmsArc = aArc / Math.SQRT2;
@@ -331,7 +350,7 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
         `RMS: ${rmsArc.toFixed(2)}″ (${rmsPx.toFixed(2)}px)`,
       );
     }
-  }, [garun, snapToPeak, kind, spikeRun, setSpikeHoverPeriod]);
+  }, [garun, garunOther, snapToPeak, kind, scaleMode, spikeRun, setSpikeHoverPeriod, t]);
 
   // Quiet the unused-variable warning for `unit/k` when scaleMode is PIXELS.
   useEffect(() => { void unit; void k; }, [unit, k]);
