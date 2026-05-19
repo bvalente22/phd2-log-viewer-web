@@ -118,6 +118,12 @@ interface PeriodogramChartProps {
    *  gestures and persisted in the analysisStore so mode swaps don't
    *  reset the zoom. Null = fall back to Plotly autorange. */
   yMaxViewPx: number | null;
+  /** Top-N peak periods to mark beneath the chart with numbered chips
+   *  (rank 1 = highest amplitude). Order is preserved so the chips read
+   *  1, 2, 3 corresponding to the cards rendered by the modal. The chips
+   *  inherit the chart's x axis so log-scale zoom/pan keeps them aligned
+   *  to their data positions without extra bookkeeping. */
+  topPeaks: ReadonlyArray<{ period: number }>;
 }
 
 /** Pick the per-kind color for a periodogram trace. */
@@ -149,7 +155,7 @@ const otherKindOf = (kind: AnalysisKind): AnalysisKind | null => {
  * can compare residual-error vs raw-RA peaks at the same scale.
  * Hover snap-to-peak still operates on the active trace only.
  */
-export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockPx, yMaxViewPx }: PeriodogramChartProps) {
+export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockPx, yMaxViewPx, topPeaks }: PeriodogramChartProps) {
   const { t } = useTranslation('analysis');
   const { t: tChart } = useTranslation('chart');
   const plotId = useId().replace(/:/g, '_');
@@ -450,6 +456,68 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     );
   }, [garun]);
 
+  // Pixel positions for the numbered "top 3 peaks" chips rendered as
+  // HTML beneath the chart (see JSX below). Computed from Plotly's
+  // internal xaxis layout (_offset/_length + l2p on the period) so the
+  // chips track the log axis exactly through zoom, pan, and resize.
+  // Recomputed on every relayout/resize event and after topPeaks change.
+  const [markerXs, setMarkerXs] = useState<Array<{ x: number; rank: number }>>([]);
+  const refreshMarkers = useCallback(() => {
+    const div = document.getElementById(plotId) as PlotDiv | null;
+    const xa = div?._fullLayout?.xaxis;
+    if (!xa || !xa._length || !topPeaks) {
+      setMarkerXs([]);
+      return;
+    }
+    const isLog = xa.type === 'log';
+    const next: Array<{ x: number; rank: number }> = [];
+    for (let i = 0; i < topPeaks.length; i++) {
+      const p = topPeaks[i].period;
+      let px: number;
+      if (isLog) {
+        const r0 = Math.pow(10, xa.range[0]);
+        const r1 = Math.pow(10, xa.range[1]);
+        px = ((Math.log10(p) - Math.log10(r0)) / (Math.log10(r1) - Math.log10(r0))) * xa._length;
+      } else {
+        px = ((p - xa.range[0]) / (xa.range[1] - xa.range[0])) * xa._length;
+      }
+      // Drop chips that fell outside the current axis range (e.g. user
+      // panned away from the peak). Includes the chip's own half-width.
+      if (px < -16 || px > xa._length + 16) continue;
+      next.push({ x: xa._offset + px, rank: i + 1 });
+    }
+    setMarkerXs(next);
+  }, [plotId, topPeaks]);
+
+  // Recompute on topPeaks change, on every Plotly relayout (zoom/pan),
+  // and on container resize. The window-resize fallback covers cases
+  // where ResizeObserver isn't available (rare in modern browsers but
+  // still safer to listen).
+  useEffect(() => {
+    refreshMarkers();
+    const div = document.getElementById(plotId);
+    if (!div) return undefined;
+    const onRel = () => refreshMarkers();
+    // react-plotly translates plotly_relayout to a div event named the
+    // same as the prop; listen on the div directly so we catch every
+    // axis change including the bottom-anchored zoom from useChartGestures.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (div as any).on?.('plotly_relayout', onRel);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (div as any).on?.('plotly_afterplot', onRel);
+    const ro = new ResizeObserver(onRel);
+    ro.observe(div);
+    window.addEventListener('resize', onRel);
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (div as any).removeListener?.('plotly_relayout', onRel);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (div as any).removeListener?.('plotly_afterplot', onRel);
+      ro.disconnect();
+      window.removeEventListener('resize', onRel);
+    };
+  }, [plotId, refreshMarkers]);
+
   const tc = themeOf(themeId).plot;
   // Y-axis range source priority:
   //   1. yMaxLockPx (explicit user lock — pin it, no headroom needed,
@@ -541,7 +609,7 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1">
+      <div className="relative flex-1">
         <Plot
           divId={plotId}
           data={traces}
@@ -559,6 +627,27 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
           }}
           onRelayout={onRelayout as never}
         />
+      </div>
+      {/* Numbered peak chips overlaid on a narrow strip directly below
+          the chart, aligned to the periodogram's x axis. Positions
+          come from refreshMarkers above which reads Plotly's internal
+          xaxis._offset / _length / range so zoom + resize keep the
+          chips on the right period. */}
+      <div className="relative h-7 border-t border-slate-800 bg-slate-950/40">
+        {markerXs.map((m) => (
+          <div
+            key={m.rank}
+            className="absolute top-1 -translate-x-1/2"
+            style={{ left: `${m.x}px` }}
+            title={`Peak ${m.rank}`}
+          >
+            <span
+              className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-cyan-600 px-1.5 text-[11px] font-semibold text-white shadow ring-1 ring-cyan-300"
+            >
+              {m.rank}
+            </span>
+          </div>
+        ))}
       </div>
       <div className="border-t border-slate-800 bg-slate-900/40 px-3 py-1 font-mono text-[11px] text-slate-300 min-h-[24px] whitespace-pre-wrap">
         {hover ?? ' '}

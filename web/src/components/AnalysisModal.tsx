@@ -663,6 +663,7 @@ export function AnalysisModal() {
             scaleMode={scaleMode}
             yMaxLockPx={yMaxLockPx}
             yMaxViewPx={yMaxViewPx}
+            topPeaks={kind === 'spike' ? spikePeriods : peaks}
           />
         </div>
       </div>
