@@ -359,7 +359,7 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       meanMag = aligned.length > 0 ? meanMag / aligned.length : 0;
       const meanArc = meanMag * spikeRun.pixelScale;
       setHover(
-        `Period: ${period.toFixed(1)}s  ` +
+        `Period: ${period.toFixed(2)}s  ` +
         `Spike magnitude: ${meanArc.toFixed(2)}″ (${meanMag.toFixed(2)}px)  ` +
         `Aligned events: ${aligned.length}/${spikeRun.events.length}`,
       );
@@ -377,7 +377,7 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       const residualDisp = scaleMode === 'ARCSEC' ? residualPx * garun.pixelScale : residualPx;
       const u = scaleMode === 'ARCSEC' ? '″' : 'pix';
       setHover(
-        `Period: ${period.toFixed(1)}s    ` +
+        `Period: ${period.toFixed(2)}s    ` +
         `${t('mode.rawRa')}: ${rawRaDisp.toFixed(2)}${u}    ` +
         `${t('mode.selected')}: ${residualDisp.toFixed(2)}${u}`,
       );
@@ -389,7 +389,7 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       const rmsArc = aArc / Math.SQRT2;
       const rmsPx = aPx / Math.SQRT2;
       setHover(
-        `Period: ${period.toFixed(1)}s  Amplitude: ${aArc.toFixed(2)}″ (${aPx.toFixed(2)}px)  ` +
+        `Period: ${period.toFixed(2)}s  Amplitude: ${aArc.toFixed(2)}″ (${aPx.toFixed(2)}px)  ` +
         `P-P: ${ppArc.toFixed(2)}″ (${ppPx.toFixed(2)}px)  ` +
         `RMS: ${rmsArc.toFixed(2)}″ (${rmsPx.toFixed(2)}px)`,
       );

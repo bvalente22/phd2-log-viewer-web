@@ -175,6 +175,7 @@ export function ManualSpikeChart({
         type: 'scattergl', mode: 'lines',
         name: t('manualSpike.detrended'),
         line: { color: traceColor, width: 1 },
+        hovertemplate: `t=%{x:.2f}s · y=%{y:.2f}${unit}<extra></extra>`,
       } as Data,
     ];
     if (selectedIndices.length > 0) {
@@ -189,7 +190,7 @@ export function ManualSpikeChart({
           size: 12,
           line: { width: 2, color: 'rgba(0,0,0,0.5)' },
         },
-        hovertemplate: `${t('manualSpike.selectedHover')}<br>t=%{x:.1f}s · y=%{y:.3f}${unit}<extra></extra>`,
+        hovertemplate: `${t('manualSpike.selectedHover')}<br>t=%{x:.2f}s · y=%{y:.2f}${unit}<extra></extra>`,
       } as Data);
     }
     return out;

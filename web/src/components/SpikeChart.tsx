@@ -74,6 +74,7 @@ export function SpikeChart({ run, scaleMode }: SpikeChartProps) {
         type: 'scattergl', mode: 'lines',
         name: run.axis === 'ra' ? 'RA' : 'Dec',
         line: { color: traceColor, width: 1.5 },
+        hovertemplate: `t=%{x:.2f}s · y=%{y:.2f}${unit}<extra></extra>`,
       } as Data,
     ];
     // Spike markers — overlay scatter at the spike sample positions.
@@ -91,7 +92,7 @@ export function SpikeChart({ run, scaleMode }: SpikeChartProps) {
         type: 'scattergl', mode: 'markers',
         name: t('spike.markers'),
         marker: { color: SPIKE_MARKER, size: 8, line: { width: 1, color: 'rgba(0,0,0,0.4)' } },
-        hovertemplate: `${t('spike.spikeHover')}<br>t=%{x:.1f}s · y=%{y:.3f}${unit}<extra></extra>`,
+        hovertemplate: `${t('spike.spikeHover')}<br>t=%{x:.2f}s · y=%{y:.2f}${unit}<extra></extra>`,
       } as Data);
     }
     // Overlay layer: events that phase-align with the hovered
@@ -106,13 +107,13 @@ export function SpikeChart({ run, scaleMode }: SpikeChartProps) {
           x: aligned.map((i) => run.events[i].t),
           y: aligned.map((i) => run.events[i].value * k),
           type: 'scattergl', mode: 'markers',
-          name: t('spike.alignedHighlight', { count: aligned.length, period: hoverPeriod.toFixed(1) }),
+          name: t('spike.alignedHighlight', { count: aligned.length, period: hoverPeriod.toFixed(2) }),
           marker: {
             color: 'rgba(34, 211, 238, 0.0)',           // hollow center
             size: 14,
             line: { width: 2.5, color: ALIGNED_MARKER }, // ring
           },
-          hovertemplate: `${t('spike.alignedHover', { period: hoverPeriod.toFixed(1) })}<br>t=%{x:.1f}s · y=%{y:.3f}${unit}<extra></extra>`,
+          hovertemplate: `${t('spike.alignedHover', { period: hoverPeriod.toFixed(2) })}<br>t=%{x:.2f}s · y=%{y:.2f}${unit}<extra></extra>`,
         } as Data);
       }
     }
@@ -166,7 +167,7 @@ export function SpikeChart({ run, scaleMode }: SpikeChartProps) {
     const yPx = scaleMode === 'ARCSEC' ? y / run.pixelScale : y;
     const yArc = scaleMode === 'ARCSEC' ? y : y * run.pixelScale;
     setHover(
-      `Time: ${x.toFixed(1)}s  ${formatClock(run.starts, x)}    Y: ${yArc.toFixed(2)}″ (${yPx.toFixed(2)}px)`
+      `Time: ${x.toFixed(2)}s  ${formatClock(run.starts, x)}    Y: ${yArc.toFixed(2)}″ (${yPx.toFixed(2)}px)`
     );
   }, [run, scaleMode]);
 

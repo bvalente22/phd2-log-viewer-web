@@ -80,6 +80,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
         x, y: Array.from(garun.rac).map((v) => -v * k),
         type: 'scattergl', mode: 'lines',
         name: 'RA', line: { color: RA_COLOR, width: 1.5 },
+        hovertemplate: 'RA: %{y:.2f}<extra></extra>',
       } as Data);
     }
     if (showDec) {
@@ -88,6 +89,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
         y: Array.from(garun.decc).map((v) => v * k),
         type: 'scattergl', mode: 'lines',
         name: 'Dec', line: { color: DEC_COLOR, width: 1.5 },
+        hovertemplate: 'Dec: %{y:.2f}<extra></extra>',
       } as Data);
     }
     return out;
@@ -167,7 +169,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
     if (typeof x !== 'number' || typeof y !== 'number') return;
     const yPx = scaleMode === 'ARCSEC' ? y / garun.pixelScale : y;
     const yArc = scaleMode === 'ARCSEC' ? y : y * garun.pixelScale;
-    setHover(`Time: ${x.toFixed(1)}s  ${formatClock(garun.starts, x)}    Y: ${yArc.toFixed(2)}″ (${yPx.toFixed(2)}px)`);
+    setHover(`Time: ${x.toFixed(2)}s  ${formatClock(garun.starts, x)}    Y: ${yArc.toFixed(2)}″ (${yPx.toFixed(2)}px)`);
     drawCursor(x);
   }, [garun, scaleMode, drawCursor]);
 

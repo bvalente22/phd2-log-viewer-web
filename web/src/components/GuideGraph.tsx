@@ -82,7 +82,7 @@ function formatRowInfo(e: GuideSession['entries'][number]): string {
     `guide=(${e.raguide.toFixed(2)}, ${e.decguide.toFixed(2)})`,
     `corr=(${e.radur}, ${e.decdur})`,
     `m=${e.mass}`,
-    `SNR=${e.snr.toFixed(1)}`,
+    `SNR=${e.snr.toFixed(2)}`,
   ].join(' · ') + sat + info;
 }
 
@@ -231,6 +231,7 @@ function buildTraces(
       x: t, y: visibleEntries.map((e) => valuePair(e, coordMode).x * k),
       type: 'scattergl', mode: 'lines',
       name: xName, line: { color: RA_COLOR, width: 1 },
+      hovertemplate: `${xName}: %{y:.2f}<extra></extra>`,
     } as Data);
   }
   if (traces.dec) {
@@ -238,6 +239,7 @@ function buildTraces(
       x: t, y: visibleEntries.map((e) => valuePair(e, coordMode).y * k),
       type: 'scattergl', mode: 'lines',
       name: yName, line: { color: DEC_COLOR, width: 1 },
+      hovertemplate: `${yName}: %{y:.2f}<extra></extra>`,
     } as Data);
   }
   if (traces.raPulses) {
@@ -322,7 +324,7 @@ function buildTraces(
       type: 'scattergl', mode: 'lines',
       yaxis: 'y2',
       name: 'SNR', line: { color: snrColor, width: 1 },
-      hovertemplate: 'SNR: %{customdata:.1f}<extra></extra>',
+      hovertemplate: 'SNR: %{customdata:.2f}<extra></extra>',
     } as Data);
   }
 

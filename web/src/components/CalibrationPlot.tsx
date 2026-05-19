@@ -56,7 +56,7 @@ function buildTraces(cal: Calibration): Data[] {
       textposition: 'top right',
       textfont: { color: COLORS[dir], size: 10 },
       customdata: items.map((e) => [dir, e.step]),
-      hovertemplate: '%{customdata[0]} step %{customdata[1]}<br>dx=%{x:.3f} · dy=%{y:.3f}<extra></extra>',
+      hovertemplate: '%{customdata[0]} step %{customdata[1]}<br>dx=%{x:.2f} · dy=%{y:.2f}<extra></extra>',
     } as Data);
   }
   return traces;
