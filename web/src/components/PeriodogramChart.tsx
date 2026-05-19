@@ -466,7 +466,11 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     const div = document.getElementById(plotId) as PlotDiv | null;
     const xa = div?._fullLayout?.xaxis;
     if (!xa || !xa._length || !topPeaks) {
-      setMarkerXs([]);
+      // Defer when the layout isn't ready yet — Plotly's first paint
+      // can lag a tick behind React's commit, so the very first call
+      // after mount would otherwise see _length === 0 and clear the
+      // marker list.
+      setMarkerXs((prev) => (prev.length === 0 ? prev : []));
       return;
     }
     const isLog = xa.type === 'log';
@@ -486,33 +490,53 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       if (px < -16 || px > xa._length + 16) continue;
       next.push({ x: xa._offset + px, rank: i + 1 });
     }
-    setMarkerXs(next);
+    // Dedupe — without this, every plotly_relayout would replace the
+    // array reference even when positions hadn't changed, and the
+    // resulting React re-render could itself fire plotly_relayout from
+    // useChartGestures' resize handling. Comparing values stops the
+    // feedback loop. Pixel rounding to 1px is more than precise enough
+    // for marker positions and avoids subpixel jitter triggering it.
+    setMarkerXs((prev) => {
+      if (prev.length !== next.length) return next;
+      for (let i = 0; i < prev.length; i++) {
+        if (prev[i].rank !== next[i].rank) return next;
+        if (Math.round(prev[i].x) !== Math.round(next[i].x)) return next;
+      }
+      return prev;
+    });
   }, [plotId, topPeaks]);
 
   // Recompute on topPeaks change, on every Plotly relayout (zoom/pan),
-  // and on container resize. The window-resize fallback covers cases
-  // where ResizeObserver isn't available (rare in modern browsers but
-  // still safer to listen).
+  // and on container resize. We deliberately do NOT listen to
+  // plotly_afterplot — it fires on every Plotly redraw, which would
+  // include the redraw triggered by our own setMarkerXs cascading
+  // through useChartGestures' resize observer → infinite render loop
+  // that froze the modal on any toolbar click.
   useEffect(() => {
     refreshMarkers();
+    // Plotly's first paint can land after React's commit on initial
+    // mount — schedule an extra refresh on the next frame so the chips
+    // appear without the user having to interact with the chart first.
+    const rafId = requestAnimationFrame(() => refreshMarkers());
     const div = document.getElementById(plotId);
-    if (!div) return undefined;
+    if (!div) {
+      return () => cancelAnimationFrame(rafId);
+    }
     const onRel = () => refreshMarkers();
-    // react-plotly translates plotly_relayout to a div event named the
-    // same as the prop; listen on the div directly so we catch every
-    // axis change including the bottom-anchored zoom from useChartGestures.
+    // react-plotly's div exposes a plotly.js-style .on() / .removeListener()
+    // pair for the same events the React props expose. Using the div
+    // listener keeps the chart's onRelayout prop free for the existing
+    // X/Y range capture logic — adding another React onRelayout prop
+    // would replace, not augment.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (div as any).on?.('plotly_relayout', onRel);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (div as any).on?.('plotly_afterplot', onRel);
     const ro = new ResizeObserver(onRel);
     ro.observe(div);
     window.addEventListener('resize', onRel);
     return () => {
+      cancelAnimationFrame(rafId);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (div as any).removeListener?.('plotly_relayout', onRel);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (div as any).removeListener?.('plotly_afterplot', onRel);
       ro.disconnect();
       window.removeEventListener('resize', onRel);
     };
