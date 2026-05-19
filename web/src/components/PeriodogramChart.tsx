@@ -200,6 +200,10 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
         // No fill on the inactive trace — overlapping fills would obscure
         // both. The thin colored line at low opacity is enough to read.
         // hoveron 'fills' would also expand the hover region we don't want.
+        // Hover for this trace is suppressed: the active trace's
+        // hovertemplate (below) embeds the counterpart's value via
+        // customdata, so a single popup is enough — a second popup from
+        // this trace would just duplicate or stack visually.
         hoverinfo: 'skip',
       } as Data);
     }
@@ -212,6 +216,38 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     // 1500 log-spaced points across the full period range gives sub-pixel
     // resolution at chart widths up to ~3000 px without measurable cost.
     const dense = denseSpline(garun.fftPeriod, garun.fftSpline);
+    // Bundle the counterpart amplitude (in current display units) as
+    // customdata so the active trace's near-cursor popup can show BOTH
+    // Raw RA and Residual error in a single labeled block. Evaluating
+    // the other spline on the active trace's x grid keeps the two arrays
+    // index-aligned regardless of differences in the underlying
+    // fftPeriod ranges.
+    const u = scaleMode === 'ARCSEC' ? '″' : 'pix';
+    const otherY = garunOther
+      ? dense.x.map((px) => garunOther.fftSpline.at(px) * k)
+      : null;
+    // For the all / all-raw-ra pair, build a fixed-order template so the
+    // popup always reads "Raw RA / Residual error" regardless of which
+    // tab is active. Pick %{y} vs %{customdata} per slot depending on
+    // which kind is currently the active trace.
+    let activeHoverTemplate: string;
+    if (otherY && (kind === 'all' || kind === 'all-raw-ra')) {
+      const rawRaTok = kind === 'all-raw-ra' ? '%{y:.2f}' : '%{customdata:.2f}';
+      const resTok = kind === 'all' ? '%{y:.2f}' : '%{customdata:.2f}';
+      activeHoverTemplate =
+        `Period: %{x:.2f}s<br>` +
+        `${t('mode.rawRa')}: ${rawRaTok}${u}<br>` +
+        `${t('mode.selected')}: ${resTok}${u}` +
+        `<extra></extra>`;
+    } else {
+      // Single-trace modes (unguided, spike): just period + the trace's
+      // own amplitude. Spike's specialized "magnitude / aligned events"
+      // text still appears in the bottom strip via onHover below.
+      activeHoverTemplate =
+        `Period: %{x:.2f}s<br>` +
+        `${labelOf(kind)}: %{y:.2f}${u}` +
+        `<extra></extra>`;
+    }
     out.push({
       x: dense.x,
       y: dense.y.map((v) => v * k),
@@ -224,9 +260,11 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
         : kind === 'spike'
         ? 'rgba(245, 158, 11, 0.10)'
         : 'rgba(163, 230, 53, 0.10)',
+      customdata: otherY ?? undefined,
+      hovertemplate: activeHoverTemplate,
     } as Data);
     return out;
-  }, [garun, garunOther, kind, k, labelOf]);
+  }, [garun, garunOther, kind, k, scaleMode, labelOf, t]);
 
   // Plotly's xaxis.type:'log' wants the range in log10 space. Always provide
   // an explicit range to avoid the autorange-vs-first-scroll bug we saw in
