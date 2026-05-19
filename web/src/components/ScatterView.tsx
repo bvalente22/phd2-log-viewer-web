@@ -102,7 +102,7 @@ export function ScatterView() {
           opacity: 0.65,
         },
         customdata: incFrame.map((f, i) => [f, incTime[i]]),
-        hovertemplate: 'frame %{customdata[0]} · t=%{customdata[1]:.1f}s<br>RA=%{x:.3f} · Dec=%{y:.3f}<extra></extra>',
+        hovertemplate: 'frame %{customdata[0]} · t=%{customdata[1]:.2f}s<br>RA=%{x:.2f} · Dec=%{y:.2f}<extra></extra>',
       } as Data,
     ];
     if (exX.length > 0) {

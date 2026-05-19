@@ -45,6 +45,7 @@ export function BltChart({ sequence }: BltChartProps) {
         name: t('north'),
         line: { color: NORTH_COLOR, width: 1.5 },
         marker: { color: NORTH_COLOR, size: 7 },
+        hovertemplate: `${t('north')}: step %{x} · %{y:.2f}px<extra></extra>`,
       } as Data,
       {
         x: southX,
@@ -53,6 +54,7 @@ export function BltChart({ sequence }: BltChartProps) {
         name: t('south'),
         line: { color: SOUTH_COLOR, width: 1.5 },
         marker: { color: SOUTH_COLOR, size: 7 },
+        hovertemplate: `${t('south')}: step %{x} · %{y:.2f}px<extra></extra>`,
       } as Data,
     ];
   }, [sequence, t]);
