@@ -11,6 +11,11 @@ const RA_COLOR = '#60a5fa';
 const DEC_COLOR = '#f87171';
 const SELECTED_COLOR = '#22d3ee'; // cyan — pops against blue/red
 const SIGMA_LINE = 'rgba(245, 158, 11, 0.4)';
+// Live threshold preview line — solid cyan so it visually ties to the
+// (cyan) selected-point markers; thicker than the dotted ±3σ context
+// lines so it reads as "the action you're about to take" rather than
+// background reference.
+const THRESHOLD_LINE = '#22d3ee';
 
 /** Click vs drag threshold (pixels). pointerdown→up moves shorter than
  *  this count as a click; longer ones are part of a drag and go through
@@ -23,6 +28,9 @@ interface ManualSpikeChartProps {
   selectedIndices: ReadonlyArray<number>;
   onAddPoint: (index: number) => void;
   onRemovePoint: (index: number) => void;
+  /** Live preview line for the auto-select slider (in arc-seconds; the
+   *  chart converts to its current display unit). Null = no line. */
+  thresholdLineArc: number | null;
 }
 
 /** Manual Spike chart. Renders the linearly-detrended axis trace plus
@@ -42,7 +50,7 @@ interface ManualSpikeChartProps {
  *  - We also pin a stable `uirevision` on the layout so re-renders
  *    triggered by add/remove don't reset the user's pan/zoom. */
 export function ManualSpikeChart({
-  run, scaleMode, selectedIndices, onAddPoint, onRemovePoint,
+  run, scaleMode, selectedIndices, onAddPoint, onRemovePoint, thresholdLineArc,
 }: ManualSpikeChartProps) {
   const { t: tChart } = useTranslation('chart');
   const { t } = useTranslation('analysis');
@@ -187,14 +195,24 @@ export function ManualSpikeChart({
     return out;
   }, [run, k, t, traceColor, selectedIndices, unit]);
 
-  const sigmaShapes = useMemo<NonNullable<Layout['shapes']>>(() => {
+  const shapes = useMemo<NonNullable<Layout['shapes']>>(() => {
     const s = run.sigma * k;
-    return [3, -3].map((m) => ({
+    const out: NonNullable<Layout['shapes']> = [3, -3].map((m) => ({
       type: 'line', xref: 'paper', yref: 'y',
       x0: 0, x1: 1, y0: m * s, y1: m * s,
       line: { color: SIGMA_LINE, width: 1, dash: 'dot' },
     }));
-  }, [run, k]);
+    if (thresholdLineArc !== null && Number.isFinite(thresholdLineArc)) {
+      // Slider value is always arc-sec. In PIXELS scale, convert to px.
+      const y = scaleMode === 'ARCSEC' ? thresholdLineArc : thresholdLineArc / run.pixelScale;
+      out.push({
+        type: 'line', xref: 'paper', yref: 'y',
+        x0: 0, x1: 1, y0: y, y1: y,
+        line: { color: THRESHOLD_LINE, width: 2, dash: 'dash' },
+      });
+    }
+    return out;
+  }, [run, k, scaleMode, thresholdLineArc]);
 
   const layout: Partial<Layout> = {
     autosize: true,
@@ -231,7 +249,7 @@ export function ManualSpikeChart({
     legend: { orientation: 'h', y: 1.18 },
     dragmode: false,
     hovermode: 'x',
-    shapes: sigmaShapes,
+    shapes,
   };
 
   return (
