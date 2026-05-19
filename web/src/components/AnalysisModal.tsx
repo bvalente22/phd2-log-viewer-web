@@ -79,10 +79,16 @@ function spikeAsGARun(run: SpikeRun): GARun {
 export function AnalysisModal() {
   const { t } = useTranslation('analysis');
   const s = useAnalysisStore();
-  // Threshold input for Manual Spike auto-select (in arc-seconds). Kept
-  // as a string so the user can type a leading "-" or a partial decimal
-  // without React clobbering the field. Parsed at Select-click time.
-  const [manualSpikeThresholdInput, setManualSpikeThresholdInput] = useState('');
+  // Threshold slider position for Manual Spike auto-select, in arc-sec.
+  // Stored as a number; default 0 (the median). Renders a live preview
+  // line on the chart so the user can see where Select would cut before
+  // committing. Resets to 0 whenever the active axis changes — the y-
+  // extent (and therefore the slider's range) depends on the axis.
+  const [manualSpikeThresholdArc, setManualSpikeThresholdArc] = useState(0);
+  const manualSpikeAxisForEffect = s.state === 'open' ? s.manualSpikeAxis : null;
+  useEffect(() => {
+    setManualSpikeThresholdArc(0);
+  }, [manualSpikeAxisForEffect]);
   useEffect(() => {
     if (s.state !== 'open') return;
     const onKey = (e: KeyboardEvent) => {
@@ -302,6 +308,21 @@ export function AnalysisModal() {
           const stats = manualSpikeStats(manualSpikeRun, activeSelections);
           const ps = manualSpikeRun.pixelScale;
           const meanArc = stats.meanAmplitude * ps;
+          // Slider range — symmetric ± from the larger of |min| / |max|
+          // of the detrended-minus-median series, in arc-seconds. A
+          // symmetric range gives the slider a natural zero midpoint
+          // and keeps both Above (positive) and Below (negative) picks
+          // reachable from the same control. Round outward to the
+          // nearest 0.01 so the slider step (0.01) lands cleanly on
+          // the endpoints.
+          let maxAbsArc = 0;
+          for (let i = 0; i < manualSpikeRun.detrended.length; i++) {
+            const a = Math.abs(manualSpikeRun.detrended[i] - manualSpikeRun.median) * ps;
+            if (a > maxAbsArc) maxAbsArc = a;
+          }
+          maxAbsArc = Math.ceil(maxAbsArc * 100) / 100;
+          if (maxAbsArc === 0) maxAbsArc = 0.01; // pathological flat trace — keep slider usable
+          const thresholdActive = manualSpikeThresholdArc !== 0 && Number.isFinite(manualSpikeThresholdArc);
           return (
             <>
               <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-1 text-xs">
@@ -320,36 +341,37 @@ export function AnalysisModal() {
                 >
                   {t('manualSpike.reset')}
                 </button>
-                {/* Auto-select-by-threshold: positive values pick samples
-                    at or above the threshold; negative values pick at or
-                    below. Replaces (not adds to) the active-axis pick set. */}
+                {/* Auto-select slider — symmetric ± range covering the
+                    chart's full y-extent in arc-sec. Dragging moves a
+                    live cyan dashed preview line on the chart; clicking
+                    Select commits the line into a pick set (positive →
+                    samples at or above; negative → at or below).
+                    Replaces (not adds to) the active-axis pick set. */}
                 <span className="ms-3 me-1 text-slate-500" title={t('manualSpike.thresholdTooltip')}>
                   {t('manualSpike.threshold')}:
                 </span>
                 <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.1"
-                  value={manualSpikeThresholdInput}
-                  placeholder={t('manualSpike.thresholdPlaceholder')}
-                  onChange={(e) => setManualSpikeThresholdInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const v = parseFloat(manualSpikeThresholdInput);
-                      if (Number.isFinite(v) && v !== 0) s.selectManualSpikePointsByThreshold(v);
-                    }
-                  }}
-                  className="w-20 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-200 ring-1 ring-slate-700 focus:outline-none focus:ring-amber-600"
-                  title={t('manualSpike.thresholdInputTooltip')}
+                  type="range"
+                  min={-maxAbsArc}
+                  max={maxAbsArc}
+                  step={0.01}
+                  value={manualSpikeThresholdArc}
+                  onChange={(e) => setManualSpikeThresholdArc(parseFloat(e.target.value))}
+                  className="w-40 cursor-pointer accent-cyan-500"
+                  title={t('manualSpike.thresholdSliderTooltip')}
                 />
-                <span className="text-slate-500" title={t('manualSpike.thresholdUnitTooltip')}>″</span>
+                <span
+                  className={`min-w-[3.5rem] font-mono text-xs tabular-nums ${thresholdActive ? 'text-cyan-300' : 'text-slate-500'}`}
+                  title={t('manualSpike.thresholdValueTooltip')}
+                >
+                  {manualSpikeThresholdArc >= 0 ? '+' : ''}{manualSpikeThresholdArc.toFixed(2)}″
+                </span>
                 <button
                   type="button"
                   onClick={() => {
-                    const v = parseFloat(manualSpikeThresholdInput);
-                    if (Number.isFinite(v) && v !== 0) s.selectManualSpikePointsByThreshold(v);
+                    if (thresholdActive) s.selectManualSpikePointsByThreshold(manualSpikeThresholdArc);
                   }}
-                  disabled={!Number.isFinite(parseFloat(manualSpikeThresholdInput)) || parseFloat(manualSpikeThresholdInput) === 0}
+                  disabled={!thresholdActive}
                   className="rounded bg-slate-800 px-3 py-0.5 text-xs text-slate-200 ring-1 ring-slate-700 transition-colors hover:bg-sky-700 hover:text-white hover:ring-sky-600 disabled:cursor-not-allowed disabled:bg-slate-900 disabled:text-slate-600"
                   title={t('manualSpike.selectTooltip')}
                 >
@@ -366,6 +388,7 @@ export function AnalysisModal() {
                   selectedIndices={activeSelections}
                   onAddPoint={s.addManualSpikePoint}
                   onRemovePoint={s.removeManualSpikePoint}
+                  thresholdLineArc={manualSpikeThresholdArc}
                 />
               </div>
               <div className="border-t-2 border-amber-800 bg-slate-900/70 px-4 py-3 text-xs">
