@@ -361,12 +361,12 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       driftXRangeView: null,
       periodXRangeViewLog: null,
       maxPeriodSec: DEFAULT_MAX_PERIOD_SEC,
-      // Default ON so the modal opens with the same FFT input the
-      // original desktop computes. AnalysisButton/ContextMenu pass
-      // `garun` already analyzed WITHOUT the mask to match this
-      // default; the mask is kept in `originalMask` for the toggle's
-      // "auto-mask" position to restore.
-      useAllFramesForFFT: true,
+      // Default OFF (auto-mask): the modal opens with the section's
+      // auto-derived dither/settling mask applied. AnalysisButton /
+      // ContextMenu pass `garun` already analyzed WITH the mask to
+      // match this default. Flipping the toolbar toggle ON re-runs
+      // analyze() with mask:undefined (full "all frames" view).
+      useAllFramesForFFT: false,
       originalMask: spikeSource?.mask,
       spikeSource: spikeSource ?? null,
       spikeRun: null,
