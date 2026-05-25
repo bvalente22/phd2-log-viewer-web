@@ -167,7 +167,8 @@ export function computeDriftCorrected(s: GuideSession, opts: AnalyzeOptions): Dr
 }
 
 import { Spline } from './spline';
-import { forwardFftMagnitudes } from './fft';
+import { arbitraryDftMagnitudes } from './fft';
+import { densePeriodogram } from './perioPeaks';
 
 export interface GARun {
   starts: number | null;
@@ -185,21 +186,14 @@ export interface GARun {
   fftSpline: Spline;
 }
 
-const nextPow2 = (n: number): number => {
-  let p = 1;
-  while (p < n) p <<= 1;
-  return p;
-};
-
 /**
  * Full GARun port. Equivalent to AnalysisWin.cpp:283-411.
  *
  *   1. computeDriftCorrected → (t, rac, decc, driftRa, driftDec)
- *   2. Spline-resample rac onto a uniform grid of length n
- *      (rounded up to the next power of two so the FFT can run; the C++
- *      code uses an arbitrary-N GSL FFT, but `fft.js` requires p2)
+ *   2. Spline-resample rac onto a uniform grid of length n0 (the count of
+ *      used entries)
  *   3. Apply a Hamming window
- *   4. forwardFftMagnitudes → bin magnitudes
+ *   4. arbitraryDftMagnitudes → bin magnitudes at the EXACT length-n0 DFT
  *   5. Convert bins to (period, amplitude); skip DC; sort ascending by
  *      period; build a smoothing spline
  */
@@ -210,10 +204,18 @@ export function analyze(s: GuideSession, opts: AnalyzeOptions): GARun {
   const drift = computeDriftCorrected(s, opts);
   const n0 = drift.t.length;
   const dt = (drift.t[n0 - 1] - drift.t[0]) / (n0 - 1);
-  const n = nextPow2(n0);
 
   const sp = new Spline(Array.from(drift.t), Array.from(drift.rac));
-  const sig = new Float64Array(n);
+  // The desktop FFTs the resampled signal at exactly N = n0 (the used-entry
+  // count) with NO zero-padding (GSL mixed-radix, AnalysisWin.cpp:380). The
+  // period of bin k is `n0·dt/(k+1)`, so the FFT length sets where every bin —
+  // and therefore the Akima peak the user reads — lands. We earlier zero-padded
+  // up to the next power of two (a workaround for `fft.js`), which shifted the
+  // longest bin from `n0·dt` out to `2^⌈log2 n0⌉·dt` and moved an unguided
+  // worm-period peak the desktop reports at ~410s out to ~423s. `arbitraryDft-
+  // Magnitudes` reproduces the exact length-n0 transform via Bluestein, so we
+  // stay bin-for-bin faithful to the desktop.
+  const sig = new Float64Array(n0);
   const k = (Math.PI * 2) / (n0 - 1);
   for (let i = 0; i < n0; i++) {
     let x = drift.t[0] + i * dt;
@@ -221,43 +223,34 @@ export function analyze(s: GuideSession, opts: AnalyzeOptions): GARun {
     const hw = 0.54 - 0.46 * Math.cos(i * k);
     sig[i] = hw * sp.at(x);
   }
-  // sig[n0..n-1] stays at zero (Float64Array default), serving as zero-pad.
 
-  const mags = forwardFftMagnitudes(sig);
-  // AnalysisWin.cpp:393 — periodogram amplitude scaling. Use n0 (the count of
-  // populated samples) rather than n so the amplitude reflects the actual
-  // signal energy, not the padded length.
+  const mags = arbitraryDftMagnitudes(sig); // bins 0..⌊n0/2⌋
+  // AnalysisWin.cpp:393 — one-sided periodogram amplitude scaling.
   const scale = 4 / n0;
-  // Keep every non-DC bin (i=0..n/2-2). The zero-pad pushes our lowest
-  // bin frequency down to 1/(n*dt), so periods between `n0*dt` and
-  // `n*dt` show up — the original desktop (which uses an arbitrary-N
-  // FFT) tops out at exactly `n0*dt`, but those zero-padded bins are
-  // still valid DTFT samples of the windowed signal at finer frequency
-  // resolution, not pure noise. The Hamming window already in `sig`
-  // suppresses DC leakage by ~43 dB so the long-period bins read the
-  // genuine slow trend in the residual rather than an artefact. An
-  // earlier version (PR #30) skipped these bins on the leakage theory,
-  // which truncated the chart well before the recording's longest
-  // resolvable period — the user observed our trace dropping at
-  // ~3,700s while the desktop's same data kept rising past 5,000s.
-  const iMin = 0;
-  const nfft = n / 2 - 1 - iMin;
+  // Keep bins 1..⌊n0/2⌋-1 (skip DC and the Nyquist bin), exactly as the
+  // desktop's `nfft = n/2 - 1` loop (AnalysisWin.cpp:399-403).
+  const nfft = Math.floor(n0 / 2) - 1;
   const period = new Float64Array(nfft);
   const amplitude = new Float64Array(nfft);
-  let amax = 0;
   for (let j = 0; j < nfft; j++) {
-    const i = j + iMin;
-    const f = (i + 1) / (n * dt);
+    const f = (j + 1) / (n0 * dt);
     const p = 1 / f;
-    const a = mags[i + 1] * scale;
-    // Reverse-write so periods land in ascending order (longest period first
-    // would otherwise be index 0). Matches the C++ ordering at
+    const a = mags[j + 1] * scale;
+    // Reverse-write so periods land in ascending order (the lowest frequency /
+    // longest period is bin 1). Matches the C++ ordering at
     // AnalysisWin.cpp:401-403.
     period[nfft - 1 - j] = p;
     amplitude[nfft - 1 - j] = a;
-    if (a > amax) amax = a;
   }
   const spline = new Spline(Array.from(period), Array.from(amplitude));
+  // The y-axis must fit the *drawn* curve, and the Akima spline can ride a
+  // little above the highest bin between sparse long-period samples — which is
+  // exactly the peak the summary reports. Take the max of the dense curve (the
+  // same one the chart plots and the table reads) so that reported peak is
+  // never clipped.
+  const curveY = densePeriodogram(period, spline).y;
+  let amax = 0;
+  for (const y of curveY) if (y > amax) amax = y;
 
   return {
     starts: s.startsMs,

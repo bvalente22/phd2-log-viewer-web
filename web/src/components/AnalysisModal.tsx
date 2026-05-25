@@ -12,6 +12,7 @@ import { ManualSpikeChart } from './ManualSpikeChart';
 import { manualSpikeStats } from '../parser/manualSpikeAnalysis';
 import { fmtNumber } from '../i18n/format';
 import type { GARun } from '../parser/analyze';
+import { densePeriodogram, curveTopPeaks } from '../parser/perioPeaks';
 import { pickTopSpikePeriods, type SpikeRun } from '../parser/spikeAnalysis';
 import { Spline } from '../parser/spline';
 
@@ -23,24 +24,16 @@ const formatClockUTC = (ms: number | null, dt: number): string => {
 };
 
 /**
- * Identify the top-N local-maximum peaks in the periodogram (a[i] > a[i-1] &&
- * a[i] > a[i+1]) and return them sorted by descending amplitude. Skips the
- * boundary samples so we don't flag the edges of the FFT range as "peaks",
- * and skips any peak whose period exceeds `maxPeriodSec` so very-long-period
- * components (drift artefacts) don't dominate the summary.
+ * Top-N peaks of the periodogram, read from the SAME Akima curve the chart
+ * plots (via `densePeriodogram`) rather than the raw FFT bins — so the summary
+ * cards and the numbered chips always land on the curve's visible peaks. This
+ * mirrors the desktop, which reports the peak the cursor reads off the smooth
+ * curve (AnalysisWin.cpp:864-914), not a discrete bin. Peaks above
+ * `maxPeriodSec` (drift artefacts) are excluded so they don't dominate.
  */
 function topPeaks(garun: GARun, n: number, maxPeriodSec: number): { period: number; amplitude: number }[] {
-  const periods = garun.fftPeriod;
-  const amps = garun.fftAmplitude;
-  const peaks: { period: number; amplitude: number }[] = [];
-  for (let i = 1; i < periods.length - 1; i++) {
-    if (periods[i] > maxPeriodSec) continue;
-    if (amps[i] > amps[i - 1] && amps[i] > amps[i + 1]) {
-      peaks.push({ period: periods[i], amplitude: amps[i] });
-    }
-  }
-  peaks.sort((a, b) => b.amplitude - a.amplitude);
-  return peaks.slice(0, n);
+  const curve = densePeriodogram(garun.fftPeriod, garun.fftSpline);
+  return curveTopPeaks(curve, n, maxPeriodSec);
 }
 
 /**
