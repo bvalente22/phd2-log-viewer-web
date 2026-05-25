@@ -221,4 +221,64 @@ describe('analyze (full pipeline)', () => {
     expect(() => analyze(s, { range: { begin: 0, end: 5 }, undoRaCorrections: false }))
       .toThrow(/at least 12/i);
   });
+
+  it('FFTs at exactly N = n0 with no zero-padding (longest period = n0*dt)', () => {
+    // n0 = 100 is NOT a power of two; the old code zero-padded to 128 and the
+    // longest period read 128*dt instead of the desktop's 100*dt. dt = 1s here
+    // (timestamps 1..100), so the longest period must be ~100, never 128.
+    const s = newGuideSession('x');
+    s.entries = Array.from({ length: 100 }, (_, i) => ({
+      ...mkE(i + 1, i + 1),
+      raraw: Math.cos((2 * Math.PI * (i + 1)) / 25),
+    }));
+    const ga = analyze(s, { range: { begin: 0, end: 100 }, undoRaCorrections: false });
+    const longest = ga.fftPeriod[ga.fftPeriod.length - 1];
+    expect(longest).toBeCloseTo(100, 3); // n0*dt, the desktop's arbitrary-N ceiling
+    expect(longest).toBeLessThan(110); // and crucially NOT the padded 128
+    expect(ga.fftPeriod.length).toBe(Math.floor(100 / 2) - 1); // 49 bins, not 63
+  });
+});
+
+import { densePeriodogram, curveTopPeaks } from '../perioPeaks';
+
+describe('analyze ↔ periodogram peaks (table matches the plotted curve)', () => {
+  // Build a session whose RA carries a long-period sinusoid sampled over only
+  // a few cycles — the sparse-long-period regime that exposed the bug.
+  const buildSession = (n: number, periodSec: number, amp: number): ReturnType<typeof newGuideSession> => {
+    const s = newGuideSession('x');
+    s.pixelScale = 1;
+    s.entries = Array.from({ length: n }, (_, i) => ({
+      ...mkE(i + 1, i + 1),
+      raraw: amp * Math.cos((2 * Math.PI * (i + 1)) / periodSec),
+    }));
+    return s;
+  };
+
+  it('reports the SAME peak the chart curve shows (#1 = curve argmax)', () => {
+    const s = buildSession(120, 40, 1);
+    const ga = analyze(s, { range: { begin: 0, end: 120 }, undoRaCorrections: false });
+    const curve = densePeriodogram(ga.fftPeriod, ga.fftSpline);
+    const peaks = curveTopPeaks(curve, 3, 600);
+    expect(peaks.length).toBeGreaterThan(0);
+    // The reported #1 peak must equal the global maximum of the drawn curve
+    // (within the maxPeriod window) — this is the "table == graph" invariant.
+    let curveMax = -Infinity;
+    let curveMaxP = 0;
+    for (let i = 0; i < curve.x.length; i++) {
+      if (curve.x[i] <= 600 && curve.y[i] > curveMax) { curveMax = curve.y[i]; curveMaxP = curve.x[i]; }
+    }
+    expect(peaks[0].amplitude).toBeCloseTo(curveMax, 6);
+    expect(peaks[0].period).toBeCloseTo(curveMaxP, 6);
+  });
+
+  it('the curve peak amplitude never falls below the FFT bins it interpolates', () => {
+    // raw-RA sinusoid → the Akima curve rides on or above its control points,
+    // and fftAmpMax (the y-axis ceiling) must cover the drawn peak so it is
+    // never clipped.
+    const s = buildSession(120, 40, 1);
+    const ga = analyze(s, { range: { begin: 0, end: 120 }, undoRaCorrections: false });
+    let binMax = 0;
+    for (const a of ga.fftAmplitude) if (a > binMax) binMax = a;
+    expect(ga.fftAmpMax).toBeGreaterThanOrEqual(binMax - 1e-9);
+  });
 });

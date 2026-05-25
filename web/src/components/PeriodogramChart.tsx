@@ -10,38 +10,7 @@ import { alignedEventIndices } from '../parser/spikeAnalysis';
 import { useChartGestures } from './useChartGestures';
 import { useViewStore } from '../state/viewStore';
 import { themeOf } from '../themes';
-import type { Spline } from '../parser/spline';
-
-const DENSE_POINTS = 1500;
-
-/**
- * Resample an FFT periodogram onto a dense log-spaced X grid using the
- * smoothing Akima spline. Mirrors AnalysisWin.cpp:1131-1143 where
- * `PaintFFT` evaluates `s_fftpos.Eval(x)` (which delegates to
- * `ga.ffts.Eval(p)`) once per chart pixel — the source of the desktop's
- * visibly smooth periodogram curve. We resample to a fixed N rather than
- * per-pixel because the chart is HTML-canvas-rasterized: 1500 points
- * across a typical 1000-3000 px chart gives sub-pixel spacing without
- * caring about the actual rendered width.
- */
-function denseSpline(periods: Float64Array, spline: Spline): { x: number[]; y: number[] } {
-  if (periods.length < 2) {
-    const xs = Array.from(periods);
-    return { x: xs, y: xs.map((p) => spline.at(p)) };
-  }
-  const pMin = Math.max(periods[0], 1e-6);
-  const pMax = Math.max(periods[periods.length - 1], pMin * 10);
-  const logMin = Math.log10(pMin);
-  const logMax = Math.log10(pMax);
-  const x = new Array<number>(DENSE_POINTS);
-  const y = new Array<number>(DENSE_POINTS);
-  for (let i = 0; i < DENSE_POINTS; i++) {
-    const p = Math.pow(10, logMin + (i / (DENSE_POINTS - 1)) * (logMax - logMin));
-    x[i] = p;
-    y[i] = spline.at(p);
-  }
-  return { x, y };
-}
+import { densePeriodogram, curveLocalMaxima } from '../parser/perioPeaks';
 
 /**
  * Decade-by-decade tick positions for a log axis showing periods in
@@ -190,12 +159,22 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     return t('mode.unguided');
   }, [t]);
 
+  // The dense Akima curve the chart plots — the single source of truth shared
+  // with the Top-N table (AnalysisModal) and the hover snap below, so the
+  // readouts can never disagree with the drawn line. `activeMaxima` are its
+  // local maxima (ascending period) for snap-to-peak.
+  const activeDense = useMemo(
+    () => densePeriodogram(garun.fftPeriod, garun.fftSpline),
+    [garun],
+  );
+  const activeMaxima = useMemo(() => curveLocalMaxima(activeDense), [activeDense]);
+
   const traces = useMemo<Data[]>(() => {
     const out: Data[] = [];
     // Inactive (counterpart) drawn first so the active trace overlays it.
     const otherKind = otherKindOf(kind);
     if (garunOther && otherKind) {
-      const dense = denseSpline(garunOther.fftPeriod, garunOther.fftSpline);
+      const dense = densePeriodogram(garunOther.fftPeriod, garunOther.fftSpline);
       out.push({
         x: dense.x,
         y: dense.y.map((v) => v * k),
@@ -219,9 +198,7 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     // which is what gives its periodogram the visibly smoother shape vs.
     // a straight-line polyline through the discrete bin samples. Our spline
     // is the same Akima fit (analyze.ts builds `fftSpline` from the bins).
-    // 1500 log-spaced points across the full period range gives sub-pixel
-    // resolution at chart widths up to ~3000 px without measurable cost.
-    const dense = denseSpline(garun.fftPeriod, garun.fftSpline);
+    const dense = activeDense;
     // Bundle the counterpart amplitude (in current display units) as
     // customdata so the active trace's near-cursor popup can show BOTH
     // Raw RA and Residual error in a single labeled block. Evaluating
@@ -270,7 +247,7 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       hovertemplate: activeHoverTemplate,
     } as Data);
     return out;
-  }, [garun, garunOther, kind, k, scaleMode, labelOf, t]);
+  }, [activeDense, garun, garunOther, kind, k, scaleMode, labelOf, t]);
 
   // Plotly's xaxis.type:'log' wants the range in log10 space. Always provide
   // an explicit range to avoid the autorange-vs-first-scroll bug we saw in
@@ -298,8 +275,13 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
   });
 
   /**
-   * Find the closest local-max peak in the periodogram within ±PEAK_PX of the
-   * cursor's screen position. Mirrors AnalysisWin.cpp:864-907.
+   * Snap the cursor to the nearest peak of the PLOTTED curve within ±PEAK_PX of
+   * the cursor's screen position. Mirrors AnalysisWin.cpp:864-907, but operates
+   * on the dense Akima curve's local maxima (`activeMaxima`) — the same peaks
+   * the table reports — instead of the raw FFT bins. With the desktop's
+   * arbitrary-N FFT the bins are sparse at long periods and the dominant peak
+   * often sits between two bins (or beside the excluded endpoint bin), so a
+   * bin-based snap would miss the very peak the user is pointing at.
    */
   const snapToPeak = useCallback((cursorPeriod: number): { period: number; amplitude: number } => {
     const div = document.getElementById(plotId) as PlotDiv | null;
@@ -307,8 +289,6 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     if (!xa || !xa._length) {
       return { period: cursorPeriod, amplitude: garun.fftSpline.at(cursorPeriod) };
     }
-    const periods = garun.fftPeriod;
-    const amps = garun.fftAmplitude;
     const isLog = xa.type === 'log';
     const toPx = (p: number): number => {
       if (isLog) {
@@ -319,19 +299,16 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       return ((p - xa.range[0]) / (xa.range[1] - xa.range[0])) * xa._length;
     };
     const cursorPx = toPx(cursorPeriod);
-    let bestIdx = -1;
+    let best: { period: number; amplitude: number } | null = null;
     let bestDist = Infinity;
-    for (let i = 1; i < periods.length - 1; i++) {
-      const px = toPx(periods[i]);
-      if (Math.abs(px - cursorPx) > PEAK_PX) continue;
-      if (amps[i] > amps[i - 1] && amps[i] > amps[i + 1]) {
-        const d = Math.abs(px - cursorPx);
-        if (d < bestDist) { bestDist = d; bestIdx = i; }
-      }
+    for (const m of activeMaxima) {
+      const d = Math.abs(toPx(m.period) - cursorPx);
+      if (d > PEAK_PX) continue;
+      if (d < bestDist) { bestDist = d; best = m; }
     }
-    if (bestIdx >= 0) return { period: periods[bestIdx], amplitude: amps[bestIdx] };
+    if (best) return best;
     return { period: cursorPeriod, amplitude: garun.fftSpline.at(cursorPeriod) };
-  }, [plotId, garun]);
+  }, [plotId, garun, activeMaxima]);
 
   // Vertical-cursor line is provided natively by Plotly's
   // `xaxis.showspikes` (configured below). It follows the cursor across
