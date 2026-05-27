@@ -34,5 +34,18 @@
     "title": "打开日志",
     "show": "显示打开日志面板",
     "hide": "隐藏打开日志面板"
+  },
+  "dashboard": {
+    "sectionLabel": "导星设置",
+    "pierSide": "中天侧",
+    "hourAngle": "时角",
+    "altitude": "高度",
+    "rotator": "旋转器",
+    "backlashComp": "齿隙补偿",
+    "raAlgorithm": "RA 算法",
+    "decAlgorithm": "Dec 算法",
+    "backlashEnabled": "启用 · {{pulse}} ms",
+    "backlashDisabled": "禁用",
+    "tooltip": "本节 PHD2 头信息中的关键导星设置——中天侧、指向、齿隙和 RA/Dec 算法。"
   }
 }
