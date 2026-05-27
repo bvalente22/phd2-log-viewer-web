@@ -16,6 +16,7 @@ import { LogsFolderPane } from '../components/LogsFolderPane';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { ThemePicker } from '../components/ThemePicker';
 import { GAResultsPanel } from '../components/GAResultsPanel';
+import { GuidingDashboard } from '../components/GuidingDashboard';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { useKeyboardShortcuts } from '../state/useKeyboard';
@@ -174,6 +175,9 @@ export function ViewerPage() {
               />
             )}
             <GAResultsPanel />
+            {/* Header dashboard hugs the diagram — see
+                docs/superpowers/specs/2026-05-27-guiding-dashboard-design.md */}
+            <GuidingDashboard />
             <GraphContextMenu>
               <div className="relative flex-1 overflow-hidden">
                 {graphMode === 'TIME' ? <GuideGraph /> : <ScatterView />}
