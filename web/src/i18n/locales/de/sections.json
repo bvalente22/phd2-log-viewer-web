@@ -34,5 +34,18 @@
     "title": "Log öffnen",
     "show": "Bereich „Log öffnen“ anzeigen",
     "hide": "Bereich „Log öffnen“ ausblenden"
+  },
+  "dashboard": {
+    "sectionLabel": "Guiding-Setup",
+    "pierSide": "Pier-Seite",
+    "hourAngle": "Stundenwinkel",
+    "altitude": "Höhe",
+    "rotator": "Rotator",
+    "backlashComp": "Backlash-Komp.",
+    "raAlgorithm": "RA-Algorithmus",
+    "decAlgorithm": "Dec-Algorithmus",
+    "backlashEnabled": "Aktiviert · {{pulse}} ms",
+    "backlashDisabled": "Deaktiviert",
+    "tooltip": "Wichtige Guiding-Einstellungen aus dem PHD2-Header dieses Abschnitts — Pier-Seite, Ausrichtung, Backlash und RA/Dec-Algorithmen."
   }
 }

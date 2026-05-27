@@ -39,5 +39,18 @@
     "title": "Open log",
     "show": "Show the open-log pane",
     "hide": "Hide the open-log pane"
+  },
+  "dashboard": {
+    "sectionLabel": "Guiding setup",
+    "pierSide": "Pier side",
+    "hourAngle": "Hour angle",
+    "altitude": "Altitude",
+    "rotator": "Rotator",
+    "backlashComp": "Backlash comp",
+    "raAlgorithm": "RA algorithm",
+    "decAlgorithm": "Dec algorithm",
+    "backlashEnabled": "Enabled · {{pulse}} ms",
+    "backlashDisabled": "Disabled",
+    "tooltip": "Key guiding setup from this section's PHD2 header — pier side, pointing, backlash, and RA/Dec algorithms."
   }
 }
