@@ -73,7 +73,7 @@ const parseAlgo = (line: string | undefined): AlgoInfo | null => {
   } else {
     for (const m of line.matchAll(/([A-Za-z][A-Za-z ]*?) = ([\d.]+)/g)) {
       const key = m[1].trim();
-      if (key === 'Minimum move' || key === 'FastSwitch') continue;
+      if (key === 'Minimum move') continue;  // already surfaced as minMove
       const label =
         key === 'Slope weight' ? 'slope wt' :
         key === 'Hysteresis' ? 'hyst' :

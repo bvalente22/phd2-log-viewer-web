@@ -39,6 +39,13 @@ describe('parseGuideHeader', () => {
     expect(a).toEqual({ name: 'Hysteresis', param: 'agg 0.45', minMove: '0.098' });
   });
 
+  it('Hysteresis without Aggression -> falls back to hyst param', () => {
+    const a = parseGuideHeader([
+      'X guide algorithm = Hysteresis, Hysteresis = 0.100, Minimum move = 0.098',
+    ]).ra;
+    expect(a).toEqual({ name: 'Hysteresis', param: 'hyst 0.1', minMove: '0.098' });
+  });
+
   it('Lowpass2: Aggressiveness shown as aggr', () => {
     const a = parseGuideHeader([
       'X guide algorithm = Lowpass2, Aggressiveness = 32.000, Minimum move = 0.300',
