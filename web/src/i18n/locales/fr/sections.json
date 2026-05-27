@@ -34,5 +34,18 @@
     "title": "Ouvrir un log",
     "show": "Afficher le panneau d'ouverture",
     "hide": "Masquer le panneau d'ouverture"
+  },
+  "dashboard": {
+    "sectionLabel": "Réglages de guidage",
+    "pierSide": "Côté pier",
+    "hourAngle": "Angle horaire",
+    "altitude": "Altitude",
+    "rotator": "Rotateur",
+    "backlashComp": "Comp. backlash",
+    "raAlgorithm": "Algorithme RA",
+    "decAlgorithm": "Algorithme Dec",
+    "backlashEnabled": "Activé · {{pulse}} ms",
+    "backlashDisabled": "Désactivé",
+    "tooltip": "Réglages de guidage clés de l'en-tête PHD2 de cette section — côté pier, pointage, backlash et algorithmes RA/Dec."
   }
 }

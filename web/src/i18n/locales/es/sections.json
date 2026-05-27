@@ -34,5 +34,18 @@
     "title": "Abrir log",
     "show": "Mostrar el panel para abrir un log",
     "hide": "Ocultar el panel para abrir un log"
+  },
+  "dashboard": {
+    "sectionLabel": "Configuración de guiado",
+    "pierSide": "Lado de montura",
+    "hourAngle": "Ángulo horario",
+    "altitude": "Altitud",
+    "rotator": "Rotador",
+    "backlashComp": "Comp. holgura",
+    "raAlgorithm": "Algoritmo RA",
+    "decAlgorithm": "Algoritmo Dec",
+    "backlashEnabled": "Activado · {{pulse}} ms",
+    "backlashDisabled": "Desactivado",
+    "tooltip": "Configuración de guiado clave del encabezado PHD2 de esta sección: lado de montura, apuntado, holgura y algoritmos RA/Dec."
   }
 }

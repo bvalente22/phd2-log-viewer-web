@@ -34,5 +34,18 @@
     "title": "Apri log",
     "show": "Mostra il pannello apertura log",
     "hide": "Nasconde il pannello apertura log"
+  },
+  "dashboard": {
+    "sectionLabel": "Impostazioni guida",
+    "pierSide": "Lato pier",
+    "hourAngle": "Angolo orario",
+    "altitude": "Altitudine",
+    "rotator": "Rotatore",
+    "backlashComp": "Comp. gioco",
+    "raAlgorithm": "Algoritmo RA",
+    "decAlgorithm": "Algoritmo Dec",
+    "backlashEnabled": "Attivo · {{pulse}} ms",
+    "backlashDisabled": "Disattivato",
+    "tooltip": "Impostazioni di guida principali dall'header PHD2 di questa sezione — lato pier, puntamento, gioco e algoritmi RA/Dec."
   }
 }
