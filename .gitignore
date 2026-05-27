@@ -1,6 +1,8 @@
 tmp
 TAGS
 .playwright-mcp/
+# Brainstorming visual-companion mockups (local only).
+.superpowers/
 
 # Real PHD2 guide logs used as fixtures during local development. Kept on
 # disk for manual testing but never committed — they're large and
