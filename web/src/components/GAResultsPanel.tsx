@@ -123,6 +123,9 @@ export function GAResultsPanel() {
 
   const session = log!.sessions[log!.sections[sectionIdx].idx];
 
+  // Default-collapsed (PR 2026-05-27): the run cards were pushing the
+  // chart down on every GA-bearing session. The summary line stays
+  // visible so the feature is still discoverable; one click expands it.
   return (
     <details
       // Sky-tinted accent so the GA strip stands out from the
@@ -132,7 +135,6 @@ export function GAResultsPanel() {
       // (themes only retint the slate-* surface classes), so this
       // accent stays vivid in Dark / Paper / High contrast / Night.
       className="border-y-2 border-sky-500/60 bg-sky-900/20 px-3 py-1 text-xs"
-      open
       title={t('ga.summaryTooltip')}
     >
       <summary className="cursor-pointer select-none font-semibold text-sky-300 hover:text-sky-200">
