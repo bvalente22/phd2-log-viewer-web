@@ -120,4 +120,52 @@ describe('layoutInlineEvents', () => {
     expect(out.map((o) => o.timeSec)).toEqual([0, 100]);
     expect(out.map((o) => o.row)).toEqual([0, 0]);
   });
+
+  it('reuses a freed lower row instead of cascading upward', () => {
+    // A is a wide label spanning 0–204 px on row 0. B and C cluster right
+    // after it (rows 1 and 2). D starts at x=20 — still under A (row 0 is
+    // taken) but well past B's right edge (7 px) + the 10 px gap, so it
+    // belongs back on row 1, not stacked up to a needless row 3.
+    const out = layoutInlineEvents(
+      [
+        { timeSec: 0, text: 'A'.repeat(34), isDither: false }, // 204 px
+        { timeSec: 1, text: 'B', isDither: false }, //            row 1 (under A)
+        { timeSec: 2, text: 'C', isDither: false }, //            row 2 (under A, beside B)
+        { timeSec: 20, text: 'D', isDither: false }, //           row 1 (B's row has freed)
+      ],
+      1,
+      fixedWidth,
+    );
+    expect(out.map((o) => o.row)).toEqual([0, 1, 2, 1]);
+  });
+
+  it('never overlaps two labels placed on the same row', () => {
+    const pps = 1;
+    const events = [
+      { timeSec: 0, text: 'AAAAAAAAAA', isDither: false }, // 60 px, row 0
+      { timeSec: 2, text: 'BBBB', isDither: false },
+      { timeSec: 5, text: 'CCCCCC', isDither: true },
+      { timeSec: 8, text: 'DD', isDither: false },
+      { timeSec: 65, text: 'EEEEEEEE', isDither: false },
+      { timeSec: 70, text: 'F', isDither: false },
+      { timeSec: 72, text: 'GGGG', isDither: true },
+    ];
+    const out = layoutInlineEvents(events, pps, fixedWidth);
+    const byRow = new Map<number, typeof out>();
+    for (const o of out) {
+      const arr = byRow.get(o.row) ?? [];
+      arr.push(o);
+      byRow.set(o.row, arr);
+    }
+    for (const items of byRow.values()) {
+      items.sort((a, b) => a.timeSec - b.timeSec);
+      for (let i = 1; i < items.length; i++) {
+        const prevRight = items[i - 1].timeSec * pps + fixedWidth(items[i - 1].text);
+        const curLeft = items[i].timeSec * pps;
+        // Same-row labels must never overlap: each one's left edge starts at
+        // or after the previous label's right edge on that row.
+        expect(curLeft).toBeGreaterThanOrEqual(prevRight);
+      }
+    }
+  });
 });

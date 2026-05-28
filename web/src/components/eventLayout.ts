@@ -1,12 +1,18 @@
 /**
  * Pure row-stacking layout for inline INFO event labels on the time graph.
  *
- * Ports the desktop algorithm in LogViewFrame.cpp:1814-1842, which decides
- * row placement in screen-pixel space (not data units): two labels share a
- * row only if the next label's left edge sits beyond the previous label's
- * right edge plus a 10 px breathing-room gap. When they don't, the new
- * label is bumped onto a higher row, and `prev_end` continues to track the
- * widest right-edge seen so far so subsequent labels also know to stack.
+ * Row placement happens in screen-pixel space (not data units): two labels
+ * may share a row only if the later one's left edge clears the earlier one's
+ * right edge by a 10 px breathing-room gap. This is a greedy "skyline" pack —
+ * each label takes the LOWEST row that still clears, and only opens a new row
+ * above the stack when every existing row is occupied at that x. Reusing freed
+ * lower rows keeps the stack as flat as possible.
+ *
+ * This improves on the desktop's algorithm (LogViewFrame.cpp:1814-1842), which
+ * tracks a single running `prev_end` + row counter and therefore cascades a
+ * cluster into an ever-taller staircase, never dropping back to a row that has
+ * since freed up. Per-row right-edge tracking here guarantees no two same-row
+ * labels overlap and keeps the total height minimal.
  *
  * The helper is deliberately UI-agnostic: the caller injects pxPerSecond
  * (derived from the current x-axis range and chart pixel width) and a
@@ -45,23 +51,19 @@ export function layoutInlineEvents(
   const sorted = [...events].sort((a, b) => a.timeSec - b.timeSec);
 
   const out: EventLayoutItem[] = [];
-  let prevEndPx = -Infinity;
-  let row = 0;
+  // rowRightPx[r] = right edge (px) of the last label placed on row r.
+  const rowRightPx: number[] = [];
 
   for (const ev of sorted) {
     const xPosPx = ev.timeSec * pxPerSecond;
     const widthPx = measureTextPx(ev.text);
 
-    if (xPosPx < prevEndPx + PIXEL_GAP) {
-      row += 1;
-    } else {
-      row = 0;
-    }
+    // Lowest row whose previous label clears this one's left edge by the
+    // gap; if none clears, open a fresh row above the stack.
+    let row = rowRightPx.findIndex((rightPx) => xPosPx >= rightPx + PIXEL_GAP);
+    if (row === -1) row = rowRightPx.length;
 
-    if (xPosPx + widthPx > prevEndPx) {
-      prevEndPx = xPosPx + widthPx;
-    }
-
+    rowRightPx[row] = xPosPx + widthPx;
     out.push({ ...ev, row });
   }
 
