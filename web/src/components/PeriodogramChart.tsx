@@ -535,9 +535,14 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
   //      eliminates that snap.
   // All three are in raw pixel units, so apply `k` to convert to the
   // active display unit at layout time.
-  // Both traces share the Y axis; take the max of active + other so a
-  // big counterpart isn't clipped on first paint.
-  const initialFftMax = Math.max(garun.fftAmpMax, garunOther?.fftAmpMax ?? 0) * 1.05;
+  // First paint fits the ACTIVE trace's own amplitude — NOT max(active,
+  // other) — so each tab is readable at its native scale (the Residual
+  // tab otherwise gets crushed by the Raw-RA counterpart's large
+  // long-period drift ramp). The faded counterpart may run off the top;
+  // it's just a reference. `yMaxViewPx` (manual zoom) stays null until a
+  // real Y gesture and takes precedence here, so a user's zoom still
+  // carries across tab swaps — only the default changes.
+  const initialFftMax = garun.fftAmpMax * 1.05;
   const yMaxApplied = yMaxLockPx ?? yMaxViewPx ?? initialFftMax;
   const yAxisCfg: Partial<Layout['yaxis']> = { range: [0, yMaxApplied * k], autorange: false };
   const layout: Partial<Layout> = {
