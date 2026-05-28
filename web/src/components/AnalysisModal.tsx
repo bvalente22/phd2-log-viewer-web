@@ -234,12 +234,29 @@ export function AnalysisModal() {
           to the chart context menu. */}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-amber-700 bg-amber-200 px-4 py-3 text-amber-950">
         <div className="flex flex-wrap items-center gap-3">
-          <span
-            className="rounded bg-amber-700 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-amber-50"
-            title={t('labelTooltip', { mode: modeLabel })}
-          >
-            {t('label')}: {modeLabel}
-          </span>
+          {/* ANALYSIS wordmark — a prominent area title (not a pill/button),
+              with the same chart-peak glyph as the toolbar's Analysis button
+              so the modal reads as a continuation of that action. The active
+              mode is conveyed by the highlighted tab, not this label. */}
+          <div className="flex items-center gap-2" title={t('labelTooltip', { mode: modeLabel })}>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="text-amber-800"
+            >
+              <path d="M3 17l4-6 4 3 5-9 4 7" />
+            </svg>
+            <h2 className="text-xl font-extrabold uppercase leading-none tracking-wide text-amber-950">
+              {t('label')}
+            </h2>
+          </div>
           {showAnyTabs && (
             <div className="flex items-center gap-1" role="tablist" aria-label={t('mode.tabsLabel')}>
               {showResidualTabs && (
@@ -274,9 +291,9 @@ export function AnalysisModal() {
               )}
             </div>
           )}
-          <h2 className="text-sm font-medium" title={t('titleTooltip')}>
+          <span className="text-sm text-amber-900" title={t('titleTooltip')}>
             {title}
-          </h2>
+          </span>
         </div>
         <button
           className="flex items-center gap-1 rounded bg-amber-50 px-3 py-1 text-sm text-amber-950 ring-1 ring-amber-700 hover:bg-rose-700 hover:text-white hover:ring-rose-600"
