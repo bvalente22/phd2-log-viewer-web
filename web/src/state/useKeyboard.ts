@@ -7,6 +7,7 @@ export function useKeyboardShortcuts() {
   const selected = useLogStore((s) => s.selectedSection);
   const select = useLogStore((s) => s.selectSection);
   const setVerticalMode = useViewStore((s) => s.setVerticalMode);
+  const setSidebarCollapsed = useViewStore((s) => s.setSidebarCollapsed);
   // Trace-toggle shortcuts mirror the toolbar's master buttons. Each
   // remembers which sub-traces were visible the last time the group was
   // hidden (see toggleRaAxis / toggleDecAxis / toggleStarGroup in
@@ -26,6 +27,16 @@ export function useKeyboardShortcuts() {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       if (e.isComposing) return;
+
+      // Sidebar collapse/expand — keyboard equivalent of the thin chevron
+      // bar. '<' (Shift+,) collapses, '>' (Shift+.) expands. Handled before
+      // the `!log` guard so it works on the blank start page too. Ctrl/Cmd/
+      // Alt variants are left to the browser/OS.
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (e.key === '<') { setSidebarCollapsed(true); return; }
+        if (e.key === '>') { setSidebarCollapsed(false); return; }
+      }
+
       if (!log) return;
 
       // Modifier-held variants (Ctrl/Cmd/Alt + letter) belong to the
@@ -51,5 +62,5 @@ export function useKeyboardShortcuts() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [log, selected, select, setVerticalMode, toggleRaAxis, toggleDecAxis, toggleStarGroup, toggleTrace]);
+  }, [log, selected, select, setVerticalMode, setSidebarCollapsed, toggleRaAxis, toggleDecAxis, toggleStarGroup, toggleTrace]);
 }
