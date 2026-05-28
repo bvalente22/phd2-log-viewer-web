@@ -128,15 +128,13 @@ export function AnalysisModal() {
   // Counterpart only applies to the residual ↔ raw-RA pair.
   const activePerioOther = kind === 'spike' ? null : garunOther;
 
-  // Y-lock fallback max — pulls from whichever periodogram is active.
+  // Y-lock fallback max — the ACTIVE periodogram only, so locking without
+  // a prior zoom pins the scale the user is actually looking at (matching
+  // the active-trace first-paint default in PeriodogramChart) rather than
+  // snapping to the counterpart's much larger drift-ramp scale.
   let observedMaxPx = 0;
   for (let i = 0; i < activePerioRun.fftAmplitude.length; i++) {
     if (activePerioRun.fftAmplitude[i] > observedMaxPx) observedMaxPx = activePerioRun.fftAmplitude[i];
-  }
-  if (activePerioOther) {
-    for (let i = 0; i < activePerioOther.fftAmplitude.length; i++) {
-      if (activePerioOther.fftAmplitude[i] > observedMaxPx) observedMaxPx = activePerioOther.fftAmplitude[i];
-    }
   }
 
   const startClock = formatClockUTC(garun.starts, garun.t[0] ?? 0);
