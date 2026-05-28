@@ -63,8 +63,21 @@ export function AnalysisButton() {
       onClick={onClick}
       disabled={!enabled}
       title={t('contextMenu.analysisTooltip')}
-      className="rounded bg-amber-700 px-3 py-1 text-xs font-semibold text-amber-50 ring-1 ring-amber-600 transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500 disabled:ring-slate-700"
+      className="inline-flex items-center gap-1.5 rounded bg-amber-700 px-3.5 py-1 text-xs font-bold uppercase tracking-wide text-amber-50 shadow-sm ring-1 ring-amber-300 transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500 disabled:shadow-none disabled:ring-slate-700"
     >
+      <svg
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M3 17l4-6 4 3 5-9 4 7" />
+      </svg>
       {t('contextMenu.analysis')}
     </button>
   );
