@@ -22,7 +22,7 @@ export function SectionHeader({ hdr, kind }: { hdr: string[]; kind: 'GUIDING' | 
 
   return (
     <details
-      className="group border-b border-slate-800 bg-slate-900/60 px-3 py-1 text-xs text-slate-300"
+      className="group border-b border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300"
       title={t('header.tooltip')}
     >
       <summary className="cursor-pointer select-none list-none marker:hidden">
