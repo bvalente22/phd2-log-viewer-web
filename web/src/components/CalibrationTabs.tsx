@@ -36,7 +36,9 @@ export function CalibrationTabs() {
           <div className="flex-1 overflow-hidden">
             <CalibrationPlot />
           </div>
-          <div className="border-t border-slate-800 bg-slate-900/40">
+          {/* Elevated slate-800 surface (matches the dashboard + guiding
+              stats) so the stats read as a separate panel from the plot. */}
+          <div className="border-t border-slate-700 bg-slate-800">
             <CalibrationStats />
           </div>
         </>
