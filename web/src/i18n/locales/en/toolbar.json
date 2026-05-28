@@ -23,7 +23,11 @@
     "device": "device",
     "deviceTooltip": "Filter entries by which device made the correction",
     "scale": "scale",
-    "scaleTooltip": "Y-axis units"
+    "scaleTooltip": "Y-axis units",
+    "display": "Display",
+    "displayTooltip": "Show chart display options: view, scale, Y-axis, coordinate frame, device, range slider, and export",
+    "yAxis": "y-axis",
+    "yAxisTooltip": "Y-axis auto-fit, lock, and recenter"
   },
   "rangeSlider": {
     "show": "show",

@@ -4,6 +4,7 @@ import { useLogStore } from '../state/logStore';
 import type { TraceVisibility } from '../state/viewStore';
 import type { GuideSession } from '../parser';
 import { AnalysisButton } from './AnalysisButton';
+import { ToolbarPopover } from './ToolbarPopover';
 
 // Hide the RA/Dec pulse-direction "flip" toggles in row 1 of the
 // toolbar. Set this to `true` to restore them — the underlying
@@ -58,32 +59,36 @@ const triggerDownload = (filename: string, content: string, mime: string) => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-// Per-toggle tone keyed to the trace color used on the chart so the toolbar
-// reads at a glance. Inactive state colors only the text (subtle hint),
-// active state fills the background with the trace color. Disabled stays
-// neutral. RA/Dec pulses share their axis color so the matching pair lines
-// up visually.
+// Per-toggle tone loosely keyed to the trace color used on the chart so the
+// toolbar reads at a glance, but deliberately MUTED relative to those trace
+// colors. A solid chip concentrates color far more than a thin plotted line,
+// so matching the vibrant trace saturation makes the toolbar too loud (the
+// yellow Mass chip especially). The chart traces (themes.ts) stay vibrant —
+// the divergence is intentional. See feedback_toolbar_chip_colors.md.
+// Inactive state tints only the text (subtle hint); active fills the
+// background. Disabled stays neutral. RA/Dec pulses share their axis tone so
+// the matching pair lines up visually.
 type ChipTone = 'default' | 'ra' | 'dec' | 'mass' | 'snr';
 const CHIP_TONE: Record<ChipTone, { active: string; inactive: string }> = {
   default: {
-    active:   'bg-sky-700 text-white hover:bg-sky-600',
+    active:   'bg-[#3f6b8f] text-white hover:bg-[#4a7ba3]',
     inactive: 'bg-slate-800 text-slate-400 hover:bg-slate-700',
   },
   ra: {
-    active:   'bg-sky-600 text-white hover:bg-sky-500',
-    inactive: 'bg-slate-800 text-sky-400 hover:bg-slate-700',
+    active:   'bg-[#3f6b8f] text-white hover:bg-[#4a7ba3]',
+    inactive: 'bg-slate-800 text-[#6fa3c4] hover:bg-slate-700',
   },
   dec: {
-    active:   'bg-red-600 text-white hover:bg-red-500',
-    inactive: 'bg-slate-800 text-red-400 hover:bg-slate-700',
+    active:   'bg-[#a85f5f] text-white hover:bg-[#b87070]',
+    inactive: 'bg-slate-800 text-[#d09a9a] hover:bg-slate-700',
   },
   mass: {
-    active:   'bg-yellow-500 text-slate-900 hover:bg-yellow-400',
-    inactive: 'bg-slate-800 text-yellow-400 hover:bg-slate-700',
+    active:   'bg-[#ad924a] text-slate-900 hover:bg-[#c0a458]',
+    inactive: 'bg-slate-800 text-[#c4ad6b] hover:bg-slate-700',
   },
   snr: {
-    active:   'bg-slate-100 text-slate-900 hover:bg-white',
-    inactive: 'bg-slate-800 text-slate-200 hover:bg-slate-700',
+    active:   'bg-[#d7dde5] text-slate-900 hover:bg-[#e6ebf1]',
+    inactive: 'bg-slate-800 text-[#cbd5e1] hover:bg-slate-700',
   },
 };
 
@@ -206,9 +211,9 @@ export function GraphToolbar() {
   // — together with bold + uppercase + tracking — is what makes a master
   // chip read as a group header rather than another sub-trace sibling.
   const MASTER_BORDER: Record<'ra' | 'dec' | 'star', string> = {
-    ra:   'border-sky-300',
-    dec:  'border-red-300',
-    star: 'border-amber-300',
+    ra:   'border-[#5e87a6]',
+    dec:  'border-[#c08e8e]',
+    star: 'border-[#bd9f54]',
   };
   const renderMasterGroup = (
     masterLabel: string,
@@ -248,184 +253,172 @@ export function GraphToolbar() {
     </>
   );
 
-  // Layout: data-display row first (what's plotted), display-options row
-  // second (how it's plotted / utilities), gesture hint on its own line
-  // below both. Each row is a flex-wrap container so they wrap
-  // independently on narrow viewports — they do NOT visually merge.
+  // Layout: a single always-visible primary row (the data/master groups +
+  // Events), with the right-aligned cluster holding the "Display" popover
+  // (all secondary how-it's-plotted controls) and the Analysis button. The
+  // old DISPLAY row and the gesture-hint row are gone — the hint lived in a
+  // row of its own and was the least-used line in the toolbar.
   return (
-    <div className="flex flex-col border-b border-slate-800 text-xs">
-      {/* Row 1 — DATA: what data is plotted on the chart. */}
-      <div className="flex w-full flex-wrap items-center gap-2 px-3 py-1">
-        {renderMasterGroup('RA',  'ra',  raAnyOn,  toggleRaAxis,  t('groups.raTooltip'),  raItems)}
-        {/* Pulse-direction "flip" toggles are temporarily hidden — flip
-            the SHOW_FLIP_TOGGLES const back to true to restore. The
-            store fields (flipRaPulses / flipDecPulses) and the setters
-            stay live; nothing about the flip semantics changes. */}
-        {SHOW_FLIP_TOGGLES && (
+    <div className="flex w-full flex-wrap items-center gap-2 border-b border-slate-800 px-3 py-1 text-xs">
+      {renderMasterGroup('RA', 'ra', raAnyOn, toggleRaAxis, t('groups.raTooltip'), raItems)}
+      {/* Pulse-direction "flip" toggles are temporarily hidden — flip the
+          SHOW_FLIP_TOGGLES const back to true to restore. Store fields and
+          setters stay live; nothing about the flip semantics changes. */}
+      {SHOW_FLIP_TOGGLES && (
+        <ToggleChip
+          label={t('traces.flipRaPulses')}
+          active={flipRaPulses}
+          onClick={() => setFlipRaPulses(!flipRaPulses)}
+          disabled={graphMode === 'SCATTER' || !traces.raPulses}
+          title={
+            graphMode === 'SCATTER'
+              ? t('traces.togglesScatterDisabled')
+              : !traces.raPulses
+              ? t('traces.flipPulsesDisabled')
+              : t('traces.flipRaPulsesTooltip')
+          }
+          tone="ra"
+        />
+      )}
+      {renderMasterGroup('Dec', 'dec', decAnyOn, toggleDecAxis, t('groups.decTooltip'), decItems)}
+      {SHOW_FLIP_TOGGLES && (
+        <ToggleChip
+          label={t('traces.flipDecPulses')}
+          active={flipDecPulses}
+          onClick={() => setFlipDecPulses(!flipDecPulses)}
+          disabled={graphMode === 'SCATTER' || !traces.decPulses}
+          title={
+            graphMode === 'SCATTER'
+              ? t('traces.togglesScatterDisabled')
+              : !traces.decPulses
+              ? t('traces.flipPulsesDisabled')
+              : t('traces.flipDecPulsesTooltip')
+          }
+          tone="dec"
+        />
+      )}
+      {renderMasterGroup(t('groups.guideStar'), 'star', starAnyOn, toggleStarGroup, t('groups.guideStarTooltip'), starItems)}
+      {renderTraceGroup(t('groups.events'), t('groups.eventsTooltip'), eventItems)}
+
+      {/* Right cluster: secondary display controls collapse into the
+          Display popover; Analysis is the prominent primary action. */}
+      <div className="ms-auto flex items-center gap-2">
+        <ToolbarPopover
+          label={<>{'⚙'}&nbsp;{t('groups.display')}&nbsp;{'▾'}</>}
+          title={t('groups.displayTooltip')}
+        >
+          <span className="me-1 text-slate-500" title={t('groups.viewTooltip')}>{t('groups.view')}:</span>
           <ToggleChip
-            label={t('traces.flipRaPulses')}
-            active={flipRaPulses}
-            onClick={() => setFlipRaPulses(!flipRaPulses)}
-            disabled={graphMode === 'SCATTER' || !traces.raPulses}
-            title={
-              graphMode === 'SCATTER'
-                ? t('traces.togglesScatterDisabled')
-                : !traces.raPulses
-                ? t('traces.flipPulsesDisabled')
-                : t('traces.flipRaPulsesTooltip')
-            }
-            tone="ra"
+            label={t('view.time')}
+            active={graphMode === 'TIME'}
+            onClick={() => setGraphMode('TIME')}
+            title={t('view.timeTooltip')}
           />
-        )}
-        {renderMasterGroup('Dec', 'dec', decAnyOn, toggleDecAxis, t('groups.decTooltip'), decItems)}
-        {SHOW_FLIP_TOGGLES && (
           <ToggleChip
-            label={t('traces.flipDecPulses')}
-            active={flipDecPulses}
-            onClick={() => setFlipDecPulses(!flipDecPulses)}
-            disabled={graphMode === 'SCATTER' || !traces.decPulses}
-            title={
-              graphMode === 'SCATTER'
-                ? t('traces.togglesScatterDisabled')
-                : !traces.decPulses
-                ? t('traces.flipPulsesDisabled')
-                : t('traces.flipDecPulsesTooltip')
-            }
-            tone="dec"
+            label={t('view.scatter')}
+            active={graphMode === 'SCATTER'}
+            onClick={() => setGraphMode('SCATTER')}
+            title={t('view.scatterTooltip')}
           />
-        )}
-        {renderMasterGroup(t('groups.guideStar'), 'star', starAnyOn, toggleStarGroup, t('groups.guideStarTooltip'), starItems)}
-        {renderTraceGroup(t('groups.events'),    t('groups.eventsTooltip'),    eventItems)}
-        <span className="ms-3 me-1 text-slate-500" title={t('groups.coordTooltip')}>{t('groups.coord')}:</span>
-        <ToggleChip
-          label="RA/Dec"
-          active={coordMode === 'RA_DEC'}
-          onClick={() => setCoordMode('RA_DEC')}
-          disabled={graphMode === 'SCATTER'}
-          title={t('coord.raDecTooltip')}
-        />
-        <ToggleChip
-          label="dx/dy"
-          active={coordMode === 'DX_DY'}
-          onClick={() => setCoordMode('DX_DY')}
-          disabled={graphMode === 'SCATTER'}
-          title={t('coord.dxDyTooltip')}
-        />
-        <span className="ms-3 me-1 text-slate-500" title={t('groups.deviceTooltip')}>{t('groups.device')}:</span>
-        <ToggleChip
-          label="Mount"
-          active={device === 'MOUNT'}
-          onClick={() => setDevice('MOUNT')}
-          disabled={!hasAo}
-          title={hasAo ? t('device.mountTooltip') : t('device.noAo')}
-        />
-        <ToggleChip
-          label="AO"
-          active={device === 'AO'}
-          onClick={() => setDevice('AO')}
-          disabled={!hasAo}
-          title={hasAo ? t('device.aoTooltip') : t('device.noAoShort')}
-        />
-      </div>
-      {/* Row 2 — DISPLAY: chart layout, scale, range slider, exports, hints. */}
-      <div className="flex w-full flex-wrap items-center gap-2 px-3 py-1">
-        <span className="me-1 text-slate-500" title={t('groups.viewTooltip')}>{t('groups.view')}:</span>
-        <ToggleChip
-          label={t('view.time')}
-          active={graphMode === 'TIME'}
-          onClick={() => setGraphMode('TIME')}
-          title={t('view.timeTooltip')}
-        />
-        <ToggleChip
-          label={t('view.scatter')}
-          active={graphMode === 'SCATTER'}
-          onClick={() => setGraphMode('SCATTER')}
-          title={t('view.scatterTooltip')}
-        />
-        <span className="ms-3 me-1 text-slate-500" title={t('groups.scaleTooltip')}>{t('groups.scale')}:</span>
-        <ToggleChip
-          label={t('scale.arcsec')}
-          active={scaleMode === 'ARCSEC'}
-          onClick={() => setScaleMode('ARCSEC')}
-          title={t('scale.arcsecTooltip')}
-        />
-        <ToggleChip
-          label={t('scale.pixels')}
-          active={scaleMode === 'PIXELS'}
-          onClick={() => setScaleMode('PIXELS')}
-          title={t('scale.pixelsTooltip')}
-        />
-        <ToggleChip
-          label={t('scale.autoY')}
-          active={autoScaleY}
-          onClick={() => setAutoScaleY(!autoScaleY)}
-          title={t('scale.autoYTooltip')}
-        />
-        <ToggleChip
-          label={scaleLocked ? t('scale.yLocked') : t('scale.y')}
-          active={scaleLocked}
-          onClick={() => setScaleLocked(!scaleLocked)}
-          title={t('scale.yLockedTooltip')}
-        />
-        <button
-          className="ms-1 rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700"
-          onClick={() => window.dispatchEvent(new CustomEvent('phd-recenter-y'))}
-          title={t('scale.recenterYTooltip')}
-        >
-          {t('scale.recenterY')}
-        </button>
-        <span className="ms-3 me-1 text-slate-500" title={t('groups.rangeSliderTooltip')}>{t('groups.rangeSlider')}:</span>
-        <ToggleChip
-          label={t('rangeSlider.show')}
-          active={showRangeSlider}
-          onClick={() => setShowRangeSlider(!showRangeSlider)}
-          title={t('rangeSlider.showTooltip')}
-        />
-        <span className="ms-3 me-1 text-slate-500" title={t('groups.exportTooltip')}>{t('groups.export')}:</span>
-        <button
-          className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-40"
-          disabled={!session}
-          onClick={() => {
-            const stem = meta?.name?.replace(/\.[^.]+$/, '') ?? 'log';
-            const fname = `phd2-${stem}-${session?.date ?? ''}`.replace(/[^a-zA-Z0-9-_]+/g, '-');
-            window.dispatchEvent(new CustomEvent('phd-export-png', { detail: { filename: fname } }));
-          }}
-          title={t('export.pngTooltip')}
-        >
-          {t('export.png')}
-        </button>
-        <button
-          className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-40"
-          disabled={!session}
-          onClick={() => {
-            if (!session) return;
-            const csv = sessionToCsv(session, mask);
-            const stem = meta?.name?.replace(/\.[^.]+$/, '') ?? 'log';
-            const dateTag = session.date.replace(/[^a-zA-Z0-9]+/g, '-');
-            triggerDownload(`${stem}-${dateTag}.csv`, csv, 'text/csv;charset=utf-8');
-          }}
-          title={t('export.csvTooltip')}
-        >
-          {t('export.csv')}
-        </button>
-        {/* Analysis — the section's primary action. Right-aligned (ms-auto)
-            so it sits apart from the display chips as a prominent button,
-            replacing the old lonely bottom-left chart overlay. Renders null
-            for non-guiding sections (the toolbar is guiding-only anyway). */}
-        <div className="ms-auto">
-          <AnalysisButton />
-        </div>
-      </div>
-      {/* Row 3 — gesture hint, right-aligned. The excluded-frame
-          counter that used to live here was redundant with the
-          "Excluded N" stat in StatsGrid below the chart, and added
-          visual noise when guiding sessions had no exclusions
-          (always 0 / total). Removing it keeps the strip a single
-          informational hint. */}
-      <div className="flex w-full flex-wrap items-center justify-end gap-3 px-3 pb-1 text-slate-400">
-        <span className="text-slate-600">
-          {t('gestureHint')}
-        </span>
+          <span className="ms-3 me-1 text-slate-500" title={t('groups.scaleTooltip')}>{t('groups.scale')}:</span>
+          <ToggleChip
+            label={t('scale.arcsec')}
+            active={scaleMode === 'ARCSEC'}
+            onClick={() => setScaleMode('ARCSEC')}
+            title={t('scale.arcsecTooltip')}
+          />
+          <ToggleChip
+            label={t('scale.pixels')}
+            active={scaleMode === 'PIXELS'}
+            onClick={() => setScaleMode('PIXELS')}
+            title={t('scale.pixelsTooltip')}
+          />
+          <span className="ms-3 me-1 text-slate-500" title={t('groups.yAxisTooltip')}>{t('groups.yAxis')}:</span>
+          <ToggleChip
+            label={t('scale.autoY')}
+            active={autoScaleY}
+            onClick={() => setAutoScaleY(!autoScaleY)}
+            title={t('scale.autoYTooltip')}
+          />
+          <ToggleChip
+            label={scaleLocked ? t('scale.yLocked') : t('scale.y')}
+            active={scaleLocked}
+            onClick={() => setScaleLocked(!scaleLocked)}
+            title={t('scale.yLockedTooltip')}
+          />
+          <button
+            className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700"
+            onClick={() => window.dispatchEvent(new CustomEvent('phd-recenter-y'))}
+            title={t('scale.recenterYTooltip')}
+          >
+            {t('scale.recenterY')}
+          </button>
+          <span className="ms-3 me-1 text-slate-500" title={t('groups.coordTooltip')}>{t('groups.coord')}:</span>
+          <ToggleChip
+            label="RA/Dec"
+            active={coordMode === 'RA_DEC'}
+            onClick={() => setCoordMode('RA_DEC')}
+            disabled={graphMode === 'SCATTER'}
+            title={t('coord.raDecTooltip')}
+          />
+          <ToggleChip
+            label="dx/dy"
+            active={coordMode === 'DX_DY'}
+            onClick={() => setCoordMode('DX_DY')}
+            disabled={graphMode === 'SCATTER'}
+            title={t('coord.dxDyTooltip')}
+          />
+          <span className="ms-3 me-1 text-slate-500" title={t('groups.deviceTooltip')}>{t('groups.device')}:</span>
+          <ToggleChip
+            label="Mount"
+            active={device === 'MOUNT'}
+            onClick={() => setDevice('MOUNT')}
+            disabled={!hasAo}
+            title={hasAo ? t('device.mountTooltip') : t('device.noAo')}
+          />
+          <ToggleChip
+            label="AO"
+            active={device === 'AO'}
+            onClick={() => setDevice('AO')}
+            disabled={!hasAo}
+            title={hasAo ? t('device.aoTooltip') : t('device.noAoShort')}
+          />
+          <span className="ms-3 me-1 text-slate-500" title={t('groups.rangeSliderTooltip')}>{t('groups.rangeSlider')}:</span>
+          <ToggleChip
+            label={t('rangeSlider.show')}
+            active={showRangeSlider}
+            onClick={() => setShowRangeSlider(!showRangeSlider)}
+            title={t('rangeSlider.showTooltip')}
+          />
+          <span className="ms-3 me-1 text-slate-500" title={t('groups.exportTooltip')}>{t('groups.export')}:</span>
+          <button
+            className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-40"
+            disabled={!session}
+            onClick={() => {
+              const stem = meta?.name?.replace(/\.[^.]+$/, '') ?? 'log';
+              const fname = `phd2-${stem}-${session?.date ?? ''}`.replace(/[^a-zA-Z0-9-_]+/g, '-');
+              window.dispatchEvent(new CustomEvent('phd-export-png', { detail: { filename: fname } }));
+            }}
+            title={t('export.pngTooltip')}
+          >
+            {t('export.png')}
+          </button>
+          <button
+            className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-700 disabled:opacity-40"
+            disabled={!session}
+            onClick={() => {
+              if (!session) return;
+              const csv = sessionToCsv(session, mask);
+              const stem = meta?.name?.replace(/\.[^.]+$/, '') ?? 'log';
+              const dateTag = session.date.replace(/[^a-zA-Z0-9]+/g, '-');
+              triggerDownload(`${stem}-${dateTag}.csv`, csv, 'text/csv;charset=utf-8');
+            }}
+            title={t('export.csvTooltip')}
+          >
+            {t('export.csv')}
+          </button>
+        </ToolbarPopover>
+        <AnalysisButton />
       </div>
     </div>
   );
