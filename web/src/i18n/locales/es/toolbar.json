@@ -23,7 +23,11 @@
     "device": "dispositivo",
     "deviceTooltip": "Filtra entradas según el dispositivo que aplicó la corrección",
     "scale": "escala",
-    "scaleTooltip": "Unidades del eje Y"
+    "scaleTooltip": "Unidades del eje Y",
+    "display": "Visualización",
+    "displayTooltip": "Mostrar opciones de visualización del gráfico: vista, escala, eje Y, sistema de coordenadas, dispositivo, barra de rango y exportación",
+    "yAxis": "eje Y",
+    "yAxisTooltip": "Ajuste automático, bloqueo y recentrado del eje Y"
   },
   "rangeSlider": {
     "show": "mostrar",

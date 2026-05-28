@@ -23,7 +23,11 @@
     "device": "dispositivo",
     "deviceTooltip": "Filtra le voci in base al dispositivo che ha applicato la correzione",
     "scale": "scala",
-    "scaleTooltip": "Unità dell'asse Y"
+    "scaleTooltip": "Unità dell'asse Y",
+    "display": "Visualizzazione",
+    "displayTooltip": "Mostra le opzioni di visualizzazione del grafico: vista, scala, asse Y, sistema di coordinate, dispositivo, barra dell'intervallo ed esportazione",
+    "yAxis": "asse Y",
+    "yAxisTooltip": "Adattamento automatico, blocco e ricentratura dell'asse Y"
   },
   "rangeSlider": {
     "show": "mostra",

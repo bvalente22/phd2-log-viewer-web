@@ -23,7 +23,11 @@
     "device": "设备",
     "deviceTooltip": "按执行修正的设备过滤条目",
     "scale": "刻度",
-    "scaleTooltip": "Y 轴单位"
+    "scaleTooltip": "Y 轴单位",
+    "display": "显示",
+    "displayTooltip": "显示图表显示选项:视图、刻度、Y 轴、坐标系、设备、范围滑块和导出",
+    "yAxis": "Y 轴",
+    "yAxisTooltip": "Y 轴自动适配、锁定和居中"
   },
   "rangeSlider": {
     "show": "显示",
