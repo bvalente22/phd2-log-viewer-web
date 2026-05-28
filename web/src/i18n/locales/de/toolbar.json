@@ -23,7 +23,11 @@
     "device": "Gerät",
     "deviceTooltip": "Einträge nach dem Gerät filtern, das die Korrektur ausgeführt hat",
     "scale": "Skala",
-    "scaleTooltip": "Y-Achsen-Einheit"
+    "scaleTooltip": "Y-Achsen-Einheit",
+    "display": "Anzeige",
+    "displayTooltip": "Diagramm-Anzeigeoptionen einblenden: Ansicht, Skala, Y-Achse, Koordinatensystem, Gerät, Bereichsregler und Export",
+    "yAxis": "Y-Achse",
+    "yAxisTooltip": "Y-Achse automatisch anpassen, sperren und zentrieren"
   },
   "rangeSlider": {
     "show": "anzeigen",

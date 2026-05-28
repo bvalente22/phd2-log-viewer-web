@@ -23,7 +23,11 @@
     "device": "appareil",
     "deviceTooltip": "Filtrer les entrées selon l'appareil ayant appliqué la correction",
     "scale": "échelle",
-    "scaleTooltip": "Unités de l'axe Y"
+    "scaleTooltip": "Unités de l'axe Y",
+    "display": "Affichage",
+    "displayTooltip": "Afficher les options d'affichage du graphique : vue, échelle, axe Y, repère de coordonnées, périphérique, curseur de plage et export",
+    "yAxis": "axe Y",
+    "yAxisTooltip": "Ajustement automatique, verrouillage et recentrage de l'axe Y"
   },
   "rangeSlider": {
     "show": "afficher",
