@@ -72,9 +72,6 @@ export function GuidingDashboard() {
       style={{ borderLeft: '3px solid var(--dash-accent)' }}
       title={t('dashboard.tooltip')}
     >
-      <span className="dash-accent w-full bg-slate-800 px-2.5 pt-1 text-[9px] font-bold uppercase tracking-wider">
-        {t('dashboard.sectionLabel')}
-      </span>
       {info.pierSide && <Tile caption={t('dashboard.pierSide')} value={info.pierSide} />}
       {info.hourAngle && <Tile caption={t('dashboard.hourAngle')} value={`${info.hourAngle} h`} />}
       {info.altitude && <Tile caption={t('dashboard.altitude')} value={`${info.altitude}°`} />}
