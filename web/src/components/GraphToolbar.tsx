@@ -3,6 +3,7 @@ import { useViewStore } from '../state/viewStore';
 import { useLogStore } from '../state/logStore';
 import type { TraceVisibility } from '../state/viewStore';
 import type { GuideSession } from '../parser';
+import { AnalysisButton } from './AnalysisButton';
 
 // Hide the RA/Dec pulse-direction "flip" toggles in row 1 of the
 // toolbar. Set this to `true` to restore them — the underlying
@@ -407,6 +408,13 @@ export function GraphToolbar() {
         >
           {t('export.csv')}
         </button>
+        {/* Analysis — the section's primary action. Right-aligned (ms-auto)
+            so it sits apart from the display chips as a prominent button,
+            replacing the old lonely bottom-left chart overlay. Renders null
+            for non-guiding sections (the toolbar is guiding-only anyway). */}
+        <div className="ms-auto">
+          <AnalysisButton />
+        </div>
       </div>
       {/* Row 3 — gesture hint, right-aligned. The excluded-frame
           counter that used to live here was redundant with the
