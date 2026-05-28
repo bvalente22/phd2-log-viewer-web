@@ -83,6 +83,9 @@ export function SectionList() {
               </span>
               <span className="flex-1 min-w-0">
                 <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                  {/* 1-based ordinal across the combined cal+guide list,
+                      matching the "(N of M)" position shown in SectionSummary. */}
+                  <span className="font-normal tabular-nums text-slate-500">{i + 1})</span>
                   <span className="break-words font-normal">{label}</span>
                   {hasGa && (
                     <span

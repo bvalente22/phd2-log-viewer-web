@@ -161,10 +161,10 @@ export function ViewerPage() {
         {isGuiding && (
           <>
             <GraphToolbar />
-            {sectionHdr && <SectionHeader hdr={sectionHdr} kind="GUIDING" />}
-            {/* Always-visible identification strip — sits below the
-                collapsible SectionHeader as a sibling so it stays put
-                whether the header is twirled open or closed. */}
+            {/* Always-visible identification strip — filename + active
+                section. Sits ABOVE the collapsible SectionHeader so the
+                "what am I looking at" line is the first thing under the
+                toolbar, whether or not the header is twirled open. */}
             {sec && log && (
               <SectionSummary
                 filename={meta?.name}
@@ -174,6 +174,7 @@ export function ViewerPage() {
                 totalSections={log.sections.length}
               />
             )}
+            {sectionHdr && <SectionHeader hdr={sectionHdr} kind="GUIDING" />}
             <GAResultsPanel />
             {/* Header dashboard hugs the diagram — see
                 docs/superpowers/specs/2026-05-27-guiding-dashboard-design.md */}
@@ -199,7 +200,8 @@ export function ViewerPage() {
         )}
         {isCalibration && (
           <>
-            {sectionHdr && <SectionHeader hdr={sectionHdr} kind="CALIBRATION" />}
+            {/* Filename + active-section strip above the collapsible header,
+                mirroring the guiding layout. */}
             {sec && log && (
               <SectionSummary
                 filename={meta?.name}
@@ -209,6 +211,7 @@ export function ViewerPage() {
                 totalSections={log.sections.length}
               />
             )}
+            {sectionHdr && <SectionHeader hdr={sectionHdr} kind="CALIBRATION" />}
             {/* Two-tab view: original Calibration plot+stats on tab 1,
                 Backlash Analysis on tab 2 (loads a paired DEBUG log). */}
             <CalibrationTabs />

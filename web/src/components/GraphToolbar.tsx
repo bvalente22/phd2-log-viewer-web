@@ -248,8 +248,8 @@ export function GraphToolbar() {
   );
 
   // Layout: data-display row first (what's plotted), display-options row
-  // second (how it's plotted / utilities), legend on its own line below
-  // both, left-justified. Each row is a flex-wrap container so they wrap
+  // second (how it's plotted / utilities), gesture hint on its own line
+  // below both. Each row is a flex-wrap container so they wrap
   // independently on narrow viewports — they do NOT visually merge.
   return (
     <div className="flex flex-col border-b border-slate-800 text-xs">
@@ -417,27 +417,6 @@ export function GraphToolbar() {
       <div className="flex w-full flex-wrap items-center justify-end gap-3 px-3 pb-1 text-slate-400">
         <span className="text-slate-600">
           {t('gestureHint')}
-        </span>
-      </div>
-      {/* Row 4 — LEGEND: chart-overlay key. `display:block` guarantees
-          it starts a new physical line regardless of how the rows above
-          wrap on narrow viewports. The hairline top-border makes the
-          separation obvious even when content above is short. */}
-      <div
-        className="block border-t border-slate-800/70 px-3 py-1 text-slate-500"
-        title={t('legend.tooltip')}
-      >
-        <span className="inline-flex items-center gap-1 align-middle">
-          <span className="inline-block h-3 w-[2px] bg-purple-400/70" />
-          {t('legend.dither')}
-        </span>
-        <span className="ms-3 inline-flex items-center gap-1 align-middle">
-          <span className="inline-block h-3 w-[2px] bg-yellow-400/70" />
-          {t('legend.info')}
-        </span>
-        <span className="ms-3 inline-flex items-center gap-1 align-middle">
-          <span className="inline-block h-2 w-3 border border-orange-400/70 bg-orange-400/20" />
-          {t('legend.excluded')}
         </span>
       </div>
     </div>
