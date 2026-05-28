@@ -10,7 +10,6 @@ import { SectionHeader } from '../components/SectionHeader';
 import { SectionSummary } from '../components/SectionSummary';
 import { GraphToolbar } from '../components/GraphToolbar';
 import { GraphContextMenu } from '../components/ContextMenu';
-import { AnalysisButton } from '../components/AnalysisButton';
 import { RecentsDropdown } from '../components/RecentsDropdown';
 import { LogsFolderPane } from '../components/LogsFolderPane';
 import { LanguagePicker } from '../components/LanguagePicker';
@@ -60,10 +59,10 @@ export function ViewerPage() {
     : null;
 
   // Grid template flips between expanded sidebar (260px) and a thin
-  // 32px rail that holds only the expand toggle. Keeping the rail
+  // 16px rail that holds only the expand chevron. Keeping the rail
   // visible (rather than fully hiding the sidebar) guarantees the
   // user can always see how to bring the sidebar back.
-  const sidebarWidth = sidebarCollapsed ? '32px' : '260px';
+  const sidebarWidth = sidebarCollapsed ? '16px' : '260px';
 
   return (
     <>
@@ -101,57 +100,48 @@ export function ViewerPage() {
           Collapses to a 32px rail whose only content is the expand toggle —
           the rail stays visible so the user always knows where to click to
           bring the sidebar back. */}
-      <aside className="relative flex flex-col overflow-hidden border-e border-slate-800">
+      <aside className="relative flex overflow-hidden border-e border-slate-800">
         {sidebarCollapsed ? (
-          // Collapsed: the entire rail is the expand button, painted in
-          // a warm amber that complements the cool slate/blue chrome so
-          // the call-to-action is impossible to miss. Filling the full
-          // height (vs. a small icon) maximizes the click target; the
-          // chevron points right toward where the sidebar reappears.
+          // Collapsed: the entire 16px rail is the expand button. Subtle
+          // monochrome slate (not a loud accent) so it recedes into the
+          // chrome; the chevron points right toward where the sidebar
+          // reappears, and brightens on hover to confirm it's clickable.
           <button
             type="button"
             onClick={() => setSidebarCollapsed(false)}
             title={t('sidebar.expandTooltip')}
             aria-label={t('sidebar.expand')}
-            className="group flex h-full w-full flex-col items-center justify-center gap-3 bg-amber-500 text-slate-900 hover:bg-amber-400"
+            className="group flex h-full w-full items-center justify-center bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
           >
-            <span className="text-xl font-semibold leading-none transition-transform group-hover:translate-x-0.5">›</span>
-            {/* Vertical "Expand" hint reinforces the affordance. CSS
-                writing-mode rotates the text rather than relying on a
-                separate icon font. */}
-            <span
-              className="text-[10px] font-semibold uppercase tracking-widest"
-              style={{ writingMode: 'vertical-rl' }}
-            >
-              {t('sidebar.expand')}
-            </span>
+            <span className="text-sm font-semibold leading-none transition-transform group-hover:translate-x-0.5">›</span>
           </button>
         ) : (
           <>
-            {/* Top strip: collapse button on the right edge in the same
-                amber accent as the collapsed rail, so the user reads the
-                two states as the same control. The chevron points left
-                toward where the sidebar will tuck away. */}
-            <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/40 px-2 py-1">
-              <span className="text-[10px] uppercase tracking-widest text-slate-500">
-                {t('sidebar.title')}
-              </span>
-              <button
-                type="button"
-                onClick={() => setSidebarCollapsed(true)}
-                title={t('sidebar.collapseTooltip')}
-                aria-label={t('sidebar.collapse')}
-                className="group flex items-center gap-1 rounded bg-amber-500 px-2 py-0.5 text-xs font-semibold text-slate-900 hover:bg-amber-400"
-              >
-                <span className="leading-none transition-transform group-hover:-translate-x-0.5">‹</span>
-                <span>{t('sidebar.hide')}</span>
-              </button>
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+              <div className="flex items-center border-b border-slate-800 bg-slate-900/40 px-2 py-1">
+                <span className="text-[10px] uppercase tracking-widest text-slate-500">
+                  {t('sidebar.title')}
+                </span>
+              </div>
+              <LogsFolderPane />
+              <RecentsDropdown />
+              <div className="flex-1 overflow-y-auto">
+                <SectionList />
+              </div>
             </div>
-            <LogsFolderPane />
-            <RecentsDropdown />
-            <div className="flex-1 overflow-y-auto">
-              <SectionList />
-            </div>
+            {/* Thin hide bar on the sidebar's right edge — the mirror image
+                of the collapsed expand rail (16px, chevron-only, subtle
+                slate). The chevron points left toward where the sidebar
+                tucks away. */}
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed(true)}
+              title={t('sidebar.collapseTooltip')}
+              aria-label={t('sidebar.collapse')}
+              className="group flex w-4 flex-shrink-0 items-center justify-center border-s border-slate-800 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+            >
+              <span className="text-sm font-semibold leading-none transition-transform group-hover:-translate-x-0.5">‹</span>
+            </button>
           </>
         )}
       </aside>
@@ -182,18 +172,12 @@ export function ViewerPage() {
             <GraphContextMenu>
               <div className="relative flex-1 overflow-hidden">
                 {graphMode === 'TIME' ? <GuideGraph /> : <ScatterView />}
-                {/* Analysis button overlays the lower-left of the
-                    chart area — functional equivalent of the
-                    right-click "Analysis" menu item. Positioned with a
-                    margin so it's clear of the chart's axis labels. */}
-                <div className="pointer-events-none absolute bottom-3 left-3 z-10">
-                  <div className="pointer-events-auto">
-                    <AnalysisButton />
-                  </div>
-                </div>
               </div>
             </GraphContextMenu>
-            <div className="border-t border-slate-800 bg-slate-900/40">
+            {/* Elevated slate-800 surface (matches the dashboard) so the
+                stats read as a separate panel, not a continuation of the
+                chart background. */}
+            <div className="border-t border-slate-700 bg-slate-800">
               <StatsGrid />
             </div>
           </>
