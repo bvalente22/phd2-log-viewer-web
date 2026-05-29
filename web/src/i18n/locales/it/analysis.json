@@ -204,7 +204,7 @@
   "topGraphShown": "visibile",
   "topGraphHidden": "nascosto",
   "topGraphTooltip": "Mostra o nascondi il grafico superiore (deriva / picco). Quando è nascosto, il periodogramma si espande per riempire lo spazio.",
-  "gestureHint": "rotella = zoom X · trascina = pan X + zoom Y · hover = cursore verticale + lettura",
+  "gestureHint": "rotella = zoom X · trascina = pan X + zoom Y · trascina dx = pan Y + zoom X · hover = cursore verticale + lettura",
   "topPeaks": "Top 3 picchi",
   "maxPeriod": "periodo max",
   "maxPeriodSuffix": "s",
