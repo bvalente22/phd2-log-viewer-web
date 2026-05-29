@@ -204,7 +204,7 @@
   "topGraphShown": "sichtbar",
   "topGraphHidden": "ausgeblendet",
   "topGraphTooltip": "Oberes Diagramm (Drift / Spike) ein- oder ausblenden. Ausgeblendet füllt das Periodogramm den Platz.",
-  "gestureHint": "Rad = X-Zoom · Ziehen = X-Pan + Y-Zoom · Hover = vertikaler Cursor + Anzeige",
+  "gestureHint": "Rad = X-Zoom · Ziehen = X-Pan + Y-Zoom · Rechts-Ziehen = Y-Pan + X-Zoom · Hover = vertikaler Cursor + Anzeige",
   "topPeaks": "Top 3 Peaks",
   "maxPeriod": "Max-Periode",
   "maxPeriodSuffix": "s",
