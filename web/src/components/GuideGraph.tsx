@@ -63,7 +63,9 @@ interface PlotDiv extends HTMLDivElement {
 }
 
 interface PlotlyHoverEvent {
-  points?: Array<{ x?: number }>;
+  // Plotly reports the hovered x as a number on a linear axis but as an
+  // ISO date string on the clock-time `type:'date'` axis — hence the union.
+  points?: Array<{ x?: number | string }>;
 }
 
 /**
@@ -231,7 +233,12 @@ function buildTraces(
       x: t, y: visibleEntries.map((e) => valuePair(e, coordMode).x * k),
       type: 'scattergl', mode: 'lines',
       name: xName, line: { color: RA_COLOR, width: 1 },
-      hovertemplate: `${xName}: %{y:.2f}<extra></extra>`,
+      // Hover values live in the readout strip below the chart, not in a
+      // label on the cursor line. `hoverinfo:'none'` keeps the vertical
+      // spike + the plotly_hover event (which fills the strip) but hides
+      // the per-trace label box. (Info-event markers below keep their own
+      // hover.)
+      hoverinfo: 'none',
     } as Data);
   }
   if (traces.dec) {
@@ -239,7 +246,7 @@ function buildTraces(
       x: t, y: visibleEntries.map((e) => valuePair(e, coordMode).y * k),
       type: 'scattergl', mode: 'lines',
       name: yName, line: { color: DEC_COLOR, width: 1 },
-      hovertemplate: `${yName}: %{y:.2f}<extra></extra>`,
+      hoverinfo: 'none',
     } as Data);
   }
   if (traces.raPulses) {
@@ -271,7 +278,7 @@ function buildTraces(
       line: { color: PULSE_RA, width: 2 },
       opacity: 0.55,
       connectgaps: false,
-      hovertemplate: 'RA pulse: %{customdata} ms<extra></extra>',
+      hoverinfo: 'none',
     } as Data);
   }
   if (traces.decPulses) {
@@ -302,7 +309,7 @@ function buildTraces(
       line: { color: PULSE_DEC, width: 2 },
       opacity: 0.55,
       connectgaps: false,
-      hovertemplate: 'Dec pulse: %{customdata} ms<extra></extra>',
+      hoverinfo: 'none',
     } as Data);
   }
   if (traces.mass) {
@@ -313,7 +320,7 @@ function buildTraces(
       type: 'scattergl', mode: 'lines',
       yaxis: 'y2',
       name: 'Mass', line: { color: massColor, width: 1 },
-      hovertemplate: 'Mass: %{customdata}<extra></extra>',
+      hoverinfo: 'none',
     } as Data);
   }
   if (traces.snr) {
@@ -324,7 +331,7 @@ function buildTraces(
       type: 'scattergl', mode: 'lines',
       yaxis: 'y2',
       name: 'SNR', line: { color: snrColor, width: 1 },
-      hovertemplate: 'SNR: %{customdata:.2f}<extra></extra>',
+      hoverinfo: 'none',
     } as Data);
   }
 
@@ -937,8 +944,14 @@ export function GuideGraph() {
   const pendingHoverRef = useRef<string | null>(null);
   const onHover = useCallback((ev: PlotlyHoverEvent) => {
     if (!data) return;
-    const x = ev.points?.[0]?.x;
-    if (typeof x !== 'number') return;
+    const raw = ev.points?.[0]?.x;
+    // Coerce to ms: Plotly gives a number on a linear axis but an ISO date
+    // string on the clock-time date axis (same quirk handled by
+    // useChartGestures' toMs). Without this, the readout silently stayed
+    // blank on every timestamped log.
+    const x =
+      typeof raw === 'number' ? raw : typeof raw === 'string' ? Date.parse(raw) : NaN;
+    if (!Number.isFinite(x)) return;
     // In clock-time mode the chart X is ms-since-epoch; `findClosestEntry`
     // bisects against `e.dt` (elapsed seconds) so we convert back first.
     const entry = findClosestEntry(data.session.entries, data.fromX(x));
@@ -1145,12 +1158,12 @@ export function GuideGraph() {
       barmode: 'overlay',
       // `hovermode:'x'` is required for `xaxis.showspikes` to render
       // the vertical cursor line on hover — without it the spike is
-      // suppressed even though the flag is set. The per-row info
-      // readout below the chart already shows the active frame, so
-      // the multi-trace hover tooltip Plotly enables on 'x' mode is
-      // suppressed via individual trace `hoverinfo:'none'` / blank
-      // `hovertemplate` would be invasive here; instead we keep the
-      // tooltip behavior unchanged and rely on the readout for detail.
+      // suppressed even though the flag is set. The data traces set
+      // `hoverinfo:'none'` so no per-trace value box appears on the
+      // line; the readout strip below the chart shows the full frame
+      // detail instead. plotly_hover still fires (only 'skip' disables
+      // it), which is what fills the strip. Info-event markers keep
+      // their own hovertemplate so hovering one still shows its text.
       hovermode: 'x',
       // uirevision keeps Plotly's UI-side caches stable across our
       // re-renders that don't change the data shape — anything keyed to
@@ -1164,26 +1177,32 @@ export function GuideGraph() {
   }
 
   return (
-    <div className="relative h-full w-full">
-      <Plot
-        divId={plotId}
-        data={data.traces}
-        layout={layout}
-        config={PLOT_CONFIG}
-        style={{ width: '100%', height: '100%' }}
-        useResizeHandler
-        onRelayout={onRelayout as never}
-        onHover={onHover as never}
-        onUnhover={onUnhover}
-      />
-      {hoverInfo && (
-        <div
-          className="pointer-events-none absolute bottom-1 start-2 end-2 truncate rounded border border-slate-700/70 bg-slate-900/85 px-2 py-1 font-mono text-[11px] text-slate-200 shadow"
-          title="Frame info under the cursor (matches the desktop's status bar). Press Esc / move the mouse off the chart to clear."
-        >
-          {hoverInfo}
-        </div>
-      )}
+    <div className="flex h-full w-full flex-col">
+      <div className="relative flex-1">
+        <Plot
+          divId={plotId}
+          data={data.traces}
+          layout={layout}
+          config={PLOT_CONFIG}
+          style={{ width: '100%', height: '100%' }}
+          useResizeHandler
+          onRelayout={onRelayout as never}
+          onHover={onHover as never}
+          onUnhover={onUnhover}
+        />
+      </div>
+      {/* Frame-info readout. The vertical cursor spike stays ON the chart
+          (xaxis.showspikes + hovermode:'x'); only the values move OFF the
+          plot into this fixed strip beneath it, so they never sit on top of
+          the data. Mirrors the analysis modal's PeriodogramChart bottom
+          strip. Always present (min-height) so the chart doesn't jump on
+          hover; blank until the cursor is over a point. */}
+      <div
+        className="min-h-[24px] truncate border-t border-slate-800 bg-slate-900/40 px-3 py-1 font-mono text-[11px] text-slate-300"
+        title="Frame info under the cursor (matches the desktop's status bar). The vertical line tracks the cursor on the chart; the details show here. Move the mouse off the chart to clear."
+      >
+        {hoverInfo ?? ' '}
+      </div>
     </div>
   );
 }
