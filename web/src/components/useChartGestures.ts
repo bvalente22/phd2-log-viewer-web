@@ -99,7 +99,9 @@ export interface ChartGestureOptions {
 /**
  * Drag-driven chart gestures shared between the main GuideGraph and the
  * Analysis modal's two charts:
- *   - Plain drag = X pan + continuous Y zoom anchored on the cursor's data Y.
+ *   - Plain (left) drag = X pan + continuous Y zoom anchored on the chart center.
+ *   - Right drag = Y pan + continuous X zoom (the mirror gesture; a no-move
+ *     right-click still falls through to the context menu).
  *   - Shift+drag = horizontal include selection (callback only).
  *   - Ctrl/Cmd+drag = horizontal exclude selection (callback only).
  *   - Wheel zoom is provided by Plotly's built-in scrollZoom; not handled here.
@@ -188,7 +190,10 @@ export function useChartGestures(
       }
     };
 
-    type DragKind = 'PAN_ZOOM' | 'X_INCLUDE' | 'X_EXCLUDE' | null;
+    // PAN_ZOOM = left-drag (pan X + zoom Y). PAN_Y_ZOOM_X = right-drag, the
+    // mirror gesture (pan Y + zoom X). X_INCLUDE / X_EXCLUDE = modifier+drag
+    // range selection.
+    type DragKind = 'PAN_ZOOM' | 'PAN_Y_ZOOM_X' | 'X_INCLUDE' | 'X_EXCLUDE' | null;
     let kind: DragKind = null;
     let activePointerId: number | null = null;
     let captureTarget: Element | null = null;
@@ -198,9 +203,15 @@ export function useChartGestures(
     let startXRange: [number, number] = [0, 0];
     let xStartFrac = 0;
     let sliderHidden = false;
+    // True once a right-button drag has moved past the click threshold. Read
+    // by the contextmenu handler to suppress the menu after a drag while
+    // still letting a no-move right-click open it.
+    let rightDragMoved = false;
 
     const onDown = (e: PointerEvent) => {
-      if (e.button !== 0) return;
+      // Left button (0) = pan X + zoom Y; right button (2) = pan Y + zoom X.
+      // Other buttons (middle/back/forward) are left to the browser/Plotly.
+      if (e.button !== 0 && e.button !== 2) return;
       if (!isInPlotArea(e)) return;
       const xa = div._fullLayout?.xaxis;
       const ya = div._fullLayout?.yaxis;
@@ -223,6 +234,28 @@ export function useChartGestures(
       catch { /* ignore — capture is best-effort */ }
       captureTarget = div;
       activePointerId = e.pointerId;
+
+      // Right-button drag = pan Y + zoom X (mirror of the left-drag pan X +
+      // zoom Y). Always available — independent of `enableModifierSelect`.
+      // We DON'T preventDefault here: that can swallow the `contextmenu`
+      // event we still want to fire for a plain (no-drag) right-click. The
+      // contextmenu handler below uses `rightDragMoved` to decide whether to
+      // open the menu (no drag) or suppress it (dragged).
+      if (e.button === 2) {
+        kind = 'PAN_Y_ZOOM_X';
+        rightDragMoved = false;
+        startClientX = e.clientX;
+        startClientY = e.clientY;
+        startXRange = numericRange(xa.range);
+        startYRange = numericRange(ya.range);
+        if (hideSlider) {
+          void Plotly.relayout(div, { 'xaxis.rangeslider.visible': false });
+          sliderHidden = true;
+        }
+        cbRef.current.onDragStateChange?.(true);
+        e.stopPropagation();
+        return;
+      }
 
       if (enableModifierSelect && (e.shiftKey || e.ctrlKey || e.metaKey)) {
         kind = e.shiftKey ? 'X_INCLUDE' : 'X_EXCLUDE';
@@ -306,6 +339,36 @@ export function useChartGestures(
         cbRef.current.onRangeChange?.('x', [newX0, newX1]);
         return;
       }
+      if (kind === 'PAN_Y_ZOOM_X') {
+        const ya = div._fullLayout?.yaxis;
+        if (!ya) return;
+        const dx = e.clientX - startClientX;
+        const dy = e.clientY - startClientY;
+        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) rightDragMoved = true;
+        // Zoom X multiplicatively around the current X center. Mirror of the
+        // left-drag Y zoom: there drag UP zooms in; here drag RIGHT zooms in
+        // (dx>0 → factor<1 → smaller span). /200 = same sensitivity.
+        const xCenter = (startXRange[0] + startXRange[1]) / 2;
+        const newXSpan = (startXRange[1] - startXRange[0]) * Math.exp(-dx / 200);
+        const newX0 = xCenter - newXSpan / 2;
+        const newX1 = xCenter + newXSpan / 2;
+        const patch: Record<string, [number, number]> = {
+          'xaxis.range': [newX0, newX1],
+        };
+        cbRef.current.onRangeChange?.('x', [newX0, newX1]);
+        // Pan Y by the vertical drag delta (grab-and-drag: drag down moves the
+        // content down). Skipped when Y is externally locked (disableYZoom).
+        if (!optsRef.current.disableYZoom) {
+          const ySpan = startYRange[1] - startYRange[0];
+          const dyData = (dy / ya._length) * ySpan;
+          const newY0 = startYRange[0] + dyData;
+          const newY1 = startYRange[1] + dyData;
+          patch['yaxis.range'] = [newY0, newY1];
+          cbRef.current.onRangeChange?.('y', [newY0, newY1]);
+        }
+        queueRelayout(patch);
+        return;
+      }
       const rect = div.getBoundingClientRect();
       const curPx = e.clientX - rect.left - xa._offset;
       const curFrac = Math.min(1, Math.max(0, curPx / xa._length));
@@ -331,7 +394,7 @@ export function useChartGestures(
       if (activePointerId !== null && e.pointerId !== activePointerId) return;
       const xa = div._fullLayout?.xaxis;
 
-      if (kind !== 'PAN_ZOOM' && xa && cbRef.current.rangeContext) {
+      if ((kind === 'X_INCLUDE' || kind === 'X_EXCLUDE') && xa && cbRef.current.rangeContext) {
         overlay.style.display = 'none';
         const rect = div.getBoundingClientRect();
         const endPx = e.clientX - rect.left - xa._offset;
@@ -398,6 +461,19 @@ export function useChartGestures(
       cbRef.current.onDragStateChange?.(false);
     };
 
+    // Suppress the right-click context menu ONLY when the right-button drag
+    // actually moved (a pan/zoom gesture). A no-move right-click falls
+    // through so the chart's GraphContextMenu still opens. Capture phase +
+    // stopPropagation keeps the event from reaching React's root listener
+    // (where the Radix context-menu trigger lives), so the menu never opens.
+    const onContextMenu = (e: MouseEvent) => {
+      if (rightDragMoved) {
+        e.preventDefault();
+        e.stopPropagation();
+        rightDragMoved = false;
+      }
+    };
+
     // Capture-phase pointerdown so we beat any Plotly handlers attached on
     // bubble. Move/up/cancel listen on `div` rather than window because
     // setPointerCapture redirects all events to the captured element (which
@@ -406,11 +482,13 @@ export function useChartGestures(
     div.addEventListener('pointermove', onMove, true);
     div.addEventListener('pointerup', onUp, true);
     div.addEventListener('pointercancel', onCancel, true);
+    div.addEventListener('contextmenu', onContextMenu, true);
     return () => {
       div.removeEventListener('pointerdown', onDown, true);
       div.removeEventListener('pointermove', onMove, true);
       div.removeEventListener('pointerup', onUp, true);
       div.removeEventListener('pointercancel', onCancel, true);
+      div.removeEventListener('contextmenu', onContextMenu, true);
       overlay.remove();
       if (rafId != null) cancelAnimationFrame(rafId);
     };

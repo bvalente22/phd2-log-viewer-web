@@ -39,6 +39,18 @@ out where they matter.
     survives Y panning). Provide a **'bottom' anchor** option for charts whose
     lower bound is a semantic baseline (e.g. an amplitude / periodogram that is
     always ≥ 0): keep y0 fixed and scale only y1.
+- **Right-click drag** = pan Y **and** zoom X simultaneously (the mirror of the
+  left-drag).
+  - Vertical motion pans the Y axis (grab-and-drag: drag **down** moves the
+    content down).
+  - Horizontal motion zooms X multiplicatively about the X-range center: drag
+    **right** = zoom **in**, drag **left** = zoom out (`factor = Math.exp(-dx / 200)`),
+    mirroring the left-drag's "drag up = zoom in".
+  - A **no-move right-click** must still open the chart's context menu — only a
+    right-click that actually *drags* runs the gesture and suppresses the menu
+    (see the context-menu gotcha below).
+  - When the Y axis is externally locked (a "Y lock" toggle), right-drag only
+    zooms X and skips the Y pan.
 - **Mouse wheel / scroll** = zoom **X only** (Y stays fixed).
 - **Shift + drag** = horizontal range *select / include* — fires a callback with
   the selected X range; draw a translucent overlay rectangle while dragging.
@@ -102,6 +114,15 @@ breakage that looks fine at first.
    `{ 'xaxis.range': [x0, x1], 'yaxis.range': [y0, y1] }`. Offer a
    **"disable Y zoom"** mode that omits the `yaxis` key, for charts whose Y range
    is pinned by an external lock (e.g. a "Y locked" toggle).
+9. **Right-drag vs. the context menu.** The right button serves double duty: a
+   *drag* runs the pan-Y/zoom-X gesture, but a plain *click* must still open the
+   chart's context menu. Don't `preventDefault()` the right `pointerdown` (that can
+   swallow the `contextmenu` event). Instead track a `rightDragMoved` flag (set
+   once the pointer moves past a few px) and add a **capture-phase `contextmenu`
+   listener** on the container that calls `preventDefault()` + `stopPropagation()`
+   **only when `rightDragMoved`** — then resets it. Capture + stopPropagation keeps
+   the event from reaching the (bubble-phase / React-root) context-menu trigger, so
+   the menu never opens after a drag but always opens on a clean click.
 
 ---
 
@@ -109,14 +130,18 @@ breakage that looks fine at first.
 
 ```
 onPointerDown(e):
-  if e.button != 0 or not isInPlotArea(e): return
+  if (e.button != 0 and e.button != 2) or not isInPlotArea(e): return
   div.setPointerCapture(e.pointerId)          // capture on the CONTAINER
-  if e.shiftKey:  kind = 'INCLUDE'; startOverlay(); return
-  if e.ctrlKey || e.metaKey: kind = 'EXCLUDE'; startOverlay(); return
-  kind = 'PAN_ZOOM'
   startX = e.clientX; startY = e.clientY
   startXRange = numericRange(xaxis.range)     // coerce date strings -> ms
   startYRange = numericRange(yaxis.range)
+  if e.button == 2:                           // RIGHT drag = pan Y + zoom X
+    kind = 'PAN_Y_ZOOM_X'; rightDragMoved = false
+    e.stopPropagation()                        // NOT preventDefault (keep contextmenu)
+    return
+  if e.shiftKey:  kind = 'INCLUDE'; startOverlay(); e.preventDefault(); e.stopPropagation(); return
+  if e.ctrlKey || e.metaKey: kind = 'EXCLUDE'; startOverlay(); e.preventDefault(); e.stopPropagation(); return
+  kind = 'PAN_ZOOM'
   e.preventDefault(); e.stopPropagation()
 
 onPointerMove(e):
@@ -133,12 +158,26 @@ onPointerMove(e):
       half = (startYRange[1]-startYRange[0]) * factor / 2
       newY = [c - half, c + half]
     queueRelayout({ 'xaxis.range': newX, 'yaxis.range': newY })   // rAF-throttled
+  else if kind == 'PAN_Y_ZOOM_X':             // mirror gesture
+    dx = e.clientX - startX; dy = e.clientY - startY
+    if abs(dx) > 3 or abs(dy) > 3: rightDragMoved = true
+    xc = (startXRange[0]+startXRange[1]) / 2
+    xspan = (startXRange[1]-startXRange[0]) * exp(-dx / 200)   // right = zoom in
+    newX = [xc - xspan/2, xc + xspan/2]
+    patch = { 'xaxis.range': newX }
+    if not disableYZoom:                       // pan Y unless externally locked
+      dyData = (dy / yaxis._length) * (startYRange[1]-startYRange[0])
+      patch['yaxis.range'] = [startYRange[0] + dyData, startYRange[1] + dyData]
+    queueRelayout(patch)
   else:
     updateOverlayRect(e)                       // selection rectangle
 
 onPointerUp(e):
   if kind in ('INCLUDE','EXCLUDE'): emit selected X range -> callback
   flush pending relayout; releasePointerCapture(); kind = null
+
+onContextMenu(e):                              // capture phase, on the container
+  if rightDragMoved: e.preventDefault(); e.stopPropagation(); rightDragMoved = false
 ```
 
 ---
@@ -147,7 +186,9 @@ onPointerUp(e):
 
 Verify in a real browser (not just unit tests / visual inspection):
 
-- Plain drag pans X and zooms Y; up = zoom in, down = zoom out.
+- Plain (left) drag pans X and zooms Y; up = zoom in, down = zoom out.
+- Right drag pans Y and zooms X; right = zoom in, left = zoom out, vertical pans Y.
+- A no-move right-click still opens the context menu; a right-*drag* suppresses it.
 - Wheel zooms X only; Y stays put.
 - Shift-drag and Ctrl/Cmd-drag select ranges (if the app uses them).
 - A drag that **starts on an annotation/label** still pans (geometry hit-test).
