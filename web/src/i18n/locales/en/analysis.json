@@ -210,7 +210,7 @@
   "topGraphShown": "shown",
   "topGraphHidden": "hidden",
   "topGraphTooltip": "Show or hide the top (drift / spike) chart. When hidden, the periodogram expands to fill the space.",
-  "gestureHint": "scroll = X zoom · drag = X pan + Y zoom · hover = vertical cursor + readout",
+  "gestureHint": "scroll = X zoom · drag = X pan + Y zoom · right-drag = Y pan + X zoom · hover = vertical cursor + readout",
   "topPeaks": "Top 3 peaks",
   "maxPeriod": "max period",
   "maxPeriodSuffix": "s",

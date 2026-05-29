@@ -204,7 +204,7 @@
   "topGraphShown": "显示",
   "topGraphHidden": "隐藏",
   "topGraphTooltip": "显示或隐藏顶部图表(漂移/尖峰)。隐藏时,周期图会扩展以填充空间。",
-  "gestureHint": "滚轮 = X 缩放 · 拖动 = X 平移 + Y 缩放 · 悬停 = 垂直光标 + 读数",
+  "gestureHint": "滚轮 = X 缩放 · 拖动 = X 平移 + Y 缩放 · 右键拖动 = Y 平移 + X 缩放 · 悬停 = 垂直光标 + 读数",
   "topPeaks": "前 3 个峰",
   "maxPeriod": "最大周期",
   "maxPeriodSuffix": "s",

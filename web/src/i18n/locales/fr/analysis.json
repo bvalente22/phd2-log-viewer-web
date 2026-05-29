@@ -204,7 +204,7 @@
   "topGraphShown": "affiché",
   "topGraphHidden": "masqué",
   "topGraphTooltip": "Afficher ou masquer le graphique du haut (dérive / pic). Masqué, le périodogramme occupe tout l'espace.",
-  "gestureHint": "molette = zoom X · glisser = pan X + zoom Y · survol = curseur vertical + lecture",
+  "gestureHint": "molette = zoom X · glisser = pan X + zoom Y · glisser droit = pan Y + zoom X · survol = curseur vertical + lecture",
   "topPeaks": "Top 3 pics",
   "maxPeriod": "période max",
   "maxPeriodSuffix": "s",
