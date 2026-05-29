@@ -13,6 +13,20 @@ import { themeOf } from '../themes';
 import { densePeriodogram, curveLocalMaxima } from '../parser/perioPeaks';
 
 /**
+ * First-paint periodogram Y-scale switch (source toggle).
+ *  - `false` (default): fit `max(active, counterpart)` so the Residual-error
+ *    tab opens at the SAME zoom as Raw RA. Reverts PR #50 per the user's
+ *    request — they didn't want the Residual tab auto-zoomed to its own
+ *    (much smaller) data on first render.
+ *  - `true`: PR #50 behavior — each tab fits its own trace at its native
+ *    scale, so the Residual signal isn't crushed by Raw RA's long-period
+ *    drift ramp.
+ * Also governs the AnalysisModal Y-lock fallback so first-paint and the
+ * lock-without-zoom default stay consistent.
+ */
+export const FIT_ACTIVE_TRACE_Y = false;
+
+/**
  * Decade-by-decade tick positions for a log axis showing periods in
  * seconds — mirrors `StartP` / `IncrP` at AnalysisWin.cpp:1065-1074:
  *   IncrP(p) = 10^floor(log10(p))
@@ -535,14 +549,15 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
   //      eliminates that snap.
   // All three are in raw pixel units, so apply `k` to convert to the
   // active display unit at layout time.
-  // First paint fits the ACTIVE trace's own amplitude — NOT max(active,
-  // other) — so each tab is readable at its native scale (the Residual
-  // tab otherwise gets crushed by the Raw-RA counterpart's large
-  // long-period drift ramp). The faded counterpart may run off the top;
-  // it's just a reference. `yMaxViewPx` (manual zoom) stays null until a
-  // real Y gesture and takes precedence here, so a user's zoom still
-  // carries across tab swaps — only the default changes.
-  const initialFftMax = garun.fftAmpMax * 1.05;
+  // First-paint Y max — see FIT_ACTIVE_TRACE_Y above. Default fits
+  // max(active, counterpart) so the Residual tab opens at the SAME zoom as
+  // Raw RA (the larger trace wins); flip the switch to fit the active tab's
+  // own data instead. `yMaxViewPx` (manual zoom) stays null until a real Y
+  // gesture and takes precedence here, so a user's zoom still carries across
+  // tab swaps — only the default changes.
+  const otherFftMax = garunOther?.fftAmpMax ?? 0;
+  const initialFftMax =
+    (FIT_ACTIVE_TRACE_Y ? garun.fftAmpMax : Math.max(garun.fftAmpMax, otherFftMax)) * 1.05;
   const yMaxApplied = yMaxLockPx ?? yMaxViewPx ?? initialFftMax;
   const yAxisCfg: Partial<Layout['yaxis']> = { range: [0, yMaxApplied * k], autorange: false };
   const layout: Partial<Layout> = {

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAnalysisStore, type AnalysisKind } from '../state/analysisStore';
 import { DriftChart } from './DriftChart';
-import { PeriodogramChart } from './PeriodogramChart';
+import { PeriodogramChart, FIT_ACTIVE_TRACE_Y } from './PeriodogramChart';
 import { SpikeChart } from './SpikeChart';
 import { BurstChart, BurstCandidatesTable } from './BurstChart';
 import { BurstControls } from './BurstControls';
@@ -78,6 +78,9 @@ export function AnalysisModal() {
   // committing. Resets to 0 whenever the active axis changes — the y-
   // extent (and therefore the slider's range) depends on the axis.
   const [manualSpikeThresholdArc, setManualSpikeThresholdArc] = useState(0);
+  // Show/hide the top (drift / spike) chart. When hidden, the periodogram
+  // (also flex-1) is the only chart in the column so it expands to fill.
+  const [showTopChart, setShowTopChart] = useState(true);
   const manualSpikeAxisForEffect = s.state === 'open' ? s.manualSpikeAxis : null;
   useEffect(() => {
     setManualSpikeThresholdArc(0);
@@ -128,13 +131,18 @@ export function AnalysisModal() {
   // Counterpart only applies to the residual ↔ raw-RA pair.
   const activePerioOther = kind === 'spike' ? null : garunOther;
 
-  // Y-lock fallback max — the ACTIVE periodogram only, so locking without
-  // a prior zoom pins the scale the user is actually looking at (matching
-  // the active-trace first-paint default in PeriodogramChart) rather than
-  // snapping to the counterpart's much larger drift-ramp scale.
+  // Y-lock fallback max — kept consistent with the first-paint default
+  // (FIT_ACTIVE_TRACE_Y). Default: include the counterpart so locking without
+  // a prior zoom pins the SAME (Raw-RA) scale the user is looking at. When the
+  // switch fits the active tab only, lock to the active trace alone.
   let observedMaxPx = 0;
-  for (let i = 0; i < activePerioRun.fftAmplitude.length; i++) {
-    if (activePerioRun.fftAmplitude[i] > observedMaxPx) observedMaxPx = activePerioRun.fftAmplitude[i];
+  const lockRuns = FIT_ACTIVE_TRACE_Y || !activePerioOther
+    ? [activePerioRun]
+    : [activePerioRun, activePerioOther];
+  for (const run of lockRuns) {
+    for (let i = 0; i < run.fftAmplitude.length; i++) {
+      if (run.fftAmplitude[i] > observedMaxPx) observedMaxPx = run.fftAmplitude[i];
+    }
   }
 
   const startClock = formatClockUTC(garun.starts, garun.t[0] ?? 0);
@@ -651,18 +659,29 @@ export function AnalysisModal() {
         >
           {t('resetY')}
         </button>
+        {/* Show/hide the top (drift / spike) chart. Hidden → the periodogram
+            fills the chart column. */}
+        <span className="ms-3 me-1 text-slate-500" title={t('topGraphTooltip')}>{t('topGraph')}:</span>
+        <ToggleChip
+          label={showTopChart ? t('topGraphShown') : t('topGraphHidden')}
+          active={showTopChart}
+          onClick={() => setShowTopChart(!showTopChart)}
+          title={t('topGraphTooltip')}
+        />
         <span className="ms-auto text-slate-600">
           {t('gestureHint')}
         </span>
       </div>
       <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex-1 border-b border-slate-800">
-          {kind === 'spike' && spikeRun ? (
-            <SpikeChart run={spikeRun} scaleMode={scaleMode} />
-          ) : (
-            <DriftChart garun={garun} showRa={showRa} showDec={showDec} scaleMode={scaleMode} />
-          )}
-        </div>
+        {showTopChart && (
+          <div className="flex-1 border-b border-slate-800">
+            {kind === 'spike' && spikeRun ? (
+              <SpikeChart run={spikeRun} scaleMode={scaleMode} />
+            ) : (
+              <DriftChart garun={garun} showRa={showRa} showDec={showDec} scaleMode={scaleMode} />
+            )}
+          </div>
+        )}
         <div className="flex-1">
           <PeriodogramChart
             garun={activePerioRun}
