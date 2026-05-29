@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
-import { fmtInteger, fmtRoundedInt } from '../i18n/format';
+import { fmtInteger, fmtDuration } from '../i18n/format';
 import { extractGAResults } from '../parser/gaResults';
 
 const GuideIcon = () => (
@@ -46,7 +46,7 @@ export function SectionList() {
           ? t('list.stepsSummary', { count: fmtInteger(log.calibrations[sec.idx].entries.length) })
           : t('list.framesSummary', {
               frames: fmtInteger(log.sessions[sec.idx].entries.length),
-              seconds: fmtRoundedInt(log.sessions[sec.idx].duration),
+              duration: fmtDuration(log.sessions[sec.idx].duration),
             });
         const isSelected = selected === i;
         // GA badge: a session counts as having a Guiding Assistant run
@@ -59,7 +59,7 @@ export function SectionList() {
           : t('list.guideSessionTooltip', {
               date: item.date,
               frames: fmtInteger(log.sessions[sec.idx].entries.length),
-              seconds: fmtRoundedInt(log.sessions[sec.idx].duration),
+              duration: fmtDuration(log.sessions[sec.idx].duration),
             });
         const tip = hasGa ? `${baseTip} · ${t('list.gaTooltip')}` : baseTip;
         return (
