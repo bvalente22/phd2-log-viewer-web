@@ -12,11 +12,13 @@ import { GraphToolbar } from '../components/GraphToolbar';
 import { GraphContextMenu } from '../components/ContextMenu';
 import { RecentsDropdown } from '../components/RecentsDropdown';
 import { LogsFolderPane } from '../components/LogsFolderPane';
+import { AnnotationModal } from '../components/AnnotationModal';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { ThemePicker } from '../components/ThemePicker';
 import { GAResultsPanel } from '../components/GAResultsPanel';
 import { GuidingDashboard } from '../components/GuidingDashboard';
 import { useLogStore } from '../state/logStore';
+import { useAnnotationStore } from '../state/annotationStore';
 import { useViewStore } from '../state/viewStore';
 import { useKeyboardShortcuts } from '../state/useKeyboard';
 import { themeOf } from '../themes';
@@ -26,6 +28,7 @@ export function ViewerPage() {
   const { t } = useTranslation('common');
   const log = useLogStore((s) => s.log);
   const meta = useLogStore((s) => s.meta);
+  const openEditor = useAnnotationStore((s) => s.openEditor);
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const graphMode = useViewStore((s) => s.graphMode);
   const theme = useViewStore((s) => s.theme);
@@ -86,6 +89,16 @@ export function ViewerPage() {
               <span className="break-all text-xs font-normal text-slate-400" title={meta?.name}>
                 {meta?.name}
               </span>
+              {meta?.hash && (
+                <button
+                  className="ms-1 align-middle text-xs text-slate-500 hover:text-sky-400"
+                  onClick={() => void openEditor(meta.hash, meta.name)}
+                  title={t('annotations.annotateCurrentTooltip')}
+                  aria-label={t('annotations.annotateCurrentTooltip')}
+                >
+                  ✎
+                </button>
+              )}
               <span className="ms-2 text-xs text-slate-500">{t('phdVersion', { version: log.phdVersion })}</span>
             </>
           )}
@@ -214,6 +227,7 @@ export function ViewerPage() {
       </main>
       </div>
       <AnalysisModal />
+      <AnnotationModal />
     </>
   );
 }
