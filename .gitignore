@@ -8,3 +8,15 @@ TAGS
 # disk for manual testing but never committed — they're large and
 # user-specific.
 sample data/
+
+# Editor settings (local).
+.vscode/
+
+# Stray empty node_modules occasionally created at repo root by tooling;
+# the app's real deps live under web/ (ignored by web/.gitignore).
+/node_modules/
+
+# Verification/debugging screenshots accumulated at the repo root during
+# manual testing sessions. Kept on disk but never committed. Scoped to the
+# root (/*.png) so genuine image assets under web/ are unaffected.
+/*.png
