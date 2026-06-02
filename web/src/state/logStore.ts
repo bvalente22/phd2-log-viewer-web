@@ -6,11 +6,14 @@ import type { GuideLog } from '../parser';
 // Worker API isn't available (e.g. vitest jsdom).
 import { parseLogAsync } from '../parser/parseLog.client';
 import { putRecent } from '../storage/recents';
+import { hashLogText } from '../storage/annotations';
+import { useAnnotationStore } from './annotationStore';
 
 export interface LogMeta {
   name: string;
   size: number;
   recentId: string | null;
+  hash: string;
 }
 
 interface LogState {
@@ -34,16 +37,20 @@ export const useLogStore = create<LogState>((set) => ({
     set({ loading: true, error: null });
     try {
       const log = await parseLogAsync(text);
+      const hash = hashLogText(text);
       let recentId: string | null = null;
       if (opts?.persist !== false) {
-        recentId = await putRecent({ name, size: text.length, text });
+        recentId = await putRecent({ name, size: text.length, text, hash });
       }
       set({
         log,
-        meta: { name, size: text.length, recentId },
+        meta: { name, size: text.length, recentId, hash },
         selectedSection: log.sections.length > 0 ? 0 : -1,
         loading: false,
       });
+      // Load the saved annotation, or fire the first-open prompt for an
+      // unseen log. Fire-and-forget: the UI reacts to annotationStore.
+      void useAnnotationStore.getState().loadForLog(hash, name);
     } catch (e) {
       set({ loading: false, error: e instanceof Error ? e.message : String(e) });
     }
