@@ -1,4 +1,5 @@
 import { get, set, del, keys } from 'idb-keyval';
+import { hashLogText } from './annotations';
 
 const MAX = 10;
 const PREFIX = 'recent:';
@@ -9,6 +10,7 @@ export interface RecentMeta {
   name: string;
   size: number;
   openedAt: number;
+  hash?: string;
 }
 
 export interface RecentRecord extends RecentMeta {
@@ -22,9 +24,13 @@ interface Index {
 const loadIndex = async (): Promise<Index> => (await get<Index>(INDEX_KEY)) ?? { ids: [] };
 const saveIndex = (i: Index) => set(INDEX_KEY, i);
 
-export async function putRecent(p: { name: string; size: number; text: string }): Promise<string> {
+export async function putRecent(p: { name: string; size: number; text: string; hash?: string }): Promise<string> {
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const rec: RecentRecord = { id, name: p.name, size: p.size, text: p.text, openedAt: Date.now() };
+  const rec: RecentRecord = {
+    id, name: p.name, size: p.size, text: p.text,
+    hash: p.hash ?? hashLogText(p.text),
+    openedAt: Date.now(),
+  };
   await set(PREFIX + id, rec);
   const idx = await loadIndex();
   idx.ids = [id, ...idx.ids.filter(x => x !== id)];
@@ -45,7 +51,13 @@ export async function listRecents(): Promise<RecentMeta[]> {
   const out: RecentMeta[] = [];
   for (const id of idx.ids) {
     const r = await get<RecentRecord>(PREFIX + id);
-    if (r) out.push({ id: r.id, name: r.name, size: r.size, openedAt: r.openedAt });
+    if (!r) continue;
+    let hash = r.hash;
+    if (!hash) {
+      hash = hashLogText(r.text);
+      await set(PREFIX + id, { ...r, hash }); // persist the backfill
+    }
+    out.push({ id: r.id, name: r.name, size: r.size, openedAt: r.openedAt, hash });
   }
   return out;
 }

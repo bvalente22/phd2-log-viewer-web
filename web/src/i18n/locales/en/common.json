@@ -1,5 +1,22 @@
 {
   "appName": "PHD2 Log Viewer",
+  "annotations": {
+    "firstOpenTitle": "Name this log",
+    "editTitle": "Annotate log",
+    "nameLabel": "Friendly name",
+    "namePlaceholder": "e.g. Backyard — windy night",
+    "notesLabel": "Notes",
+    "notesPlaceholder": "Your own comments about this session…",
+    "save": "Save",
+    "skip": "Skip",
+    "addNotes": "+ notes",
+    "delete": "Delete",
+    "close": "Close",
+    "editTooltip": "Edit name & notes for this log",
+    "nameTooltip": "Add a friendly name for this log",
+    "notesIndicatorTooltip": "This log has notes — click to view/edit",
+    "annotateCurrentTooltip": "Name & annotate this log"
+  },
   "buildTooltip": "build {{hash}}",
   "phdVersion": "PHD2 v{{version}}",
   "openAnother": "Open another",
