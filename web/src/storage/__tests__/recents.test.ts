@@ -31,4 +31,19 @@ describe('recents', () => {
     expect(ls.length).toBe(10);
     expect(ls[0].name).toBe('f11');
   });
+
+  it('stores and returns a provided hash', async () => {
+    await putRecent({ name: 'h.log', size: 3, text: 'abc', hash: 'deadbeef' });
+    const ls = await listRecents();
+    expect(ls[0].hash).toBe('deadbeef');
+  });
+
+  it('backfills a missing hash on list', async () => {
+    // Simulate a pre-feature recent with no hash by writing through putRecent
+    // without one, then confirm listRecents computes & returns one.
+    await putRecent({ name: 'old.log', size: 5, text: 'hello' });
+    const ls = await listRecents();
+    expect(typeof ls[0].hash).toBe('string');
+    expect(ls[0].hash!.length).toBeGreaterThan(0);
+  });
 });
