@@ -2,19 +2,36 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { listRecents, getRecent, deleteRecent } from '../storage/recents';
 import type { RecentMeta } from '../storage/recents';
+import { getAnnotation, type Annotation } from '../storage/annotations';
 import { useLogStore } from '../state/logStore';
+import { useAnnotationStore } from '../state/annotationStore';
 
 export function RecentsDropdown() {
   const { t } = useTranslation('sections');
+  const { t: tc } = useTranslation('common');
   const [items, setItems] = useState<RecentMeta[]>([]);
+  const [annos, setAnnos] = useState<Record<string, Annotation>>({}); // by recent id
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const loadFromText = useLogStore((s) => s.loadFromText);
   const currentName = useLogStore((s) => s.meta?.name);
+  const openEditor = useAnnotationStore((s) => s.openEditor);
+  // Re-fetch annotations whenever any annotation is persisted.
+  const revision = useAnnotationStore((s) => s.revision);
 
-  const refresh = async () => setItems(await listRecents());
+  const refresh = async () => {
+    const list = await listRecents();
+    setItems(list);
+    const map: Record<string, Annotation> = {};
+    for (const r of list) {
+      if (!r.hash) continue;
+      const a = await getAnnotation(r.hash);
+      if (a) map[r.id] = a;
+    }
+    setAnnos(map);
+  };
 
-  useEffect(() => { void refresh(); }, []);
+  useEffect(() => { void refresh(); }, [revision]);
 
   useEffect(() => {
     if (!open) return;
@@ -37,6 +54,12 @@ export function RecentsDropdown() {
     e.stopPropagation();
     await deleteRecent(id);
     await refresh();
+  };
+
+  const editAnno = (r: RecentMeta, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!r.hash) return;
+    void openEditor(r.hash, r.name);
   };
 
   const clearAll = async () => {
@@ -63,6 +86,9 @@ export function RecentsDropdown() {
             <ul>
               {items.map((r) => {
                 const isCurrent = r.name === currentName;
+                const anno = annos[r.id];
+                const hasName = !!anno?.friendlyName;
+                const hasNotes = !!anno?.notes;
                 return (
                   <li
                     key={r.id}
@@ -71,13 +97,39 @@ export function RecentsDropdown() {
                     }`}
                   >
                     <button
-                      className="flex-1 truncate px-3 py-2 text-start text-sm text-slate-200 hover:bg-slate-800"
+                      className="flex min-w-0 flex-1 flex-col items-start px-3 py-2 text-start hover:bg-slate-800"
                       onClick={() => void openRecent(r.id)}
                       title={t('recents.reopenTooltip', { name: r.name })}
                     >
-                      {r.name}
-                      {isCurrent && <span className="ms-2 text-xs text-sky-400">{t('recents.current')}</span>}
+                      {hasName ? (
+                        <>
+                          <span className="w-full truncate text-sm text-slate-200">
+                            {anno!.friendlyName}
+                            {isCurrent && <span className="ms-2 text-xs text-sky-400">{t('recents.current')}</span>}
+                          </span>
+                          <span className="w-full truncate text-[11px] text-slate-500">{r.name}</span>
+                        </>
+                      ) : (
+                        <span className="w-full truncate text-sm text-slate-300">
+                          {r.name}
+                          {isCurrent && <span className="ms-2 text-xs text-sky-400">{t('recents.current')}</span>}
+                        </span>
+                      )}
                     </button>
+                    {/* Annotate affordance: a note glyph when notes exist (even
+                        without a name), otherwise a pencil to add a name. */}
+                    {r.hash && (
+                      <button
+                        className="px-1.5 text-slate-500 hover:text-sky-400"
+                        onClick={(e) => editAnno(r, e)}
+                        title={hasNotes ? tc('annotations.notesIndicatorTooltip')
+                          : hasName ? tc('annotations.editTooltip')
+                          : tc('annotations.nameTooltip')}
+                        aria-label={tc('annotations.editTooltip')}
+                      >
+                        {hasNotes ? '🗒' : '✎'}
+                      </button>
+                    )}
                     <button
                       className="px-2 text-slate-500 hover:text-red-400"
                       onClick={(e) => void removeRecent(r.id, e)}
