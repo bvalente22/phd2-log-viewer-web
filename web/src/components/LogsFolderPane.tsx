@@ -70,7 +70,9 @@ export function LogsFolderPane() {
                   </>
                 )}
                 {notes && (
-                  <span className="mt-1 block line-clamp-2 text-[11px] leading-snug text-slate-400">
+                  // No `block` here — line-clamp-2 sets display:-webkit-box;
+                  // adding `block` would override it and defeat the clamp.
+                  <span className="mt-1 line-clamp-2 text-[11px] leading-snug text-slate-400">
                     {notes}
                   </span>
                 )}
