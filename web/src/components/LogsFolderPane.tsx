@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
+import { useAnnotationStore } from '../state/annotationStore';
 
 /**
  * Sidebar pane that lets the user load a new guide log via drag-and-drop or
@@ -15,9 +16,18 @@ export function LogsFolderPane() {
   const loadFromText = useLogStore((s) => s.loadFromText);
   const loading = useLogStore((s) => s.loading);
   const error = useLogStore((s) => s.error);
+  const meta = useLogStore((s) => s.meta);
+  // Subscribe to the open log's annotation so the strip refreshes the instant
+  // the modal saves/clears (save/clearCurrentInModal update `current` for the
+  // matching key).
+  const annotation = useAnnotationStore((s) => s.current);
+  const openEditor = useAnnotationStore((s) => s.openEditor);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [open, setOpen] = useState(true);
   const [dragOver, setDragOver] = useState(false);
+
+  const friendlyName = annotation?.friendlyName ?? null;
+  const notes = annotation?.notes ?? null;
 
   const handleFile = useCallback(async (file: File) => {
     const text = await file.text();
@@ -36,6 +46,39 @@ export function LogsFolderPane() {
       </button>
       {open && (
         <div className="px-3 py-3">
+          {/* Current-log strip: friendly name (or filename + name cue) plus a
+              2-line notes preview. Whole strip is the edit affordance — clicking
+              opens the same AnnotationModal in edit mode. Lives above the drop
+              zone; only shown while a log is open. */}
+          {meta?.hash && (
+            <button
+              type="button"
+              onClick={() => void openEditor(meta.hash, meta.name)}
+              title={friendlyName ? t('annotations.editTooltip') : t('annotations.nameTooltip')}
+              className="mb-3 flex w-full items-start gap-2 rounded-md border border-slate-700 bg-slate-800/40 px-2.5 py-2 text-start hover:bg-slate-800"
+            >
+              <span className="min-w-0 flex-1">
+                {friendlyName ? (
+                  <>
+                    <span className="block truncate text-sm text-slate-200">{friendlyName}</span>
+                    <span className="block truncate text-[11px] text-slate-500">{meta.name}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="block truncate text-sm text-slate-300">{meta.name}</span>
+                    <span className="block text-[11px] text-sky-400">✎ {t('annotations.nameThisLog')}</span>
+                  </>
+                )}
+                {notes && (
+                  <span className="mt-1 block line-clamp-2 text-[11px] leading-snug text-slate-400">
+                    {notes}
+                  </span>
+                )}
+              </span>
+              {/* Blue pencil, no background of its own (the strip is the button). */}
+              <span className="text-sm text-sky-400" aria-hidden="true">✎</span>
+            </button>
+          )}
           <div
             title={t('dropZone.tooltip')}
             className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-3 text-center transition-colors ${
