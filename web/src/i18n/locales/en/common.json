@@ -14,6 +14,7 @@
     "close": "Close",
     "editTooltip": "Edit name & notes for this log",
     "nameTooltip": "Add a friendly name for this log",
+    "nameThisLog": "Name this log",
     "notesIndicatorTooltip": "This log has notes — click to view/edit",
     "annotateCurrentTooltip": "Name & annotate this log"
   },
