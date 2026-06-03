@@ -47,7 +47,8 @@
     "collapse": "Collapse sidebar",
     "collapseTooltip": "Collapse the left panel to give the chart the full window width. The recent logs and session list will be hidden until you expand it again.",
     "expand": "Expand",
-    "expandTooltip": "Expand the left panel to show the open-log pane, recent logs, and session list."
+    "expandTooltip": "Expand the left panel to show the open-log pane, recent logs, and session list.",
+    "resizeTooltip": "Drag to resize the sidebar. Double-click to reset to the default width."
   },
   "dropZone": {
     "title": "Drop a PHD2 guide log here",
