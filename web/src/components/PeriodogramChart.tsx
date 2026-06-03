@@ -9,7 +9,7 @@ import { useAnalysisStore, type AnalysisKind } from '../state/analysisStore';
 import { alignedEventIndices } from '../parser/spikeAnalysis';
 import { useChartGestures } from './useChartGestures';
 import { useViewStore } from '../state/viewStore';
-import { themeOf } from '../themes';
+import { themeOf, type PlotThemeColors } from '../themes';
 import { densePeriodogram, curveLocalMaxima } from '../parser/perioPeaks';
 
 /**
@@ -67,17 +67,17 @@ function formatPeriodLabel(p: number): string {
 }
 
 const PEAK_PX = 8;
-// Per-kind colors so the residual / raw-RA traces stay identifiable
-// even when the active/inactive state flips on a mode-tab click. Lime
-// for residual error (the original FFT color), pink for raw RA — high
-// contrast pair on every theme background.
-const COLOR_RESIDUAL = '#a3e635';
-const COLOR_RAW_RA = '#f472b6';
-const COLOR_UNGUIDED = COLOR_RESIDUAL; // unguided has no comparison mode
+// Residual / raw-RA trace colors are theme-aware — amber (residual) and teal
+// (raw RA), bright on dark backgrounds and deepened on the white themes where
+// the bright variants wash out. They live in the theme registry (themes.ts
+// fftResidual / fftRawRa) so colorFor reads them from `tc`; blue/red are
+// avoided here (reserved for RA/Dec in the GuideGraph).
 // Spike mode uses amber to match the SpikeChart marker color and the
 // analysis-modal banner accent — visual continuity across the modal.
 const COLOR_SPIKE = '#f59e0b';
-const INACTIVE_OPACITY = 0.28;
+// Counterpart (inactive) trace opacity. Kept clearly visible — it's the
+// comparison line — but subordinate to the bold active trace.
+const INACTIVE_OPACITY = 0.5;
 
 interface PlotDiv extends HTMLDivElement {
   _fullLayout?: {
@@ -109,12 +109,12 @@ interface PeriodogramChartProps {
   topPeaks: ReadonlyArray<{ period: number }>;
 }
 
-/** Pick the per-kind color for a periodogram trace. */
-const colorFor = (kind: AnalysisKind): string => {
-  if (kind === 'all') return COLOR_RESIDUAL;
-  if (kind === 'all-raw-ra') return COLOR_RAW_RA;
+/** Pick the per-kind color for a periodogram trace, theme-aware via `tc`. */
+const colorFor = (kind: AnalysisKind, tc: PlotThemeColors): string => {
+  if (kind === 'all') return tc.fftResidual;
+  if (kind === 'all-raw-ra') return tc.fftRawRa;
   if (kind === 'spike') return COLOR_SPIKE;
-  return COLOR_UNGUIDED;
+  return tc.fftResidual; // unguided — no comparison mode
 };
 
 /** Opposite of an AnalysisKind for the dual-trace render. Returns null
@@ -144,6 +144,9 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
   const plotId = useId().replace(/:/g, '_');
   const [hover, setHover] = useState<string | null>(null);
   const themeId = useViewStore((s) => s.theme);
+  // Theme colors — hoisted above the traces memo so trace colors can read the
+  // theme-aware fftResidual / fftRawRa fields (also used by the layout below).
+  const tc = themeOf(themeId).plot;
   const setYMaxView = useAnalysisStore((s) => s.setYMaxView);
   // Spike-mode hover broadcasting: in spike mode the periodogram lives
   // alongside a spike chart that wants to highlight the spike events
@@ -194,7 +197,7 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
         y: dense.y.map((v) => v * k),
         type: 'scatter', mode: 'lines',
         name: labelOf(otherKind),
-        line: { color: colorFor(otherKind), width: 1.25 },
+        line: { color: colorFor(otherKind, tc), width: 1.75 },
         opacity: INACTIVE_OPACITY,
         // No fill on the inactive trace — overlapping fills would obscure
         // both. The thin colored line at low opacity is enough to read.
@@ -250,18 +253,21 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       y: dense.y.map((v) => v * k),
       type: 'scatter', mode: 'lines',
       name: labelOf(kind),
-      line: { color: colorFor(kind), width: 1.5 },
+      line: { color: colorFor(kind, tc), width: 2.5 },
       fill: 'tozeroy',
+      // Subtle fill tint matching the trace hue — teal for raw RA, amber for
+      // residual/unguided, the existing amber for spike. Kept low-alpha so the
+      // bold line stays the focus; a single tint reads fine on every theme bg.
       fillcolor: kind === 'all-raw-ra'
-        ? 'rgba(244, 114, 182, 0.10)'
+        ? 'rgba(45, 212, 191, 0.12)'
         : kind === 'spike'
         ? 'rgba(245, 158, 11, 0.10)'
-        : 'rgba(163, 230, 53, 0.10)',
+        : 'rgba(251, 191, 36, 0.12)',
       customdata: otherY ?? undefined,
       hovertemplate: activeHoverTemplate,
     } as Data);
     return out;
-  }, [activeDense, garun, garunOther, kind, k, scaleMode, labelOf, t]);
+  }, [activeDense, garun, garunOther, kind, k, scaleMode, labelOf, t, tc]);
 
   // Plotly's xaxis.type:'log' wants the range in log10 space. Always provide
   // an explicit range to avoid the autorange-vs-first-scroll bug we saw in
@@ -533,7 +539,6 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     };
   }, [plotId, refreshMarkers]);
 
-  const tc = themeOf(themeId).plot;
   // Y-axis range source priority:
   //   1. yMaxLockPx (explicit user lock — pin it, no headroom needed,
   //      the value already came from a real rendered max).
