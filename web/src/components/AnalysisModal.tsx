@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAnalysisStore, type AnalysisKind } from '../state/analysisStore';
+import { useViewStore } from '../state/viewStore';
+import { themeOf } from '../themes';
 import { DriftChart } from './DriftChart';
 import { PeriodogramChart, FIT_ACTIVE_TRACE_Y } from './PeriodogramChart';
 import { SpikeChart } from './SpikeChart';
@@ -15,6 +17,42 @@ import type { GARun } from '../parser/analyze';
 import { densePeriodogram, curveTopPeaks } from '../parser/perioPeaks';
 import { pickTopSpikePeriods, type SpikeRun } from '../parser/spikeAnalysis';
 import { Spline } from '../parser/spline';
+
+// --- Mode-tab accent helpers --------------------------------------------
+// The Raw-RA / Residual-error mode tabs are tinted to match their own
+// periodogram trace color (themes.ts fftRawRa = teal, fftResidual = amber),
+// so the tab visually "owns" the curve it plots. Trace colors are
+// theme-aware, so the tab tint changes with the theme too. The banner the
+// tabs sit on is always the light amber-200 header, so we contrast-pick the
+// label color rather than trusting the raw accent to stay legible.
+const hexToRgb = (hex: string): [number, number, number] => {
+  const h = hex.replace('#', '');
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+};
+const rgbToHex = (r: number, g: number, b: number): string => {
+  const c = (n: number) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, '0');
+  return `#${c(r)}${c(g)}${c(b)}`;
+};
+/** Relative luminance (sRGB, 0..1) — WCAG coefficients. */
+const luminance = (hex: string): number => {
+  const [r, g, b] = hexToRgb(hex).map((v) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+/** Linear blend of two hex colors; t=0 → a, t=1 → b. */
+const mix = (a: string, b: string, t: number): string => {
+  const [ar, ag, ab] = hexToRgb(a);
+  const [br, bg, bb] = hexToRgb(b);
+  return rgbToHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
+};
+/** Black or near-white, whichever reads better on a filled `bg`. */
+const inkOn = (bg: string): string => (luminance(bg) > 0.45 ? '#0f172a' : '#ffffff');
+/** A version of `accent` dark enough to read as text on the light banner;
+ *  already-deep accents (paper/monochrome) pass through unchanged. */
+const inkForLight = (accent: string): string =>
+  luminance(accent) > 0.45 ? mix(accent, '#0f172a', 0.5) : accent;
 
 const formatClockUTC = (ms: number | null, dt: number): string => {
   if (ms === null) return '—';
@@ -72,6 +110,10 @@ function spikeAsGARun(run: SpikeRun): GARun {
 export function AnalysisModal() {
   const { t } = useTranslation('analysis');
   const s = useAnalysisStore();
+  // Theme-aware periodogram trace colors, reused to tint the mode tabs so
+  // each tab matches the curve it plots (Raw RA → teal, Residual → amber).
+  const themeId = useViewStore((v) => v.theme);
+  const tc = themeOf(themeId).plot;
   // Threshold slider position for Manual Spike auto-select, in arc-sec.
   // Stored as a number; default 0 (the median). Renders a live preview
   // line on the chart so the user can see where Select would cut before
@@ -201,31 +243,60 @@ export function AnalysisModal() {
     </button>
   );
 
-  // Mode tab — wears the same amber palette as the header so it visually
-  // belongs to the heading group, not to the chart toolbar below. Active
-  // tab is the saturated amber-700 fill (matches the ANALYSIS pill); the
-  // inactive tab is a hollow chip on the amber-200 banner background.
+  // Mode tab. When given an `accent` (the tab's own periodogram trace color),
+  // the chip is tinted to match that curve — active = filled with the accent
+  // and a contrast-picked label; inactive = a hollow accent-ringed chip with
+  // the accent (darkened if needed) as its label color. Without an accent it
+  // falls back to the original amber palette (used by Manual Spike), so that
+  // tab is visually unchanged. The banner behind the tabs is always the light
+  // amber-200 header, hence the contrast-picking.
   const ModeTab = ({
-    target, current, label, onClick, tip,
+    target, current, label, onClick, tip, accent,
   }: {
     target: AnalysisKind;
     current: AnalysisKind;
     label: string;
     onClick: () => void;
     tip: string;
+    accent?: string;
   }) => {
     const active = target === current;
+    if (!accent) {
+      return (
+        <button
+          type="button"
+          onClick={onClick}
+          title={tip}
+          aria-pressed={active}
+          className={`rounded px-2 py-0.5 text-xs font-semibold transition-colors ${
+            active
+              ? 'bg-amber-700 text-amber-50'
+              : 'bg-amber-50 text-amber-900 ring-1 ring-amber-600 hover:bg-white'
+          }`}
+        >
+          {label}
+        </button>
+      );
+    }
+    const style: CSSProperties = active
+      ? {
+          backgroundColor: accent,
+          color: inkOn(accent),
+          boxShadow: `inset 0 0 0 1px ${mix(accent, '#000000', 0.25)}`,
+        }
+      : {
+          backgroundColor: '#fffdf7',
+          color: inkForLight(accent),
+          boxShadow: `inset 0 0 0 1px ${accent}`,
+        };
     return (
       <button
         type="button"
         onClick={onClick}
         title={tip}
         aria-pressed={active}
-        className={`rounded px-2 py-0.5 text-xs font-semibold transition-colors ${
-          active
-            ? 'bg-amber-700 text-amber-50'
-            : 'bg-amber-50 text-amber-900 ring-1 ring-amber-600 hover:bg-white'
-        }`}
+        className="rounded px-2 py-0.5 text-xs font-semibold transition-colors"
+        style={style}
       >
         {label}
       </button>
@@ -276,9 +347,11 @@ export function AnalysisModal() {
                       compare against the residual-after-correction
                       signal. */}
                   <ModeTab target="all-raw-ra" current={kind} label={t('mode.rawRa')}
-                    onClick={() => s.setKind('all-raw-ra')} tip={t('mode.rawRaTooltip')} />
+                    onClick={() => s.setKind('all-raw-ra')} tip={t('mode.rawRaTooltip')}
+                    accent={tc.fftRawRa} />
                   <ModeTab target="all" current={kind} label={t('mode.selected')}
-                    onClick={() => s.setKind('all')} tip={t('mode.selectedTooltip')} />
+                    onClick={() => s.setKind('all')} tip={t('mode.selectedTooltip')}
+                    accent={tc.fftResidual} />
                 </>
               )}
               {showSpikeTab && (
