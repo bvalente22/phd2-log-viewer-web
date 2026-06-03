@@ -12,6 +12,7 @@ import { GraphToolbar } from '../components/GraphToolbar';
 import { GraphContextMenu } from '../components/ContextMenu';
 import { RecentsDropdown } from '../components/RecentsDropdown';
 import { LogsFolderPane } from '../components/LogsFolderPane';
+import { SidebarResizer } from '../components/SidebarResizer';
 import { AnnotationModal } from '../components/AnnotationModal';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { ThemePicker } from '../components/ThemePicker';
@@ -34,6 +35,7 @@ export function ViewerPage() {
   const theme = useViewStore((s) => s.theme);
   const sidebarCollapsed = useViewStore((s) => s.sidebarCollapsed);
   const setSidebarCollapsed = useViewStore((s) => s.setSidebarCollapsed);
+  const sidebarWidthPx = useViewStore((s) => s.sidebarWidth);
 
   // Apply the active theme to <html> as a data attribute. CSS in
   // index.css selectors `[data-theme="paper"] .bg-slate-900 { ... }`
@@ -65,7 +67,7 @@ export function ViewerPage() {
   // 16px rail that holds only the expand chevron. Keeping the rail
   // visible (rather than fully hiding the sidebar) guarantees the
   // user can always see how to bring the sidebar back.
-  const sidebarWidth = sidebarCollapsed ? '16px' : '260px';
+  const sidebarWidth = sidebarCollapsed ? '16px' : `${sidebarWidthPx}px`;
 
   return (
     <>
@@ -155,6 +157,9 @@ export function ViewerPage() {
             >
               <span className="text-sm font-semibold leading-none transition-transform group-hover:-translate-x-0.5">‹</span>
             </button>
+            {/* Drag handle on the sidebar/main boundary — right of the hide
+                bar. Resizes the expanded sidebar; double-click resets. */}
+            <SidebarResizer />
           </>
         )}
       </aside>

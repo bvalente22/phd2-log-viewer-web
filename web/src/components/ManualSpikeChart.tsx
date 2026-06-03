@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Plot from 'react-plotly.js';
 import type { Data, Layout } from 'plotly.js';
@@ -63,6 +63,9 @@ export function ManualSpikeChart({
   const k = scaleMode === 'ARCSEC' ? run.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
   const traceColor = run.axis === 'ra' ? RA_COLOR : DEC_COLOR;
+  // Hover readout shown in the strip below the chart (instead of an
+  // on-chart popup), matching the other analysis charts / GuideGraph.
+  const [hover, setHover] = useState<string | null>(null);
 
   /** Convert a click event to data coordinates and find the nearest
    *  sample. Distance is computed in PIXEL space (Plotly's `l2p` and
@@ -175,7 +178,9 @@ export function ManualSpikeChart({
         type: 'scattergl', mode: 'lines',
         name: t('manualSpike.detrended'),
         line: { color: traceColor, width: 1 },
-        hovertemplate: `t=%{x:.2f}s · y=%{y:.2f}${unit}<extra></extra>`,
+        // Value goes to the readout strip below (onHover); keep the cursor
+        // spike + plotly_hover, hide the floating popup.
+        hoverinfo: 'none',
       } as Data,
     ];
     if (selectedIndices.length > 0) {
@@ -190,11 +195,28 @@ export function ManualSpikeChart({
           size: 12,
           line: { width: 2, color: 'rgba(0,0,0,0.5)' },
         },
-        hovertemplate: `${t('manualSpike.selectedHover')}<br>t=%{x:.2f}s · y=%{y:.2f}${unit}<extra></extra>`,
+        hoverinfo: 'none',
       } as Data);
     }
     return out;
   }, [run, k, t, traceColor, selectedIndices, unit]);
+
+  // Fill the readout strip from the hovered point. selectedIndices carry the
+  // picks; flag when the cursor lands on one so the user knows it's selected.
+  const onHover = useCallback((ev: { points?: Array<{ x?: number; y?: number }> }) => {
+    const x = ev.points?.[0]?.x;
+    const y = ev.points?.[0]?.y;
+    if (typeof x !== 'number' || typeof y !== 'number') return;
+    const yPx = scaleMode === 'ARCSEC' ? y / run.pixelScale : y;
+    const yArc = scaleMode === 'ARCSEC' ? y : y * run.pixelScale;
+    const onPick = selectedIndices.some((i) => run.t[i] === x);
+    setHover(
+      `t=${x.toFixed(2)}s · y=${yArc.toFixed(2)}″ (${yPx.toFixed(2)}px)` +
+        (onPick ? ' · selected' : ''),
+    );
+  }, [run, scaleMode, selectedIndices]);
+
+  const onUnhover = useCallback(() => setHover(null), []);
 
   const shapes = useMemo<NonNullable<Layout['shapes']>>(() => {
     const s = run.sigma * k;
@@ -254,15 +276,25 @@ export function ManualSpikeChart({
   };
 
   return (
-    <div className="h-full">
-      <Plot
-        divId={id}
-        data={traces}
-        layout={layout}
-        config={{ displayModeBar: false, responsive: true, scrollZoom: true, doubleClick: false }}
-        style={{ width: '100%', height: '100%' }}
-        useResizeHandler
-      />
+    <div className="flex h-full flex-col">
+      <div className="flex-1">
+        <Plot
+          divId={id}
+          data={traces}
+          layout={layout}
+          config={{ displayModeBar: false, responsive: true, scrollZoom: true, doubleClick: false }}
+          style={{ width: '100%', height: '100%' }}
+          useResizeHandler
+          onHover={onHover as never}
+          onUnhover={onUnhover}
+        />
+      </div>
+      <div
+        className="min-h-[24px] border-t border-slate-800 bg-slate-900/40 px-3 py-1 font-mono text-[11px] text-slate-300"
+        title={t('manualSpike.hoverTooltip')}
+      >
+        {hover ?? ' '}
+      </div>
     </div>
   );
 }

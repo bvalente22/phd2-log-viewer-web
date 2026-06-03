@@ -182,7 +182,8 @@
     "thresholdValueTooltip": "Current threshold value in arc-seconds (two-decimal precision). Brightens once it moves off 0, indicating Select can be clicked.",
     "select": "Select",
     "selectTooltip": "Commit the current threshold line — selects every sample on the active axis whose deviation from the median crosses the line (positive value = above; negative value = below). Replaces the current active-axis selection; the other axis is untouched. Disabled while the slider sits at 0.",
-    "gestureHint": "left-click = add point · right-click = remove point · scroll = X zoom · drag = X pan + Y zoom"
+    "gestureHint": "left-click = add point · right-click = remove point · scroll = X zoom · drag = X pan + Y zoom",
+    "hoverTooltip": "Detrended value under the cursor. The vertical line tracks the cursor on the chart; the value shows here. Move the mouse off the chart to clear."
   },
   "show": "show",
   "showTooltip": "Toggle individual drift traces",

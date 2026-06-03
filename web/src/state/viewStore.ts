@@ -8,6 +8,13 @@ export type VerticalMode = 'PAN' | 'ZOOM';
 export type ScaleMode = 'PIXELS' | 'ARCSEC';
 export type GraphMode = 'TIME' | 'SCATTER';
 
+/** Sidebar width bounds (px). Drag-resize is clamped to this range. */
+export const SIDEBAR_MIN = 180;
+export const SIDEBAR_MAX = 480;
+export const SIDEBAR_DEFAULT = 260;
+export const clampSidebarWidth = (n: number): number =>
+  Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, n));
+
 export interface TraceVisibility {
   ra: boolean;
   dec: boolean;
@@ -69,6 +76,9 @@ interface ViewState {
    * always sees how to bring it back. Persisted across sessions.
    */
   sidebarCollapsed: boolean;
+  /** Expanded-sidebar width in px. Persisted; clamped to [SIDEBAR_MIN,
+   *  SIDEBAR_MAX]. Ignored while `sidebarCollapsed` (the rail is fixed 16px). */
+  sidebarWidth: number;
   /**
    * Snapshots of the per-axis trace toggles, captured the moment an axis
    * goes "all off" via the master RA / Dec toolbar button. When the user
@@ -100,6 +110,7 @@ interface ViewState {
   setFlipRaPulses: (b: boolean) => void;
   setFlipDecPulses: (b: boolean) => void;
   setSidebarCollapsed: (b: boolean) => void;
+  setSidebarWidth: (n: number) => void;
   setTheme: (t: ThemeId) => void;
   toggleTrace: (k: keyof TraceVisibility) => void;
   /**
@@ -138,6 +149,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   flipRaPulses: false,
   flipDecPulses: false,
   sidebarCollapsed: false,
+  sidebarWidth: SIDEBAR_DEFAULT,
   lastRaTraces: { ra: true, raPulses: true, raLimits: false },
   lastDecTraces: { dec: true, decPulses: true, decLimits: false },
   // Guide-star traces start hidden by default (the chart already has a lot
@@ -157,6 +169,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   setFlipRaPulses: (b) => set({ flipRaPulses: b }),
   setFlipDecPulses: (b) => set({ flipDecPulses: b }),
   setSidebarCollapsed: (b) => set({ sidebarCollapsed: b }),
+  setSidebarWidth: (n) => set({ sidebarWidth: clampSidebarWidth(n) }),
   setTheme: (t) => set({ theme: t }),
   toggleTrace: (k) => set((s) => ({ traces: { ...s.traces, [k]: !s.traces[k] } })),
 
@@ -291,6 +304,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
     flipRaPulses: s.flipRaPulses,
     flipDecPulses: s.flipDecPulses,
     sidebarCollapsed: s.sidebarCollapsed,
+    sidebarWidth: s.sidebarWidth,
     lastRaTraces: s.lastRaTraces,
     lastDecTraces: s.lastDecTraces,
     lastStarTraces: s.lastStarTraces,
