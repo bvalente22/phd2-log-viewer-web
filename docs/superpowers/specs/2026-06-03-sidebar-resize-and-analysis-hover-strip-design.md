@@ -55,11 +55,12 @@ const sidebarWidth = sidebarCollapsed ? '16px' : `${width}px`;
 
 **New component `SidebarResizer`** (`web/src/components/SidebarResizer.tsx`):
 
-A thin (~5px) full-height vertical strip rendered **immediately to the left of
-the existing `‹` hide bar**, so the sidebar's right edge reads:
+A thin (~5px) full-height vertical strip rendered **immediately to the right of
+the existing `‹` hide bar**, so it sits on the sidebar/main boundary and the
+sidebar's right edge reads:
 
 ```
-[ ……… content ……… ][ ⇔ resizer ][ ‹ hide ]
+[ ……… content ……… ][ ‹ hide ][ ⇔ resizer ]
 ```
 
 Interaction:
