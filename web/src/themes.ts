@@ -42,6 +42,15 @@ export interface PlotThemeColors {
   traceMass: string;
   traceSnr: string;
   /**
+   * Analysis-periodogram trace colors — amber (residual error / unguided) and
+   * teal (raw RA). Theme-aware: bright on the dark backgrounds, deepened on
+   * the white (paper/monochrome) backgrounds where the bright variants wash
+   * out. Blue/red are deliberately avoided (reserved for RA/Dec elsewhere).
+   * Spike mode keeps its own amber accent in PeriodogramChart.
+   */
+  fftResidual: string;
+  fftRawRa: string;
+  /**
    * Vertical-cursor "spike" color used by every line chart on hover.
    * Picked to contrast with both the chart background and the saturated
    * trace colors (RA blue / Dec red). Bright yellow on dark backgrounds,
@@ -72,6 +81,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       paper: '#0f172a',
       plot: '#0f172a',
       font: '#cbd5e1',
+      fftResidual: '#fbbf24',
+      fftRawRa: '#2dd4bf',
       grid: '#1e293b',
       zeroline: '#334155',
       zerolineStrong: '#64748b',
@@ -92,6 +103,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       paper: '#ffffff',
       plot: '#ffffff',
       font: '#1e293b',
+      fftResidual: '#d97706',
+      fftRawRa: '#0d9488',
       grid: '#e2e8f0',
       zeroline: '#cbd5e1',
       zerolineStrong: '#94a3b8',
@@ -115,6 +128,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       paper: '#000000',
       plot: '#000000',
       font: '#ffffff',
+      fftResidual: '#fbbf24',
+      fftRawRa: '#2dd4bf',
       grid: '#404040',
       zeroline: '#808080',
       zerolineStrong: '#d0d0d0',
@@ -140,6 +155,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       paper: '#ffffff',
       plot: '#ffffff',
       font: '#000000',
+      fftResidual: '#d97706',
+      fftRawRa: '#0d9488',
       // Grid kept light so it reads as figure infrastructure, not noise
       // — pure-black gridlines on white would visually compete with the
       // colored traces. Axis labels, borders, and the zero-reference
@@ -169,6 +186,8 @@ export const THEMES: Record<ThemeId, Theme> = {
       paper: '#1a0606',
       plot: '#1a0606',
       font: '#ff8080',
+      fftResidual: '#fbbf24',
+      fftRawRa: '#2dd4bf',
       grid: '#3a1010',
       zeroline: '#5a1818',
       zerolineStrong: '#a04040',
