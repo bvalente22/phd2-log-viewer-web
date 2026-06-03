@@ -80,7 +80,10 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
         x, y: Array.from(garun.rac).map((v) => -v * k),
         type: 'scattergl', mode: 'lines',
         name: 'RA', line: { color: RA_COLOR, width: 1.5 },
-        hovertemplate: 'RA: %{y:.2f}<extra></extra>',
+        // Values live in the readout strip below (onHover); hide the floating
+        // popup but keep the plotly_hover event + cursor spike. Mirrors
+        // GuideGraph's hoverinfo:'none' pattern.
+        hoverinfo: 'none',
       } as Data);
     }
     if (showDec) {
@@ -89,7 +92,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
         y: Array.from(garun.decc).map((v) => v * k),
         type: 'scattergl', mode: 'lines',
         name: 'Dec', line: { color: DEC_COLOR, width: 1.5 },
-        hovertemplate: 'Dec: %{y:.2f}<extra></extra>',
+        hoverinfo: 'none',
       } as Data);
     }
     return out;
