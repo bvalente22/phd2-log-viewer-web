@@ -24,6 +24,22 @@ describe('calcStats', () => {
     expect(st.rmsRaArcsec).toBeCloseTo(2);
   });
 
+  it('computes RMS about the mean (std-dev), not about zero', () => {
+    // RA values [2,2,4,4]: mean = 3, std-dev = 1. RMS-about-zero would be
+    // sqrt((4+4+16+16)/4) = sqrt(10) ≈ 3.162. The desktop PHDLogView reports
+    // the standard deviation (RMS about the mean), so we must get 1.
+    const s = newGuideSession('x');
+    s.entries = [mkE(1, 1, 2, 5), mkE(2, 2, 2, 5), mkE(3, 3, 4, 9), mkE(4, 4, 4, 9)];
+    s.pixelScale = 1;
+    const st = calcStats(s);
+    expect(st.rmsRa).toBeCloseTo(1);   // mean 3, std 1
+    expect(st.rmsDec).toBeCloseTo(2);  // mean 7, std 2
+    expect(st.rmsTotal).toBeCloseTo(Math.sqrt(1 + 4));
+    // mean/peak are unaffected by the mean-subtraction.
+    expect(st.meanRa).toBeCloseTo(3);
+    expect(st.peakRa).toBeCloseTo(4);
+  });
+
   it('computes drift from a linear ramp', () => {
     const s = newGuideSession('x');
     s.entries = [mkE(1, 0, 0, 0), mkE(2, 60, 1, 0), mkE(3, 120, 2, 0), mkE(4, 180, 3, 0)];
