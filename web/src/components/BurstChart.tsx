@@ -4,10 +4,8 @@ import Plot from 'react-plotly.js';
 import type { Data, Layout } from 'plotly.js';
 import type { BurstRun, BurstCandidate } from '../parser/burstAnalysis';
 import { useViewStore } from '../state/viewStore';
-import { themeOf } from '../themes';
+import { themeOf, raDecColors } from '../themes';
 
-const RA_COLOR = '#60a5fa';
-const DEC_COLOR = '#f87171';
 const ENVELOPE_COLOR = '#fbbf24';      // amber — distinguishes the energy series from the trace
 const PEAK_COLOR = '#22d3ee';          // cyan — envelope peaks
 const ACF_COLOR = '#a78bfa';           // violet
@@ -43,6 +41,8 @@ export function BurstChart({ run, scaleMode }: BurstChartProps) {
 
   const k = scaleMode === 'ARCSEC' ? run.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
+  const swapRaDec = useViewStore((s) => s.swapRaDec);
+  const { ra: RA_COLOR, dec: DEC_COLOR } = raDecColors(swapRaDec);
   const traceColor = run.axis === 'ra' ? RA_COLOR : DEC_COLOR;
 
   // Vertical-line shapes for candidate periods, reused across the ACF and FFT charts.

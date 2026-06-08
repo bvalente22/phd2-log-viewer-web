@@ -4,11 +4,9 @@ import Plot from 'react-plotly.js';
 import type { Data, Layout } from 'plotly.js';
 import type { SimpleSpikeRun } from '../parser/simpleSpikeAnalysis';
 import { useViewStore } from '../state/viewStore';
-import { themeOf } from '../themes';
+import { themeOf, raDecColors } from '../themes';
 import { useChartGestures } from './useChartGestures';
 
-const RA_COLOR = '#60a5fa';
-const DEC_COLOR = '#f87171';
 const SPIKE_COLOR = '#f59e0b';
 const THRESHOLD_LINE = 'rgba(245, 158, 11, 0.55)';
 
@@ -35,6 +33,8 @@ export function SimpleSpikeChart({ run, scaleMode }: SimpleSpikeChartProps) {
 
   const k = scaleMode === 'ARCSEC' ? run.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
+  const swapRaDec = useViewStore((s) => s.swapRaDec);
+  const { ra: RA_COLOR, dec: DEC_COLOR } = raDecColors(swapRaDec);
   const traceColor = run.axis === 'ra' ? RA_COLOR : DEC_COLOR;
 
   const traces = useMemo<Data[]>(() => {

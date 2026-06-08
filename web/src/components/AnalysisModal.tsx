@@ -14,7 +14,7 @@ import { ManualSpikeChart } from './ManualSpikeChart';
 import { manualSpikeStats } from '../parser/manualSpikeAnalysis';
 import { fmtNumber } from '../i18n/format';
 import type { GARun } from '../parser/analyze';
-import { densePeriodogram, curveTopPeaks } from '../parser/perioPeaks';
+import { densePeriodogram, curveTopPeaks, primaryPeriod, periodRatio, rampValue } from '../parser/perioPeaks';
 import { pickTopSpikePeriods, type SpikeRun } from '../parser/spikeAnalysis';
 import { Spline } from '../parser/spline';
 
@@ -136,11 +136,34 @@ export function AnalysisModal() {
     return () => window.removeEventListener('keydown', onKey);
   }, [s]);
 
+  // Primary period for the Ratio readouts. Anchored to the RAW RA curve on BOTH
+  // tabs: setKind swaps garun/garunOther, so the Raw-RA run is the member with
+  // undoRaCorrections === true. Unguided has a single curve.
+  const primaryPeriodSec = useMemo<number | null>(() => {
+    if (s.state !== 'open') return null;
+    if (s.kind === 'spike') return null;
+    const rawRa = s.kind === 'unguided'
+      ? s.garun
+      : s.garun.undoRaCorrections
+      ? s.garun
+      : s.garunOther && s.garunOther.undoRaCorrections
+      ? s.garunOther
+      : null;
+    if (!rawRa) return null;
+    const curve = densePeriodogram(rawRa.fftPeriod, rawRa.fftSpline);
+    return primaryPeriod(curve, s.maxPeriodSec);
+  }, [s]);
+
   const peaks = useMemo(() => {
     if (s.state !== 'open') return [];
     if (s.kind === 'spike') return [];
-    return topPeaks(s.garun, 3, s.maxPeriodSec);
-  }, [s]);
+    // The top-3 peaks can never be LONGER than the primary period: the primary is
+    // the dominant PE peak (largest amplitude), so anything longer is a sub-
+    // fundamental artefact we don't want listed. Cap at the primary, falling back
+    // to the max-period filter only when no primary was found.
+    const cap = primaryPeriodSec ?? s.maxPeriodSec;
+    return topPeaks(s.garun, 3, cap);
+  }, [s, primaryPeriodSec]);
 
   const spikePeriods = useMemo(() => {
     if (s.state !== 'open') return [];
@@ -764,6 +787,7 @@ export function AnalysisModal() {
             yMaxLockPx={yMaxLockPx}
             yMaxViewPx={yMaxViewPx}
             topPeaks={kind === 'spike' ? spikePeriods : peaks}
+            primaryPeriodSec={primaryPeriodSec}
           />
         </div>
       </div>
@@ -862,7 +886,13 @@ export function AnalysisModal() {
                   title={t('peakTitle', { index: i + 1, period: fmtNumber(p.period, 1) })}
                 >
                   <div className="text-[10px] uppercase tracking-wider text-sky-400">{t('peakIndex', { index: i + 1 })}</div>
-                  <div>{t('period')}: {fmtNumber(p.period, 1)}s</div>
+                  <div>
+                    {t('period')}: {fmtNumber(p.period, 1)}s
+                    {primaryPeriodSec !== null && (
+                      <>{'  '}{t('ratio')} {fmtNumber(periodRatio(primaryPeriodSec, p.period), 1)}x</>
+                    )}
+                    {'  '}{t('ramp')} {fmtNumber(rampValue(scaleMode === 'ARCSEC' ? aArc : aPx, p.period), 2)}
+                  </div>
                   <div>{t('amplitude')}: {fmtNumber(aArc, 2)}″ ({fmtNumber(aPx, 2)}px)</div>
                   <div>{t('pp')}: {fmtNumber(ppArc, 2)}″ ({fmtNumber(ppPx, 2)}px)</div>
                   <div>{t('rms')}: {fmtNumber(rmsArc, 2)}″ ({fmtNumber(rmsPx, 2)}px)</div>

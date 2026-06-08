@@ -107,6 +107,9 @@ interface PeriodogramChartProps {
    *  inherit the chart's x axis so log-scale zoom/pan keeps them aligned
    *  to their data positions without extra bookkeeping. */
   topPeaks: ReadonlyArray<{ period: number }>;
+  /** Raw-RA primary period (longest peak <= max) for the hover Ratio readout.
+   *  Null when unavailable (no qualifying peak / spike mode). */
+  primaryPeriodSec: number | null;
 }
 
 /** Pick the per-kind color for a periodogram trace, theme-aware via `tc`. */
@@ -138,7 +141,7 @@ const otherKindOf = (kind: AnalysisKind): AnalysisKind | null => {
  * can compare residual-error vs raw-RA peaks at the same scale.
  * Hover snap-to-peak still operates on the active trace only.
  */
-export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockPx, yMaxViewPx, topPeaks }: PeriodogramChartProps) {
+export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockPx, yMaxViewPx, topPeaks, primaryPeriodSec }: PeriodogramChartProps) {
   const { t } = useTranslation('analysis');
   const { t: tChart } = useTranslation('chart');
   const plotId = useId().replace(/:/g, '_');
@@ -343,8 +346,12 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       const rawRaDisp = scaleMode === 'ARCSEC' ? rawRaPx * garun.pixelScale : rawRaPx;
       const residualDisp = scaleMode === 'ARCSEC' ? residualPx * garun.pixelScale : residualPx;
       const u = scaleMode === 'ARCSEC' ? '″' : 'pix';
+      const ratioStr = primaryPeriodSec != null && period > 0
+        ? `${t('ratio')} ${(primaryPeriodSec / period).toFixed(1)}x    `
+        : '';
       setHover(
         `Period: ${period.toFixed(2)}s    ` +
+        ratioStr +
         `${t('mode.rawRa')}: ${rawRaDisp.toFixed(2)}${u}    ` +
         `${t('mode.selected')}: ${residualDisp.toFixed(2)}${u}`,
       );
@@ -355,13 +362,16 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       const ppPx = 2 * aPx;
       const rmsArc = aArc / Math.SQRT2;
       const rmsPx = aPx / Math.SQRT2;
+      const ratioStr = primaryPeriodSec != null && period > 0
+        ? `${t('ratio')} ${(primaryPeriodSec / period).toFixed(1)}x  `
+        : '';
       setHover(
-        `Period: ${period.toFixed(2)}s  Amplitude: ${aArc.toFixed(2)}″ (${aPx.toFixed(2)}px)  ` +
+        `Period: ${period.toFixed(2)}s  ${ratioStr}Amplitude: ${aArc.toFixed(2)}″ (${aPx.toFixed(2)}px)  ` +
         `P-P: ${ppArc.toFixed(2)}″ (${ppPx.toFixed(2)}px)  ` +
         `RMS: ${rmsArc.toFixed(2)}″ (${rmsPx.toFixed(2)}px)`,
       );
     }
-  }, [garun, garunOther, snapToPeak, kind, scaleMode, spikeRun, setSpikeHoverPeriod, t]);
+  }, [garun, garunOther, snapToPeak, kind, scaleMode, spikeRun, setSpikeHoverPeriod, t, primaryPeriodSec]);
 
   // Quiet the unused-variable warning for `unit/k` when scaleMode is PIXELS.
   useEffect(() => { void unit; void k; }, [unit, k]);

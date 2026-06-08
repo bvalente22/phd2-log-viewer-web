@@ -222,5 +222,7 @@
   "period": "Period",
   "amplitude": "Amplitude",
   "pp": "P-P",
-  "rms": "RMS"
+  "rms": "RMS",
+  "ratio": "Ratio",
+  "ramp": "Ramp"
 }

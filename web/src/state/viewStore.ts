@@ -98,6 +98,11 @@ interface ViewState {
    * Plotly chart layout colors (read off `themes.ts` at render time).
    */
   theme: ThemeId;
+  /**
+   * Swap the RA / Dec trace colors (RA-blue/Dec-red ↔ RA-red/Dec-blue) across
+   * every chart except the periodogram. Persisted per-browser like `theme`.
+   */
+  swapRaDec: boolean;
 
   setCoordMode: (m: CoordMode) => void;
   setDevice: (d: Device) => void;
@@ -112,6 +117,7 @@ interface ViewState {
   setSidebarCollapsed: (b: boolean) => void;
   setSidebarWidth: (n: number) => void;
   setTheme: (t: ThemeId) => void;
+  setSwapRaDec: (b: boolean) => void;
   toggleTrace: (k: keyof TraceVisibility) => void;
   /**
    * Per-axis master toggle. Off → snapshots the current sub-trace state and
@@ -157,6 +163,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   // mass on first master-on click so the group does something useful.
   lastStarTraces: { mass: true, snr: false },
   theme: DEFAULT_THEME,
+  swapRaDec: false,
 
   setCoordMode: (m) => set({ coordMode: m }),
   setDevice: (d) => set({ device: d }),
@@ -171,6 +178,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   setSidebarCollapsed: (b) => set({ sidebarCollapsed: b }),
   setSidebarWidth: (n) => set({ sidebarWidth: clampSidebarWidth(n) }),
   setTheme: (t) => set({ theme: t }),
+  setSwapRaDec: (b) => set({ swapRaDec: b }),
   toggleTrace: (k) => set((s) => ({ traces: { ...s.traces, [k]: !s.traces[k] } })),
 
   toggleRaAxis: () => set((s) => {
@@ -309,5 +317,6 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
     lastDecTraces: s.lastDecTraces,
     lastStarTraces: s.lastStarTraces,
     theme: s.theme,
+    swapRaDec: s.swapRaDec,
   }),
 }));

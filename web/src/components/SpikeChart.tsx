@@ -7,10 +7,8 @@ import { alignedEventIndices } from '../parser/spikeAnalysis';
 import { useChartGestures } from './useChartGestures';
 import { useAnalysisStore } from '../state/analysisStore';
 import { useViewStore } from '../state/viewStore';
-import { themeOf } from '../themes';
+import { themeOf, raDecColors } from '../themes';
 
-const RA_COLOR = '#60a5fa';
-const DEC_COLOR = '#f87171';
 const SPIKE_MARKER = '#f59e0b';        // amber — pops against both blue and red
 // Aligned-event highlight — a brighter cyan that contrasts hard
 // against the amber default so the user can see at a glance which
@@ -63,6 +61,8 @@ export function SpikeChart({ run, scaleMode }: SpikeChartProps) {
 
   const k = scaleMode === 'ARCSEC' ? run.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
+  const swapRaDec = useViewStore((s) => s.swapRaDec);
+  const { ra: RA_COLOR, dec: DEC_COLOR } = raDecColors(swapRaDec);
   const traceColor = run.axis === 'ra' ? RA_COLOR : DEC_COLOR;
 
   const traces = useMemo<Data[]>(() => {
