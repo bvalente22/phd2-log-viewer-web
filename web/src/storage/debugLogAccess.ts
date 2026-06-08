@@ -1,4 +1,6 @@
 import { useFolderStore } from '../state/folderStore';
+import { useLogStore } from '../state/logStore';
+import { getDebugLogHandle, putDebugLogHandle } from './debugLogHandles';
 
 /**
  * Sibling debug-log filename for a guide log: PHD2 writes them side by side and
@@ -12,65 +14,90 @@ export function debugLogNameFor(guideLogName: string): string {
 /** Whether the browser can prompt for a folder (File System Access API). */
 export const canGrantFolder = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
-// A debug log the user handed over alongside the guide log — e.g. dragged BOTH
-// files onto the open-log drop zone at once. Keyed by guide-log name and checked
-// first, so double-click opens it with no folder access or pick prompt needed.
+// Session stash of the debug log dragged in with the guide log, keyed by the
+// guide log's content hash (matches the persisted handle + the annotations /
+// primary-period sidecars).
 const stashedDebugLogs = new Map<string, File>();
 
-/** Remember a debug log provided with a guide log (drag-both / multi-pick). */
-export function setStashedDebugLog(guideLogName: string, file: File): void {
-  stashedDebugLogs.set(guideLogName, file);
+/** Remember (for this session) the debug log dragged in with the guide log. */
+export function setStashedDebugLog(hash: string, file: File): void {
+  stashedDebugLogs.set(hash, file);
 }
 
-// A folder the user granted specifically for finding debug logs. The browser
-// can't see the parent folder of a file opened via drag / file-pick, so when
-// the logs-folder browser wasn't used we let the user point us at the folder
-// once and remember it for the session (later double-clicks auto-find).
+/**
+ * Persist a HANDLE (link, not bytes) to the dragged debug log so a later session
+ * can re-read it. Chromium-only — `getAsFileSystemHandle` yields the handle from
+ * a drop; elsewhere there's nothing to persist and the stash stays session-only.
+ */
+export async function rememberDebugLogHandle(
+  hash: string, handle: FileSystemFileHandle, fileName: string,
+): Promise<void> {
+  await putDebugLogHandle(hash, handle, fileName);
+}
+
+const currentHash = (): string | null => useLogStore.getState().meta?.hash ?? null;
+
 let grantedFolder: FileSystemDirectoryHandle | null = null;
 
-async function fileFromHandle(
+/** Ensure read permission on a handle, prompting if needed (needs a gesture). */
+async function ensureRead(h: FileSystemHandle): Promise<boolean> {
+  let perm = await h.queryPermission({ mode: 'read' });
+  if (perm === 'prompt') perm = await h.requestPermission({ mode: 'read' });
+  return perm === 'granted';
+}
+
+async function fileFromDirHandle(
   handle: FileSystemDirectoryHandle, guideLogName: string,
 ): Promise<File | null> {
   try {
-    let perm = await handle.queryPermission({ mode: 'read' });
-    if (perm === 'prompt') perm = await handle.requestPermission({ mode: 'read' });
-    if (perm !== 'granted') return null;
+    if (!(await ensureRead(handle))) return null;
     const fh = await handle.getFileHandle(debugLogNameFor(guideLogName));
     return await fh.getFile();
   } catch {
-    // NotFoundError (no sibling) / permission / any FS error.
-    return null;
+    return null; // NotFoundError / permission / FS error
+  }
+}
+
+async function fileFromStoredHandle(hash: string): Promise<File | null> {
+  try {
+    const rec = await getDebugLogHandle(hash);
+    if (!rec) return null;
+    if (!(await ensureRead(rec.handle))) return null;
+    return await rec.handle.getFile();
+  } catch {
+    return null; // permission denied, file moved/deleted, etc.
   }
 }
 
 /**
- * Try to read the sibling debug log from a folder the app already has access to:
- * the logs-folder browser's directory handle, or a folder the user granted
- * earlier for debug logs. Returns null when neither has it (the caller then
- * offers the manual grant / pick).
+ * Resolve the sibling debug log from a source the app already has: this
+ * session's dragged-in stash, a persisted handle from a previous session, or a
+ * folder the app has access to. Returns null when none has it (the caller then
+ * offers the manual grant / pick). Must run from a user gesture (the double-
+ * click / Backlash-open) so the permission prompt is allowed.
  */
 export async function resolveDebugLogFile(guideLogName: string): Promise<File | null> {
-  // 1) A debug log the user dragged in alongside the guide log — no folder
-  //    access needed, so this is the most reliable path.
-  const stashed = stashedDebugLogs.get(guideLogName);
-  if (stashed) return stashed;
-  // 2) A folder the app already has access to: the logs-folder browser's
-  //    directory handle, or a folder the user granted earlier for debug logs.
+  const hash = currentHash();
+  if (hash) {
+    const stashed = stashedDebugLogs.get(hash);
+    if (stashed) return stashed;
+    const fromHandle = await fileFromStoredHandle(hash);
+    if (fromHandle) return fromHandle;
+  }
   const st = useFolderStore.getState();
   const folderHandle = st.state === 'listing' || st.state === 'needs-permission' ? st.handle : null;
   for (const h of [folderHandle, grantedFolder]) {
     if (!h) continue;
-    const f = await fileFromHandle(h, guideLogName);
+    const f = await fileFromDirHandle(h, guideLogName);
     if (f) return f;
   }
   return null;
 }
 
 /**
- * Prompt the user to pick the folder that holds the guide + debug logs, then
- * find the sibling debug log in it and remember the folder for the session.
- * Must run from a user gesture. Returns the File, or null if cancelled or the
- * sibling isn't in the chosen folder.
+ * Prompt the user to pick the folder that holds the guide + debug logs, find the
+ * sibling debug log in it, and remember the folder for the session. Must run
+ * from a user gesture. Returns the File, or null if cancelled / not in folder.
  */
 export async function grantDebugFolderAndResolve(guideLogName: string): Promise<File | null> {
   if (!canGrantFolder) return null;
@@ -81,5 +108,5 @@ export async function grantDebugFolderAndResolve(guideLogName: string): Promise<
     return null; // user cancelled the picker
   }
   grantedFolder = handle;
-  return fileFromHandle(handle, guideLogName);
+  return fileFromDirHandle(handle, guideLogName);
 }
