@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnalysisModal } from '../components/AnalysisModal';
+import { DebugLogViewer } from '../components/DebugLogViewer';
 import { SectionList } from '../components/SectionList';
 import { StatsGrid } from '../components/StatsGrid';
 import { GuideGraph } from '../components/GuideGraph';
@@ -234,6 +235,7 @@ export function ViewerPage() {
       </main>
       </div>
       <AnalysisModal />
+      <DebugLogViewer />
       <AnnotationModal />
     </>
   );

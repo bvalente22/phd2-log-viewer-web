@@ -8,6 +8,8 @@ import type { GARun } from '../parser/analyze';
 import { useChartGestures } from './useChartGestures';
 import { useAnalysisStore } from '../state/analysisStore';
 import { useViewStore } from '../state/viewStore';
+import { useLogStore } from '../state/logStore';
+import { useDebugLogStore } from '../state/debugLogStore';
 import { themeOf, raDecColors } from '../themes';
 
 const CURSOR_COLOR = 'rgba(250, 204, 21, 0.7)';
@@ -210,6 +212,43 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
     );
     if (typeof pt?.x === 'number') drawCursor(pt.x);
   }, [garun, scaleMode, drawCursor]);
+
+  // Double-click → open the sibling debug log at the matching timestamp.
+  // useChartGestures preventDefaults pointerdown (to own pan/zoom), which
+  // suppresses native click/dblclick — so we detect a double-tap from the
+  // pointer events directly: two quick, near-stationary left-button taps.
+  // The target sample is whatever the cursor last hovered (lastHoverIdxRef).
+  useEffect(() => {
+    const div = document.getElementById(plotId);
+    if (!div) return;
+    let downX = 0, downY = 0, lastTapT = 0, lastTapX = 0, lastTapY = 0;
+    const dist = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
+    const onDown = (e: PointerEvent) => { downX = e.clientX; downY = e.clientY; };
+    const onUp = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      if (dist(downX, downY, e.clientX, e.clientY) > 6) { lastTapT = 0; return; } // a drag, not a tap
+      const now = e.timeStamp;
+      if (now - lastTapT < 400 && dist(lastTapX, lastTapY, e.clientX, e.clientY) < 12) {
+        lastTapT = 0;
+        const idx = lastHoverIdxRef.current;
+        if (idx === null || idx < 0 || idx >= garun.t.length) return;
+        const startsMs = garun.starts;
+        void useDebugLogStore.getState().openForSample({
+          guideLogName: useLogStore.getState().meta?.name ?? '',
+          startsMs,
+          targetEpochMs: (startsMs ?? 0) + garun.t[idx] * 1000,
+        });
+      } else {
+        lastTapT = now; lastTapX = e.clientX; lastTapY = e.clientY;
+      }
+    };
+    div.addEventListener('pointerdown', onDown, true);
+    div.addEventListener('pointerup', onUp, true);
+    return () => {
+      div.removeEventListener('pointerdown', onDown, true);
+      div.removeEventListener('pointerup', onUp, true);
+    };
+  }, [plotId, garun]);
 
   const tc = themeOf(themeId).plot;
   const layout: Partial<Layout> = {
