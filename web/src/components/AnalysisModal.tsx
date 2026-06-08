@@ -136,20 +136,6 @@ export function AnalysisModal() {
     return () => window.removeEventListener('keydown', onKey);
   }, [s]);
 
-  const peaks = useMemo(() => {
-    if (s.state !== 'open') return [];
-    if (s.kind === 'spike') return [];
-    return topPeaks(s.garun, 3, s.maxPeriodSec);
-  }, [s]);
-
-  const spikePeriods = useMemo(() => {
-    if (s.state !== 'open') return [];
-    if (s.kind !== 'spike' || !s.spikeRun) return [];
-    return pickTopSpikePeriods(s.spikeRun, 3, {
-      minPeriodSec: s.spikeMinPeriodSec ?? undefined,
-    });
-  }, [s]);
-
   // Primary period for the Ratio readouts. Anchored to the RAW RA curve on BOTH
   // tabs: setKind swaps garun/garunOther, so the Raw-RA run is the member with
   // undoRaCorrections === true. Unguided has a single curve.
@@ -166,6 +152,25 @@ export function AnalysisModal() {
     if (!rawRa) return null;
     const curve = densePeriodogram(rawRa.fftPeriod, rawRa.fftSpline);
     return primaryPeriod(curve, s.maxPeriodSec);
+  }, [s]);
+
+  const peaks = useMemo(() => {
+    if (s.state !== 'open') return [];
+    if (s.kind === 'spike') return [];
+    // The top-3 peaks can never be LONGER than the primary period: the primary is
+    // the dominant PE peak (largest amplitude), so anything longer is a sub-
+    // fundamental artefact we don't want listed. Cap at the primary, falling back
+    // to the max-period filter only when no primary was found.
+    const cap = primaryPeriodSec ?? s.maxPeriodSec;
+    return topPeaks(s.garun, 3, cap);
+  }, [s, primaryPeriodSec]);
+
+  const spikePeriods = useMemo(() => {
+    if (s.state !== 'open') return [];
+    if (s.kind !== 'spike' || !s.spikeRun) return [];
+    return pickTopSpikePeriods(s.spikeRun, 3, {
+      minPeriodSec: s.spikeMinPeriodSec ?? undefined,
+    });
   }, [s]);
 
   if (s.state === 'closed') return null;

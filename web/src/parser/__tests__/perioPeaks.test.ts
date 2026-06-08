@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { primaryPeriod, periodRatio, rampValue } from '../perioPeaks';
+import { primaryPeriod, periodRatio, rampValue, curveTopPeaks } from '../perioPeaks';
 
 // Local maxima at periods 150 (amp 4), 300 (amp 10), 460 (amp 2). The dominant
 // (largest-amplitude) peak is 300; 460 is a small longer-period bump — exactly
@@ -22,6 +22,15 @@ describe('primaryPeriod', () => {
   });
   it('returns null when no peak qualifies', () => {
     expect(primaryPeriod(curve, 120)).toBeNull();
+  });
+});
+
+describe('curveTopPeaks (top-3 capped at the primary period)', () => {
+  it('excludes peaks longer than the cap and ranks the rest by amplitude', () => {
+    // cap = 300 (the primary). The 460s bump is dropped; 300 (amp 10) outranks
+    // 150 (amp 4). This is exactly how the modal caps the top-3 at the primary.
+    const top = curveTopPeaks(curve, 3, 300);
+    expect(top.map((p) => p.period)).toEqual([300, 150]);
   });
 });
 
