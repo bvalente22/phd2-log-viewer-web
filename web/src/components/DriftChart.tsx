@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, useCallback, useEffect } from 'react';
+import { useId, useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Plot from 'react-plotly.js';
 // @ts-expect-error -- no types for the dist bundle; we only call relayout.
@@ -13,7 +13,7 @@ import { themeOf, raDecColors } from '../themes';
 const CURSOR_COLOR = 'rgba(250, 204, 21, 0.7)';
 
 interface PlotlyHoverEvent {
-  points?: Array<{ x?: number; y?: number; curveNumber?: number }>;
+  points?: Array<{ x?: number; y?: number; curveNumber?: number; pointNumber?: number }>;
 }
 
 interface DriftChartProps {
@@ -43,6 +43,10 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
   const { t: tChart } = useTranslation('chart');
   const plotId = useId().replace(/:/g, '_');
   const [hover, setHover] = useState<string | null>(null);
+  // Sample index under the cursor — captured on hover, consumed by the
+  // double-click handler so it knows which sample's timestamp to match in the
+  // debug log without re-deriving it from a pixel position.
+  const lastHoverIdxRef = useRef<number | null>(null);
   const themeId = useViewStore((s) => s.theme);
   const swapRaDec = useViewStore((s) => s.swapRaDec);
   // X range tracking persists drag-pans across hover-induced re-renders.
@@ -185,13 +189,26 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
   }, [setDriftXRange]);
 
   const onHover = useCallback((ev: PlotlyHoverEvent) => {
-    const x = ev.points?.[0]?.x;
-    const y = ev.points?.[0]?.y;
-    if (typeof x !== 'number' || typeof y !== 'number') return;
-    const yPx = scaleMode === 'ARCSEC' ? y / garun.pixelScale : y;
-    const yArc = scaleMode === 'ARCSEC' ? y : y * garun.pixelScale;
-    setHover(`Time: ${x.toFixed(2)}s  ${formatClock(garun.starts, x)}    Y: ${yArc.toFixed(2)}″ (${yPx.toFixed(2)}px)`);
-    drawCursor(x);
+    const pt = ev.points?.[0];
+    const idx = pt?.pointNumber;
+    // pointNumber indexes straight into the per-sample arrays (every trace
+    // shares one x array), so it's the exact sample regardless of which trace
+    // (RA/Dec) the cursor is nearest. Far more robust than reverse-mapping x.
+    if (typeof idx !== 'number' || idx < 0 || idx >= garun.t.length) return;
+    lastHoverIdxRef.current = idx;
+    const k = scaleMode === 'ARCSEC' ? garun.pixelScale : 1;
+    const u = scaleMode === 'ARCSEC' ? '″' : 'px';
+    const fmt = (vPx: number) => `${(vPx * k).toFixed(2)}${u}`;
+    const dt = garun.t[idx];
+    // Clock first, then frame, then RA/Dec (corrected + raw). The corrected
+    // values are what the chart plots; raw are the log's RARaw/DECRawDistance.
+    const clock = garun.starts !== null ? formatClock(garun.starts, dt) : `t=${dt.toFixed(2)}s`;
+    setHover(
+      `${clock} · Frame ${garun.frame[idx]} · ` +
+      `RA ${fmt(garun.rac[idx])} (raw ${fmt(garun.raRaw[idx])}) · ` +
+      `Dec ${fmt(garun.decc[idx])} (raw ${fmt(garun.decRaw[idx])})`,
+    );
+    if (typeof pt?.x === 'number') drawCursor(pt.x);
   }, [garun, scaleMode, drawCursor]);
 
   const tc = themeOf(themeId).plot;
