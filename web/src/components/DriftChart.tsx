@@ -29,7 +29,13 @@ const formatClock = (startsMs: number | null, dt: number): string => {
   if (startsMs === null) return '—';
   const t = new Date(startsMs + dt * 1000);
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `${pad(t.getUTCHours())}:${pad(t.getUTCMinutes())}:${pad(t.getUTCSeconds())}`;
+  // LOCAL getters: `startsMs` was built from the log's wall-clock digits via the
+  // local Date constructor (parseLog's parseIsoCombined), so getHours/etc.
+  // round-trip those digits — matching the chart's local date axis AND the
+  // sibling debug log's local HH:MM:SS timestamps (used by the double-click
+  // match). Using getUTC* here showed a TZ-shifted time that agreed with
+  // neither.
+  return `${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())}`;
 };
 
 /**
