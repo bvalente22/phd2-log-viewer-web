@@ -224,5 +224,22 @@
   "pp": "P-P",
   "rms": "RMS",
   "ratio": "Ratio",
-  "ramp": "Ramp"
+  "ramp": "Ramp",
+  "debugViewer": {
+    "title": "Debug log",
+    "matchTooltip": "Clicked sample time → closest debug-log line",
+    "line": "line {{n}}",
+    "goToMatch": "Go to match",
+    "goToMatchTooltip": "Scroll back to the matched line",
+    "close": "Close",
+    "closeTooltip": "Close the debug-log viewer (Esc)",
+    "loading": "Loading debug log…",
+    "pick": "Pick debug log…",
+    "error": {
+      "notFound": "Couldn't find the matching debug log in the log's folder. PHD2 writes it alongside the guide log as PHD2_DebugLog_<date>.txt — pick it manually below.",
+      "notDebugLog": "That file doesn't look like a PHD2 debug log (its first line should contain 'begins execution' or 'continues execution'). Pick the correct PHD2_DebugLog file.",
+      "noTimestamp": "This log has no parseable start time, so the sample can't be matched to a debug-log timestamp.",
+      "empty": "The debug log appears to be empty."
+    }
+  }
 }
