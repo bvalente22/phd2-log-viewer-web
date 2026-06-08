@@ -80,3 +80,28 @@ export function dayAnchorMs(epochMs: number): number {
   const d = new Date(epochMs);
   return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
 }
+
+/** Time-of-day ms of the first line carrying a leading `HH:MM:SS.mmm`, or null. */
+export function firstTimestampMsOfDay(lines: string[]): number | null {
+  for (const line of lines) {
+    const m = TS.exec(line);
+    if (m) return ((+m[1] * 60 + +m[2]) * 60 + +m[3]) * 1000 + +m[4];
+  }
+  return null;
+}
+
+/**
+ * Wall-clock midnight anchor for the debug log, given the guide session's start
+ * and the log's first timestamp-of-day. A PHD2 debug log usually starts BEFORE
+ * the session (it logs continuously from launch). If the session began after
+ * midnight while the log's first line is later in the day (it started the
+ * previous evening), anchoring on the session's own date would push the pre-
+ * midnight lines a full day too late — so anchor a day earlier, making the log's
+ * timeline bracket the session. Pass the result to `parseDebugTimes`.
+ */
+export function debugLogAnchorMs(sessionStartEpochMs: number, firstLineMsOfDay: number | null): number {
+  const anchor = dayAnchorMs(sessionStartEpochMs);
+  if (firstLineMsOfDay == null) return anchor;
+  const sessionWall = toWallClockMs(sessionStartEpochMs);
+  return anchor + firstLineMsOfDay > sessionWall ? anchor - DAY_MS : anchor;
+}
