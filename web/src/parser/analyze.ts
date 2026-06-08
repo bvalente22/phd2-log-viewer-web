@@ -87,6 +87,12 @@ export interface DriftCorrected {
   rac: Float64Array;
   /** Drift-corrected Dec. */
   decc: Float64Array;
+  /** Source log Frame number of every used entry (parallel to `t`). */
+  frame: Int32Array;
+  /** Raw RA distance (RARawDistance, px) of every used entry (parallel to `t`). */
+  raRaw: Float64Array;
+  /** Raw Dec distance (DECRawDistance, px) of every used entry (parallel to `t`). */
+  decRaw: Float64Array;
   /** RA position drift slope (units per second). */
   driftRa: number;
   /** Dec drift slope (units per second). */
@@ -130,6 +136,9 @@ export function computeDriftCorrected(s: GuideSession, opts: AnalyzeOptions): Dr
   const t = new Float64Array(n);
   const ra = new Float64Array(n);
   const dec = new Float64Array(n);
+  const frame = new Int32Array(n);
+  const raRaw = new Float64Array(n);
+  const decRaw = new Float64Array(n);
 
   const fitR = newLFit();
   const fitD = newLFit();
@@ -150,6 +159,11 @@ export function computeDriftCorrected(s: GuideSession, opts: AnalyzeOptions): Dr
     t[k] = e.dt;
     ra[k] = rapos;
     dec[k] = e.decraw;
+    // Per-sample provenance for the drift-chart readout / debug-log match:
+    // the source Frame number and the raw RA/Dec distances straight from the log.
+    frame[k] = e.frame;
+    raRaw[k] = raraw;
+    decRaw[k] = e.decraw;
     lfitAdd(fitR, e.dt, rapos);
     lfitAdd(fitD, e.dt, e.decraw);
     k++;
@@ -163,7 +177,7 @@ export function computeDriftCorrected(s: GuideSession, opts: AnalyzeOptions): Dr
     rac[i] = ra[i] - (lineR.slope * t[i] + lineR.intercept);
     decc[i] = dec[i] - (lineD.slope * t[i] + lineD.intercept);
   }
-  return { t, rac, decc, driftRa: lineR.slope, driftDec: lineD.slope };
+  return { t, rac, decc, frame, raRaw, decRaw, driftRa: lineR.slope, driftDec: lineD.slope };
 }
 
 import { Spline } from './spline';
@@ -180,6 +194,12 @@ export interface GARun {
   t: Float64Array;
   rac: Float64Array;
   decc: Float64Array;
+  /** Source log Frame number per sample (parallel to `t`). */
+  frame: Int32Array;
+  /** Raw RA distance (px) per sample (parallel to `t`). */
+  raRaw: Float64Array;
+  /** Raw Dec distance (px) per sample (parallel to `t`). */
+  decRaw: Float64Array;
   fftPeriod: Float64Array;
   fftAmplitude: Float64Array;
   fftAmpMax: number;
@@ -262,6 +282,9 @@ export function analyze(s: GuideSession, opts: AnalyzeOptions): GARun {
     t: drift.t,
     rac: drift.rac,
     decc: drift.decc,
+    frame: drift.frame,
+    raRaw: drift.raRaw,
+    decRaw: drift.decRaw,
     fftPeriod: period,
     fftAmplitude: amplitude,
     fftAmpMax: amax,

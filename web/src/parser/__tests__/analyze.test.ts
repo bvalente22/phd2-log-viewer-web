@@ -166,6 +166,31 @@ describe('computeDriftCorrected', () => {
     const out = computeDriftCorrected(s, { range: { begin: 0, end: 12 }, undoRaCorrections: false, mask });
     expect(Math.abs(out.driftDec)).toBeLessThan(1e-6);
   });
+
+  it('exposes per-sample frame number and raw RA/Dec aligned with t', () => {
+    const s = newGuideSession('x');
+    s.entries = Array.from({ length: 12 }, (_, i) => ({
+      ...mkE(i + 1, (i + 1) * 2), // frame = i+1, dt = (i+1)*2
+      raraw: 0.1 * (i + 1),
+      decraw: -0.2 * (i + 1),
+    }));
+    const out = computeDriftCorrected(s, { range: { begin: 0, end: 12 }, undoRaCorrections: false });
+    expect(out.frame.length).toBe(12);
+    expect(Array.from(out.frame)).toEqual(Array.from({ length: 12 }, (_, i) => i + 1));
+    expect(out.raRaw[5]).toBeCloseTo(0.6, 6);
+    expect(out.decRaw[5]).toBeCloseTo(-1.2, 6);
+    expect(out.t[5]).toBeCloseTo(12, 6); // dt of frame 6 = 6*2
+  });
+
+  it('skips masked entries in the per-sample arrays too', () => {
+    const s = newGuideSession('x');
+    s.entries = Array.from({ length: 12 }, (_, i) => ({ ...mkE(i + 1, i + 1), raraw: 0.1 * (i + 1) }));
+    const mask = new Uint8Array(12);
+    mask[3] = 1; // exclude frame 4
+    const out = computeDriftCorrected(s, { range: { begin: 0, end: 12 }, undoRaCorrections: false, mask });
+    expect(out.frame.length).toBe(11);
+    expect(Array.from(out.frame)).not.toContain(4);
+  });
 });
 
 import { analyze } from '../analyze';
