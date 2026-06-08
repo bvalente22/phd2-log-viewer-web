@@ -10,7 +10,7 @@ import { alignedEventIndices } from '../parser/spikeAnalysis';
 import { useChartGestures } from './useChartGestures';
 import { useViewStore } from '../state/viewStore';
 import { themeOf, type PlotThemeColors } from '../themes';
-import { densePeriodogram, curveLocalMaxima } from '../parser/perioPeaks';
+import { densePeriodogram, curveLocalMaxima, rampValue } from '../parser/perioPeaks';
 
 /**
  * First-paint periodogram Y-scale switch (source toggle).
@@ -349,9 +349,12 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       const ratioStr = primaryPeriodSec != null && period > 0
         ? `${t('ratio')} ${(primaryPeriodSec / period).toFixed(1)}x    `
         : '';
+      // Ramp = active-trace amplitude / period * 1000 (follows the scale
+      // toggle), matching the peak cards. Independent of the primary period.
+      const rampStr = `${t('ramp')} ${rampValue(scaleMode === 'ARCSEC' ? aArc : aPx, period).toFixed(2)}    `;
       setHover(
         `Period: ${period.toFixed(2)}s    ` +
-        ratioStr +
+        ratioStr + rampStr +
         `${t('mode.rawRa')}: ${rawRaDisp.toFixed(2)}${u}    ` +
         `${t('mode.selected')}: ${residualDisp.toFixed(2)}${u}`,
       );
@@ -365,8 +368,9 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       const ratioStr = primaryPeriodSec != null && period > 0
         ? `${t('ratio')} ${(primaryPeriodSec / period).toFixed(1)}x  `
         : '';
+      const rampStr = `${t('ramp')} ${rampValue(scaleMode === 'ARCSEC' ? aArc : aPx, period).toFixed(2)}  `;
       setHover(
-        `Period: ${period.toFixed(2)}s  ${ratioStr}Amplitude: ${aArc.toFixed(2)}″ (${aPx.toFixed(2)}px)  ` +
+        `Period: ${period.toFixed(2)}s  ${ratioStr}${rampStr}Amplitude: ${aArc.toFixed(2)}″ (${aPx.toFixed(2)}px)  ` +
         `P-P: ${ppArc.toFixed(2)}″ (${ppPx.toFixed(2)}px)  ` +
         `RMS: ${rmsArc.toFixed(2)}″ (${rmsPx.toFixed(2)}px)`,
       );

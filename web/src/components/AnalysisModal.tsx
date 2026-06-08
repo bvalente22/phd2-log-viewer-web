@@ -91,6 +91,9 @@ function spikeAsGARun(run: SpikeRun): GARun {
     driftRa: 0, driftDec: 0,
     t: run.t,
     rac: run.values, decc: run.values,
+    // Spike mode renders SpikeChart, not DriftChart, so the per-sample
+    // frame/raw arrays are never read — empty placeholders satisfy the type.
+    frame: new Int32Array(0), raRaw: new Float64Array(0), decRaw: new Float64Array(0),
     fftPeriod: run.fftPeriod,
     fftAmplitude: run.fftAmplitude,
     fftAmpMax: run.fftAmpMax,
