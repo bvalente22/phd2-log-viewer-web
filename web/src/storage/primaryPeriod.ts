@@ -15,6 +15,14 @@ export interface PrimaryPeriodRecord {
   key: string;
   value: number;
   source: 'auto' | 'edited';
+  /**
+   * For `auto` records: how many cycles of `value` the section that produced it
+   * spanned (section duration ÷ value). A later section that resolves MORE
+   * cycles supersedes a weaker auto value, so a short section (e.g. one too
+   * brief to resolve the worm period) can't lock in a bogus Primary. Absent on
+   * `edited` records and on pre-existing records (treated as 0 → upgradable).
+   */
+  cycles?: number;
   updatedAt: number;
 }
 
@@ -26,11 +34,13 @@ export async function putPrimaryPeriod(p: {
   key: string;
   value: number;
   source: 'auto' | 'edited';
+  cycles?: number;
 }): Promise<PrimaryPeriodRecord> {
   const rec: PrimaryPeriodRecord = {
     key: p.key,
     value: p.value,
     source: p.source,
+    ...(p.cycles !== undefined ? { cycles: p.cycles } : {}),
     updatedAt: Date.now(),
   };
   await set(PREFIX + p.key, rec);
