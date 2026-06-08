@@ -5,6 +5,7 @@ import { useViewStore } from '../state/viewStore';
 import { useLogStore } from '../state/logStore';
 import { usePrimaryPeriodStore } from '../state/primaryPeriodStore';
 import { PrimaryPeriodField } from './PrimaryPeriodField';
+import { CHIP_TONE, swapTone, type ChipTone } from './chipTones';
 import { themeOf } from '../themes';
 import { DriftChart } from './DriftChart';
 import { PeriodogramChart, FIT_ACTIVE_TRACE_Y } from './PeriodogramChart';
@@ -120,6 +121,9 @@ export function AnalysisModal() {
   // each tab matches the curve it plots (Raw RA → teal, Residual → amber).
   const themeId = useViewStore((v) => v.theme);
   const tc = themeOf(themeId).plot;
+  // Global RA/Dec color preference — the RA/Dec "show" chips track it so they
+  // match the guide-section toolbar's RA/Dec buttons (and flip when swapped).
+  const swapRaDec = useViewStore((v) => v.swapRaDec);
   // Threshold slider position for Manual Spike auto-select, in arc-sec.
   // Stored as a number; default 0 (the median). Renders a live preview
   // line on the chart so the user can see where Select would cut before
@@ -275,23 +279,29 @@ export function AnalysisModal() {
   const showAnyTabs = showResidualTabs || showSpikeTab || showBurstTab || showSimpleSpikeTab || showManualSpikeTab;
 
   const ToggleChip = ({
-    label, active, onClick, title: tip, disabled,
-  }: { label: string; active: boolean; onClick: () => void; title?: string; disabled?: boolean }) => (
-    <button
-      onClick={onClick}
-      title={tip}
-      disabled={disabled}
-      className={`rounded px-2 py-0.5 text-xs transition-colors ${
-        disabled
-          ? 'cursor-not-allowed bg-slate-900 text-slate-600'
-          : active
-          ? 'bg-sky-700 text-white hover:bg-sky-600'
-          : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-      }`}
-    >
-      {label}
-    </button>
-  );
+    label, active, onClick, title: tip, disabled, tone,
+  }: { label: string; active: boolean; onClick: () => void; title?: string; disabled?: boolean; tone?: ChipTone }) => {
+    // With a `tone` (the RA/Dec chips), use the shared muted palette so they
+    // match the guide-section toolbar. Without one, keep the neutral sky chip.
+    const palette = tone ? CHIP_TONE[tone] : null;
+    const cls = disabled
+      ? 'cursor-not-allowed bg-slate-900 text-slate-600'
+      : palette
+      ? (active ? palette.active : palette.inactive)
+      : active
+      ? 'bg-sky-700 text-white hover:bg-sky-600'
+      : 'bg-slate-800 text-slate-400 hover:bg-slate-700';
+    return (
+      <button
+        onClick={onClick}
+        title={tip}
+        disabled={disabled}
+        className={`rounded px-2 py-0.5 text-xs transition-colors ${cls}`}
+      >
+        {label}
+      </button>
+    );
+  };
 
   // Mode tab. When given an `accent` (the tab's own periodogram trace color),
   // the chip is tinted to match that curve — active = filled with the accent
@@ -742,8 +752,8 @@ export function AnalysisModal() {
         ) : (
           <>
             <span className="me-1 text-slate-500" title={t('showTooltip')}>{t('show')}:</span>
-            <ToggleChip label="RA" active={showRa} onClick={() => s.setShowRa(!showRa)} title={t('raDriftTooltip')} />
-            <ToggleChip label="Dec" active={showDec} onClick={() => s.setShowDec(!showDec)} title={t('decDriftTooltip')} />
+            <ToggleChip label="RA" active={showRa} onClick={() => s.setShowRa(!showRa)} title={t('raDriftTooltip')} tone={swapTone('ra', swapRaDec)} />
+            <ToggleChip label="Dec" active={showDec} onClick={() => s.setShowDec(!showDec)} title={t('decDriftTooltip')} tone={swapTone('dec', swapRaDec)} />
           </>
         )}
         <span className="ms-3 me-1 text-slate-500" title={t('scaleTooltip')}>{t('scale')}:</span>
