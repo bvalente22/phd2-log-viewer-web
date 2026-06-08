@@ -12,10 +12,8 @@ import type { GuideSession } from '../parser';
 import { useChartGestures } from './useChartGestures';
 import { layoutInlineEvents } from './eventLayout';
 import { computeSettlingMask } from '../parser/settling';
-import { themeOf } from '../themes';
+import { themeOf, raDecColors } from '../themes';
 
-const RA_COLOR = '#60a5fa';
-const DEC_COLOR = '#f87171';
 const PULSE_RA = '#3b82f6';
 const PULSE_DEC = '#dc2626';
 // Mass and SNR colors are theme-aware — see themes.ts (`traceMass`,
@@ -174,6 +172,8 @@ function buildTraces(
   hasAo: boolean,
   massColor: string,
   snrColor: string,
+  raColor: string,
+  decColor: string,
   flipRaPulses: boolean,
   flipDecPulses: boolean,
   toX: (dt: number) => number,
@@ -232,7 +232,7 @@ function buildTraces(
     out.push({
       x: t, y: visibleEntries.map((e) => valuePair(e, coordMode).x * k),
       type: 'scattergl', mode: 'lines',
-      name: xName, line: { color: RA_COLOR, width: 1 },
+      name: xName, line: { color: raColor, width: 1 },
       // Hover values live in the readout strip below the chart, not in a
       // label on the cursor line. `hoverinfo:'none'` keeps the vertical
       // spike + the plotly_hover event (which fills the strip) but hides
@@ -245,7 +245,7 @@ function buildTraces(
     out.push({
       x: t, y: visibleEntries.map((e) => valuePair(e, coordMode).y * k),
       type: 'scattergl', mode: 'lines',
-      name: yName, line: { color: DEC_COLOR, width: 1 },
+      name: yName, line: { color: decColor, width: 1 },
       hoverinfo: 'none',
     } as Data);
   }
@@ -415,10 +415,12 @@ function pushLimitLines(
   axis: 'ra' | 'dec',
   s: GuideSession,
   k: number,
+  raColor: string,
+  decColor: string,
 ): void {
   const lim = axis === 'ra' ? s.mount.xlim : s.mount.ylim;
   const rate = axis === 'ra' ? s.mount.xRate : s.mount.yRate;
-  const color = axis === 'ra' ? RA_COLOR : DEC_COLOR;
+  const color = axis === 'ra' ? raColor : decColor;
   const dataMax = lim.maxDur > 0 ? (lim.maxDur * rate / 1000) * k : 0;
   const dataMin = lim.minMo > 0 ? lim.minMo * k : 0;
   const pushPair = (yAbs: number) => {
@@ -487,12 +489,14 @@ function buildShapes(
   traces: Traces,
   scaleMode: ScaleMode,
   toX: (dt: number) => number,
+  raColor: string,
+  decColor: string,
 ): Partial<Shape>[] {
   const shapes: Partial<Shape>[] = [];
   const k = scaleMode === 'ARCSEC' ? s.pixelScale : 1;
 
-  if (traces.raLimits) pushLimitLines(shapes, 'ra', s, k);
-  if (traces.decLimits) pushLimitLines(shapes, 'dec', s, k);
+  if (traces.raLimits) pushLimitLines(shapes, 'ra', s, k, raColor, decColor);
+  if (traces.decLimits) pushLimitLines(shapes, 'dec', s, k, raColor, decColor);
 
   if (mask) {
     let runStart = -1;
@@ -548,6 +552,7 @@ export function GuideGraph() {
   const flipRaPulses = useViewStore((s) => s.flipRaPulses);
   const flipDecPulses = useViewStore((s) => s.flipDecPulses);
   const themeId = useViewStore((s) => s.theme);
+  const swapRaDec = useViewStore((s) => s.swapRaDec);
   const excludeRange = useViewStore((s) => s.excludeRange);
   const includeRange = useViewStore((s) => s.includeRange);
 
@@ -630,6 +635,7 @@ export function GuideGraph() {
     const session = log.sessions[sec.idx];
     const mask = exclusions.get(sec.idx);
     const hasAo = session.entries.some((e) => e.mount === 'AO');
+    const { ra: raColor, dec: decColor } = raDecColors(swapRaDec);
     // Clock-time X axis (ms-since-epoch on Plotly `type:'date'`) when the
     // log's session header parsed a real wall-clock start; legacy elapsed-
     // seconds X otherwise so logs with unparseable headers still chart.
@@ -726,11 +732,11 @@ export function GuideGraph() {
       useClockTime,
       toX,
       fromX,
-      traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo, themeOf(themeId).plot.traceMass, themeOf(themeId).plot.traceSnr, flipRaPulses, flipDecPulses, toX),
-      shapes: buildShapes(session, mask, traces, scaleMode, toX),
+      traces: buildTraces(session, traces, scaleMode, yMax, coordMode, device, hasAo, themeOf(themeId).plot.traceMass, themeOf(themeId).plot.traceSnr, raColor, decColor, flipRaPulses, flipDecPulses, toX),
+      shapes: buildShapes(session, mask, traces, scaleMode, toX, raColor, decColor),
       eventInputs,
     };
-  }, [log, sectionIdx, exclusions, scaleMode, traces, coordMode, device, autoScaleY, themeId, flipRaPulses, flipDecPulses]);
+  }, [log, sectionIdx, exclusions, scaleMode, traces, coordMode, device, autoScaleY, themeId, flipRaPulses, flipDecPulses, swapRaDec]);
 
   useEffect(() => {
     dataRef.current = data

@@ -142,6 +142,13 @@ export function GraphToolbar() {
   const toggleRaAxis = useViewStore((s) => s.toggleRaAxis);
   const toggleDecAxis = useViewStore((s) => s.toggleDecAxis);
   const toggleStarGroup = useViewStore((s) => s.toggleStarGroup);
+  const swapRaDec = useViewStore((s) => s.swapRaDec);
+
+  // When the global RA/Dec color swap is on, the toolbar's RA group adopts the
+  // Dec tone and vice-versa, so the chips track the (now swapped) trace colors
+  // (RA → red, Dec → blue). Star / default tones are unaffected.
+  const effTone = (tone: ChipTone): ChipTone =>
+    swapRaDec ? (tone === 'ra' ? 'dec' : tone === 'dec' ? 'ra' : tone) : tone;
 
   const sec = log && sectionIdx >= 0 ? log.sections[sectionIdx] : null;
   const session = sec && sec.type === 'GUIDING' ? log!.sessions[sec.idx] : null;
@@ -190,7 +197,7 @@ export function GraphToolbar() {
           onClick={() => toggleTrace(it.key)}
           disabled={graphMode === 'SCATTER'}
           title={graphMode === 'SCATTER' ? t('traces.togglesScatterDisabled') : it.title}
-          tone={it.tone}
+          tone={effTone(it.tone)}
         />
       ))}
     </>
@@ -222,7 +229,14 @@ export function GraphToolbar() {
     onMasterToggle: () => void,
     masterTooltip: string,
     items: TraceItem[],
-  ) => (
+  ) => {
+    // RA/Dec master tone follows the global color swap (star is unaffected),
+    // so the master chip body + its 2px border flip red↔blue with the traces.
+    const effMaster: 'ra' | 'dec' | 'star' =
+      masterTone === 'ra' && swapRaDec ? 'dec'
+        : masterTone === 'dec' && swapRaDec ? 'ra'
+        : masterTone;
+    return (
     <>
       <ToggleChip
         // ms-3 mirrors the spacing the old text headers ("RA:", "Guide
@@ -236,8 +250,8 @@ export function GraphToolbar() {
         // 'star' tone reuses the yellow 'mass' palette (the more visible
         // of the two guide-star metrics); the amber border keeps the
         // group visually distinct from the Mass sub-chip.
-        tone={masterTone === 'star' ? 'mass' : masterTone}
-        className={`ms-3 border-2 ${MASTER_BORDER[masterTone]} font-semibold uppercase tracking-wider`}
+        tone={effMaster === 'star' ? 'mass' : effMaster}
+        className={`ms-3 border-2 ${MASTER_BORDER[effMaster]} font-semibold uppercase tracking-wider`}
       />
       {items.map((it) => (
         <ToggleChip
@@ -247,11 +261,12 @@ export function GraphToolbar() {
           onClick={() => toggleTrace(it.key)}
           disabled={graphMode === 'SCATTER'}
           title={graphMode === 'SCATTER' ? t('traces.togglesScatterDisabled') : it.title}
-          tone={it.tone}
+          tone={effTone(it.tone)}
         />
       ))}
     </>
-  );
+    );
+  };
 
   // Layout: a single always-visible primary row (the data/master groups +
   // Events), with the right-aligned cluster holding the "Display" popover
@@ -277,7 +292,7 @@ export function GraphToolbar() {
               ? t('traces.flipPulsesDisabled')
               : t('traces.flipRaPulsesTooltip')
           }
-          tone="ra"
+          tone={effTone('ra')}
         />
       )}
       {renderMasterGroup('Dec', 'dec', decAnyOn, toggleDecAxis, t('groups.decTooltip'), decItems)}
@@ -294,7 +309,7 @@ export function GraphToolbar() {
               ? t('traces.flipPulsesDisabled')
               : t('traces.flipDecPulsesTooltip')
           }
-          tone="dec"
+          tone={effTone('dec')}
         />
       )}
       {renderMasterGroup(t('groups.guideStar'), 'star', starAnyOn, toggleStarGroup, t('groups.guideStarTooltip'), starItems)}

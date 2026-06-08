@@ -71,3 +71,41 @@ export function curveTopPeaks(
     .sort((a, b) => b.amplitude - a.amplitude)
     .slice(0, n);
 }
+
+/**
+ * The "primary period" for period-ratio readouts: the LARGEST-amplitude local-max
+ * peak at or below `maxPeriodSec` — i.e. the dominant periodic error. On the
+ * Raw-RA periodogram this is the PE fundamental (its harmonics are smaller), and
+ * ratios on both the Raw-RA and Residual tabs divide by this single anchor so a
+ * residual harmonic at half the period reads 2x.
+ *
+ * Originally this took the longest-period peak <= max, but that latched onto tiny
+ * long-period bumps (e.g. a small 461s peak winning over the obvious 376.7s
+ * dominant), so the dominant-by-amplitude rule replaced it. Returns null when no
+ * peak qualifies.
+ */
+export function primaryPeriod(
+  curve: { x: number[]; y: number[] },
+  maxPeriodSec: number,
+): number | null {
+  let best: { period: number; amplitude: number } | null = null;
+  for (const m of curveLocalMaxima(curve)) {
+    if (m.period > maxPeriodSec) continue;
+    if (best === null || m.amplitude > best.amplitude) best = m;
+  }
+  return best === null ? null : best.period;
+}
+
+/** Ratio of the primary period to a peak's period (primary / period). */
+export function periodRatio(primaryPeriodSec: number, periodSec: number): number {
+  return periodSec > 0 ? primaryPeriodSec / periodSec : 0;
+}
+
+/**
+ * "Ramp" readout = amplitude / period, scaled ×1000 so the typically tiny value
+ * shows digits left of the decimal. `amplitude` is in whatever unit the caller
+ * displays (arc-sec or px), so ramp follows the scale toggle.
+ */
+export function rampValue(amplitude: number, periodSec: number): number {
+  return periodSec > 0 ? (amplitude / periodSec) * 1000 : 0;
+}
