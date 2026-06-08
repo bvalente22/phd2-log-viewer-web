@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAnalysisStore, type AnalysisKind } from '../state/analysisStore';
 import { useViewStore } from '../state/viewStore';
+import { useLogStore } from '../state/logStore';
+import { usePrimaryPeriodStore } from '../state/primaryPeriodStore';
+import { PrimaryPeriodField } from './PrimaryPeriodField';
 import { themeOf } from '../themes';
 import { DriftChart } from './DriftChart';
 import { PeriodogramChart, FIT_ACTIVE_TRACE_Y } from './PeriodogramChart';
@@ -139,10 +142,11 @@ export function AnalysisModal() {
     return () => window.removeEventListener('keydown', onKey);
   }, [s]);
 
-  // Primary period for the Ratio readouts. Anchored to the RAW RA curve on BOTH
-  // tabs: setKind swaps garun/garunOther, so the Raw-RA run is the member with
-  // undoRaCorrections === true. Unguided has a single curve.
-  const primaryPeriodSec = useMemo<number | null>(() => {
+  // Auto-detected Primary period: the dominant (largest-amplitude) peak <= Max
+  // Period on the RAW RA curve, on BOTH tabs (setKind swaps garun/garunOther, so
+  // the Raw-RA run is the member with undoRaCorrections === true; unguided has a
+  // single curve). This is the FALLBACK — the persisted per-log value wins.
+  const autoPrimaryRaw = useMemo<number | null>(() => {
     if (s.state !== 'open') return null;
     if (s.kind === 'spike') return null;
     const rawRa = s.kind === 'unguided'
@@ -157,14 +161,34 @@ export function AnalysisModal() {
     return primaryPeriod(curve, s.maxPeriodSec);
   }, [s]);
 
+  // Persisted per-log Primary period (one value per guide log; survives section
+  // switches + reloads; a different log recomputes). The stored value wins over
+  // the auto value; the EFFECTIVE `primaryPeriodSec` below drives both Ratio
+  // readouts and the top-3 cap.
+  const logHash = useLogStore((l) => l.meta?.hash ?? null);
+  const primaryRecord = usePrimaryPeriodStore((p) => p.record);
+  const primaryLoadedHash = usePrimaryPeriodStore((p) => p.loadedHash);
+  const initAutoPrimary = usePrimaryPeriodStore((p) => p.initAuto);
+  const setEditedPrimary = usePrimaryPeriodStore((p) => p.setEdited);
+  const setAutoPrimary = usePrimaryPeriodStore((p) => p.setAuto);
+  const primaryPeriodSec = primaryRecord?.value ?? autoPrimaryRaw;
+
+  // First-section init: store the auto value once, when this log has none yet.
+  // Gated on loadedHash so we never write before the sidecar read completes
+  // (which would clobber a stored value), and only when an auto value exists.
+  useEffect(() => {
+    if (s.state !== 'open' || !logHash) return;
+    if (primaryLoadedHash !== logHash || primaryRecord != null || autoPrimaryRaw == null) return;
+    void initAutoPrimary(logHash, autoPrimaryRaw);
+  }, [s.state, logHash, primaryLoadedHash, primaryRecord, autoPrimaryRaw, initAutoPrimary]);
+
   const peaks = useMemo(() => {
     if (s.state !== 'open') return [];
     if (s.kind === 'spike') return [];
-    // The top-3 peaks can never be LONGER than the primary period: the primary is
-    // the dominant PE peak (largest amplitude), so anything longer is a sub-
-    // fundamental artefact we don't want listed. Cap at the primary, falling back
-    // to the max-period filter only when no primary was found.
-    const cap = primaryPeriodSec ?? s.maxPeriodSec;
+    // The top-3 peaks can never be LONGER than the primary period (the dominant
+    // PE peak), and never longer than the Max Period filter. Cap at the smaller
+    // of the two; fall back to Max Period when there's no primary.
+    const cap = primaryPeriodSec != null ? Math.min(primaryPeriodSec, s.maxPeriodSec) : s.maxPeriodSec;
     return topPeaks(s.garun, 3, cap);
   }, [s, primaryPeriodSec]);
 
@@ -820,6 +844,15 @@ export function AnalysisModal() {
               />
               <span>{t('maxPeriodSuffix')}</span>
             </label>
+          )}
+          {kind !== 'spike' && primaryPeriodSec != null && logHash && (
+            <PrimaryPeriodField
+              value={primaryPeriodSec}
+              edited={primaryRecord?.source === 'edited'}
+              canReset={autoPrimaryRaw != null}
+              onCommit={(v) => void setEditedPrimary(logHash, v)}
+              onReset={() => { if (autoPrimaryRaw != null) void setAutoPrimary(logHash, autoPrimaryRaw); }}
+            />
           )}
           {kind === 'spike' && spikeRun && (
             <span className="text-slate-500" title={t('spike.runStatsTooltip')}>
