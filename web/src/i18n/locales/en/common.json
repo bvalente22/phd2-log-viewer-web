@@ -56,9 +56,9 @@
   },
   "dropZone": {
     "title": "Drop a PHD2 guide log here",
-    "tooltip": "Drop a PHD2 guide log file here. The log is parsed locally; nothing is uploaded.",
+    "tooltip": "Drop a PHD2 guide log file here (parsed locally; nothing is uploaded). Tip: drag the guide log AND its PHD2_DebugLog together to enable double-click-to-open-debug-log.",
     "pickFile": "or pick a file",
-    "pickFileTooltip": "Open the file picker to choose a PHD2 guide log",
+    "pickFileTooltip": "Open the file picker to choose a PHD2 guide log (you can select its PHD2_DebugLog too).",
     "parsing": "Parsing…",
     "chooseLogsFolder": "Choose logs folder…",
     "chooseLogsFolderTooltip": "Pick your PHD2 logs folder; afterwards every guide log will be browsable from the sidebar",

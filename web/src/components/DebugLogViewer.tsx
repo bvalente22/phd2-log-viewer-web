@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDebugLogStore } from '../state/debugLogStore';
+import { canGrantFolder } from '../storage/debugLogAccess';
 
 /**
  * In-app dialog for the debug-log feature. The log itself renders in a NEW
- * BROWSER TAB (see debugLogTab.ts + public/debug-log-tab.html); this modal only
- * handles the cases that need the app window: the sibling debug log couldn't be
- * auto-found (offer a drag-or-click pick), the picked file isn't a debug log, or
- * the sample has no timestamp.
+ * BROWSER TAB (debug-log-tab.html); this modal only appears when the sibling
+ * debug log couldn't be found automatically and offers ways to provide it:
+ * grant its folder, or pick / drag the file. (The most reliable path is to drag
+ * the guide log AND its debug log together onto the open-log drop zone — then
+ * this dialog never appears.)
  *
  * Backdrop dismiss is guarded to `e.target === e.currentTarget` so a bubbled
- * click — notably the programmatic `input.click()` from the drop zone — doesn't
- * unmount the dialog before the file's `change`/`drop` handler runs.
+ * click — notably the programmatic `input.click()` — doesn't unmount the dialog
+ * before the file handler runs.
  */
 export function DebugLogViewer() {
   const { t } = useTranslation('analysis');
@@ -20,6 +22,7 @@ export function DebugLogViewer() {
   const canPick = useDebugLogStore((s) => s.canPick);
   const dismiss = useDebugLogStore((s) => s.dismiss);
   const pickFile = useDebugLogStore((s) => s.pickFile);
+  const grantFolder = useDebugLogStore((s) => s.grantFolder);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -31,11 +34,6 @@ export function DebugLogViewer() {
   }, [status, dismiss]);
 
   if (status !== 'error') return null;
-
-  const take = (files: FileList | null | undefined) => {
-    const f = files?.[0];
-    if (f) void pickFile(f);
-  };
 
   return (
     <div
@@ -51,19 +49,35 @@ export function DebugLogViewer() {
         </div>
 
         {canPick && (
-          <div
-            onClick={() => fileInputRef.current?.click()}
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={(e) => { e.preventDefault(); setDragOver(false); take(e.dataTransfer.files); }}
-            title={t('debugViewer.dropZoneTooltip')}
-            className={`mb-4 cursor-pointer rounded-lg border-2 border-dashed px-4 py-6 text-center text-sm transition-colors ${
-              dragOver
-                ? 'border-sky-400 bg-sky-500/10 text-sky-200'
-                : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:bg-slate-800/40'
-            }`}
-          >
-            {t('debugViewer.dropZone')}
+          <div className="mb-4 flex flex-col gap-2">
+            {canGrantFolder && (
+              <button
+                onClick={() => void grantFolder()}
+                className="rounded bg-sky-700 px-3 py-2 text-sm text-white ring-1 ring-sky-500 hover:bg-sky-600"
+                title={t('debugViewer.openFolderTooltip')}
+              >
+                {t('debugViewer.openFolder')}
+              </button>
+            )}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const f = e.dataTransfer.files?.[0];
+                if (f) void pickFile(f);
+              }}
+              title={t('debugViewer.dropZoneTooltip')}
+              className={`cursor-pointer rounded-lg border-2 border-dashed px-4 py-5 text-center text-sm transition-colors ${
+                dragOver
+                  ? 'border-sky-400 bg-sky-500/10 text-sky-200'
+                  : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:bg-slate-800/40'
+              }`}
+            >
+              {t('debugViewer.dropZone')}
+            </div>
           </div>
         )}
 
@@ -83,9 +97,12 @@ export function DebugLogViewer() {
         accept=".txt,.log,text/plain"
         className="hidden"
         onChange={(e) => {
-          const files = e.target.files;
+          // Capture the File BEFORE clearing the input — `e.target.value = ''`
+          // empties the live FileList, so reading files[0] afterwards gives
+          // nothing (the bug that made the click-to-pick path do nothing).
+          const f = e.target.files?.[0];
           e.target.value = '';
-          take(files);
+          if (f) void pickFile(f);
         }}
       />
     </div>

@@ -1,12 +1,11 @@
 import { create } from 'zustand';
 import { validateDebugLogHeader } from '../parser/parseBlt';
 import {
-  parseDebugTimes, findClosestTimeIndex, toWallClockMs, dayAnchorMs,
+  parseDebugTimes, findClosestTimeIndex, toWallClockMs,
+  debugLogAnchorMs, firstTimestampMsOfDay,
 } from '../parser/debugTimestamps';
-import { resolveDebugLogFile } from '../storage/debugLogAccess';
-import {
-  debugTabUrl, openLoadingTab, showMessageInTab,
-} from '../components/debugLogTab';
+import { resolveDebugLogFile, grantDebugFolderAndResolve } from '../storage/debugLogAccess';
+import { openDebugTab, setDebugTabSlot } from '../components/debugLogTab';
 
 /** Args identifying the clicked sample + its session anchor. */
 export interface DebugOpenArgs {
@@ -20,19 +19,22 @@ export interface DebugOpenArgs {
 export type DebugErrorKey = 'notFound' | 'notDebugLog' | 'noTimestamp' | 'empty' | 'popupBlocked';
 
 interface DebugLogState {
-  /** The rendered log opens in a NEW TAB; the in-app modal is only the pick /
-   *  error dialog, so the store is either idle or showing an error. */
+  /** The rendered log lives in a NEW TAB; this in-app modal is only the
+   *  grant-folder / pick / error dialog, so the store is idle or showing error. */
   status: 'idle' | 'error';
   errorKey: DebugErrorKey | null;
-  /** Error states a manual file pick can recover from show a pick button. */
+  /** Error states a manual grant/pick can recover from show those affordances. */
   canPick: boolean;
-  /** Pending args kept so a manual pick can complete the original request. */
+  /** Pending args kept so a grant/pick can complete the original request. */
   pending: DebugOpenArgs | null;
 }
 
 interface DebugLogActions {
   openForSample: (args: DebugOpenArgs) => Promise<void>;
+  /** User picked the debug file (file input or drop). */
   pickFile: (file: File) => Promise<void>;
+  /** User asked to grant the folder so we can auto-find the sibling. */
+  grantFolder: () => Promise<void>;
   dismiss: () => void;
 }
 
@@ -40,11 +42,9 @@ interface DebugLogActions {
 // can be tens of MB, so we read/parse it once and reuse for later double-clicks.
 const cache = new Map<string, { fileName: string; lines: string[]; times: Float64Array }>();
 
-// The browser tab opened for the current request. Opened synchronously inside
-// the double-click gesture (popup-safe), then navigated to the rendered page
-// once the log is resolved. Kept across the (in-app) pick so we can fill the
-// same tab the user is already looking at.
-let tabRef: Window | null = null;
+// The data-slot key of the currently-open debug tab. The tab polls its slot,
+// so we update the slot (not the Window) — no tab reference needed.
+let currentKey: string | null = null;
 
 const IDLE: DebugLogState = { status: 'idle', errorKey: null, canPick: false, pending: null };
 
@@ -56,45 +56,55 @@ export const useDebugLogStore = create<DebugLogState & DebugLogActions>((set, ge
       set({ ...IDLE, status: 'error', errorKey: 'noTimestamp' });
       return;
     }
-    // Open the tab NOW, synchronously, while we still have the click's user
-    // activation — otherwise the later window.open (after async file I/O) would
-    // be popup-blocked.
-    tabRef = openLoadingTab();
-    if (!tabRef) {
+    // Open the tab NOW (in the click gesture, popup-safe) directly to the
+    // static viewer page; it shows "Loading…" and polls for the data below.
+    const opened = openDebugTab();
+    if (!opened.tab) {
       set({ ...IDLE, status: 'error', errorKey: 'popupBlocked' });
       return;
     }
+    currentKey = opened.key;
     set({ ...IDLE, pending: args });
     const targetMs = toWallClockMs(args.targetEpochMs);
 
     const cached = cache.get(args.guideLogName);
     if (cached) {
-      fillTab(cached, targetMs);
-      set({ ...IDLE });
+      ready(opened.key, cached, targetMs);
       return;
     }
 
     const file = await resolveDebugLogFile(args.guideLogName);
     if (get().pending !== args) return; // superseded by a newer request
     if (!file) {
-      if (tabRef && !tabRef.closed) {
-        showMessageInTab(tabRef, "Couldn't find the debug log automatically — pick it in the app window.");
-      }
+      setDebugTabSlot(opened.key, { state: 'needPick' });
       set({ status: 'error', errorKey: 'notFound', canPick: true });
       return;
     }
-    await loadAndFill(set, get, args, file, targetMs);
+    await loadAndFill(set, get, args, file, targetMs, opened.key);
   },
 
   pickFile: async (file) => {
     const args = get().pending;
-    if (!args || args.startsMs === null) return;
-    // Reuse the tab from the double-click; reopen only if the user closed it.
-    if (!tabRef || tabRef.closed) tabRef = openLoadingTab();
-    else showMessageInTab(tabRef, 'Loading debug log…');
+    if (!args || args.startsMs === null || !currentKey) return;
     const targetMs = toWallClockMs(args.targetEpochMs);
     set({ status: 'idle' });
-    await loadAndFill(set, get, args, file, targetMs);
+    await loadAndFill(set, get, args, file, targetMs, currentKey);
+  },
+
+  grantFolder: async () => {
+    const args = get().pending;
+    if (!args || args.startsMs === null || !currentKey) return;
+    const file = await grantDebugFolderAndResolve(args.guideLogName);
+    if (get().pending !== args) return;
+    if (!file) {
+      // Cancelled, or the sibling isn't in the chosen folder — stay on the
+      // dialog so the user can retry, pick the file, or drag it in.
+      set({ status: 'error', errorKey: 'notFound', canPick: true });
+      return;
+    }
+    const targetMs = toWallClockMs(args.targetEpochMs);
+    set({ status: 'idle' });
+    await loadAndFill(set, get, args, file, targetMs, currentKey);
   },
 
   dismiss: () => set({ ...IDLE }),
@@ -104,45 +114,44 @@ type SetFn = (partial: Partial<DebugLogState>) => void;
 type GetFn = () => DebugLogState & DebugLogActions;
 
 async function loadAndFill(
-  set: SetFn, get: GetFn, args: DebugOpenArgs, file: File, targetMs: number,
+  set: SetFn, get: GetFn, args: DebugOpenArgs, file: File, targetMs: number, key: string,
 ): Promise<void> {
   const text = await file.text();
   if (get().pending !== args) return;
   const lines = text.split(/\r?\n/);
   if (validateDebugLogHeader(lines[0] ?? '') !== null) {
-    if (tabRef && !tabRef.closed) showMessageInTab(tabRef, 'That file is not a PHD2 debug log.');
+    setDebugTabSlot(key, { state: 'error', message: 'That file is not a PHD2 debug log.' });
     set({ status: 'error', errorKey: 'notDebugLog', canPick: true });
     return;
   }
   if (lines.length === 0) {
+    setDebugTabSlot(key, { state: 'error', message: 'The debug log is empty.' });
     set({ status: 'error', errorKey: 'empty', canPick: true });
     return;
   }
-  const times = parseDebugTimes(lines, dayAnchorMs(args.startsMs as number));
+  // Anchor the log's timeline so it brackets the session even when the log
+  // started the previous evening and the session is after midnight.
+  const anchor = debugLogAnchorMs(args.startsMs as number, firstTimestampMsOfDay(lines));
+  const times = parseDebugTimes(lines, anchor);
   const parsed = { fileName: file.name, lines, times };
   cache.set(args.guideLogName, parsed);
-  fillTab(parsed, targetMs);
+  ready(key, parsed, targetMs);
   set({ ...IDLE });
 }
 
-function fillTab(
+/** Hand the matched, parsed log to the open tab's data slot. */
+function ready(
+  key: string,
   parsed: { fileName: string; lines: string[]; times: Float64Array },
   targetMs: number,
 ): void {
   const idx = findClosestTimeIndex(parsed.times, targetMs);
-  const url = debugTabUrl({
+  setDebugTabSlot(key, {
+    state: 'ready',
     fileName: parsed.fileName,
     lines: parsed.lines,
     matchedIndex: idx,
     targetMs,
     matchedMs: parsed.times[idx] ?? targetMs,
   });
-  // The tab has only ever been written via innerHTML (about:blank), so this is
-  // its FIRST real navigation — which a popup honours (a re-navigation of an
-  // already-committed blob document would be silently ignored).
-  if (!tabRef || tabRef.closed) tabRef = window.open(url, '_blank');
-  else {
-    try { tabRef.location.href = url; }
-    catch { tabRef = window.open(url, '_blank'); }
-  }
 }
