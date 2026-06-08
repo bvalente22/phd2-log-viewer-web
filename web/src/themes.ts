@@ -204,3 +204,14 @@ export const DEFAULT_THEME: ThemeId = 'default';
 
 /** Cheap accessor used by chart components that already select theme from viewStore. */
 export const themeOf = (id: ThemeId): Theme => THEMES[id] ?? THEMES.default;
+
+/**
+ * Canonical RA / Dec trace hues. RA is sky-blue and Dec is rose by default; the
+ * global `swapRaDec` view preference exchanges them everywhere EXCEPT the
+ * periodogram (which uses the fft* colors). Hues are intentionally constant
+ * across visual themes — they encode axis identity, not surface styling.
+ */
+export const RA_DEC_BLUE = '#60a5fa';
+export const RA_DEC_RED = '#f87171';
+export const raDecColors = (swap: boolean): { ra: string; dec: string } =>
+  swap ? { ra: RA_DEC_RED, dec: RA_DEC_BLUE } : { ra: RA_DEC_BLUE, dec: RA_DEC_RED };
