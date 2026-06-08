@@ -6,20 +6,20 @@ import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { fmtInteger } from '../i18n/format';
 import type { Calibration, CalibrationEntry, CalDirection } from '../parser';
-import { themeOf } from '../themes';
+import { themeOf, raDecColors } from '../themes';
 
-const RA_COLOR = '#60a5fa';
-const RA_DARK = '#1d4ed8';
-const DEC_COLOR = '#f87171';
-const DEC_DARK = '#991b1b';
+// Darker companion shades for the second direction of each axis (East/South).
+const BLUE_DARK = '#1d4ed8';
+const RED_DARK = '#991b1b';
 
-const COLORS: Record<CalDirection, string> = {
-  WEST: RA_COLOR,
-  EAST: RA_DARK,
-  NORTH: DEC_COLOR,
-  SOUTH: DEC_DARK,
-  BACKLASH: DEC_DARK,
-};
+// West/East belong to the RA color family, North/South/Backlash to the Dec
+// family; swapping exchanges the whole family (main + dark shade).
+function calColors(swap: boolean): Record<CalDirection, string> {
+  const { ra, dec } = raDecColors(swap);
+  const raDark = swap ? RED_DARK : BLUE_DARK;
+  const decDark = swap ? BLUE_DARK : RED_DARK;
+  return { WEST: ra, EAST: raDark, NORTH: dec, SOUTH: decDark, BACKLASH: decDark };
+}
 
 const LETTER: Record<CalDirection, string> = {
   WEST: 'W', EAST: 'E', NORTH: 'N', SOUTH: 'S', BACKLASH: 'B',
@@ -36,7 +36,7 @@ function findRange(entries: CalibrationEntry[], dir: CalDirection): [number, num
   return first >= 0 && last > first ? [first, last] : null;
 }
 
-function buildTraces(cal: Calibration): Data[] {
+function buildTraces(cal: Calibration, colors: Record<CalDirection, string>): Data[] {
   const groups = new Map<CalDirection, CalibrationEntry[]>();
   for (const e of cal.entries) {
     if (!groups.has(e.direction)) groups.set(e.direction, []);
@@ -51,10 +51,10 @@ function buildTraces(cal: Calibration): Data[] {
       type: 'scatter',
       mode: 'text+markers',
       name: `${dir} (${items.length})`,
-      marker: { color: COLORS[dir], size: 10, line: { color: '#0f172a', width: 1 } },
+      marker: { color: colors[dir], size: 10, line: { color: '#0f172a', width: 1 } },
       text: items.map((e) => `${LETTER[dir]}${e.step}`),
       textposition: 'top right',
-      textfont: { color: COLORS[dir], size: 10 },
+      textfont: { color: colors[dir], size: 10 },
       customdata: items.map((e) => [dir, e.step]),
       hovertemplate: '%{customdata[0]} step %{customdata[1]}<br>dx=%{x:.2f} · dy=%{y:.2f}<extra></extra>',
     } as Data);
@@ -62,7 +62,7 @@ function buildTraces(cal: Calibration): Data[] {
   return traces;
 }
 
-function buildAxisShapes(cal: Calibration): Partial<Shape>[] {
+function buildAxisShapes(cal: Calibration, colors: Record<CalDirection, string>): Partial<Shape>[] {
   const shapes: Partial<Shape>[] = [];
   const ws = findRange(cal.entries, 'WEST');
   if (ws) {
@@ -70,7 +70,7 @@ function buildAxisShapes(cal: Calibration): Partial<Shape>[] {
     shapes.push({
       type: 'line', xref: 'x', yref: 'y',
       x0: a.dx, y0: a.dy, x1: b.dx, y1: b.dy,
-      line: { color: RA_COLOR, width: 2 },
+      line: { color: colors.WEST, width: 2 },
     });
   }
   const ns = findRange(cal.entries, 'NORTH');
@@ -79,7 +79,7 @@ function buildAxisShapes(cal: Calibration): Partial<Shape>[] {
     shapes.push({
       type: 'line', xref: 'x', yref: 'y',
       x0: a.dx, y0: a.dy, x1: b.dx, y1: b.dy,
-      line: { color: DEC_COLOR, width: 2 },
+      line: { color: colors.NORTH, width: 2 },
     });
   }
   // Reference circles at 5,10,15,20,25 px (matches LogViewFrame.cpp:1389-1397).
@@ -109,18 +109,20 @@ export function CalibrationPlot() {
   const log = useLogStore((s) => s.log);
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const themeId = useViewStore((s) => s.theme);
+  const swapRaDec = useViewStore((s) => s.swapRaDec);
 
   const data = useMemo(() => {
     if (!log || sectionIdx < 0) return null;
     const sec = log.sections[sectionIdx];
     if (!sec || sec.type !== 'CALIBRATION') return null;
     const cal = log.calibrations[sec.idx];
+    const colors = calColors(swapRaDec);
     return {
       cal,
-      traces: buildTraces(cal),
-      shapes: buildAxisShapes(cal),
+      traces: buildTraces(cal, colors),
+      shapes: buildAxisShapes(cal, colors),
     };
-  }, [log, sectionIdx]);
+  }, [log, sectionIdx, swapRaDec]);
 
   if (!data) return null;
 

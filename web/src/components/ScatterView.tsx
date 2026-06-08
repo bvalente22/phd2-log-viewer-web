@@ -5,10 +5,7 @@ import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { calcStats } from '../parser';
 import type { GuideSession } from '../parser';
-import { themeOf } from '../themes';
-
-const RA_COLOR = '#60a5fa';
-const DEC_COLOR = '#f87171';
+import { themeOf, raDecColors } from '../themes';
 
 function ellipseShape(s: GuideSession, mask: Uint8Array | undefined, k: number): Partial<Shape>[] {
   const stats = calcStats(s, mask);
@@ -50,9 +47,11 @@ export function ScatterView() {
   const scaleMode = useViewStore((s) => s.scaleMode);
   const themeId = useViewStore((s) => s.theme);
   const device = useViewStore((s) => s.device);
+  const swapRaDec = useViewStore((s) => s.swapRaDec);
 
   const data = useMemo(() => {
     if (!log || sectionIdx < 0) return null;
+    const { ra: RA_COLOR, dec: DEC_COLOR } = raDecColors(swapRaDec);
     const sec = log.sections[sectionIdx];
     if (!sec || sec.type !== 'GUIDING') return null;
     const session = log.sessions[sec.idx];
@@ -132,7 +131,7 @@ export function ScatterView() {
     ];
 
     return { traces, shapes, range, k };
-  }, [log, sectionIdx, exclusions, scaleMode, device]);
+  }, [log, sectionIdx, exclusions, scaleMode, device, swapRaDec]);
 
   if (!data) {
     return <div className="flex h-full items-center justify-center text-slate-500">Select a guiding section.</div>;

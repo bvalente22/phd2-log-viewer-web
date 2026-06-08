@@ -8,10 +8,8 @@ import type { GARun } from '../parser/analyze';
 import { useChartGestures } from './useChartGestures';
 import { useAnalysisStore } from '../state/analysisStore';
 import { useViewStore } from '../state/viewStore';
-import { themeOf } from '../themes';
+import { themeOf, raDecColors } from '../themes';
 
-const RA_COLOR = '#60a5fa';
-const DEC_COLOR = '#f87171';
 const CURSOR_COLOR = 'rgba(250, 204, 21, 0.7)';
 
 interface PlotlyHoverEvent {
@@ -46,6 +44,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
   const plotId = useId().replace(/:/g, '_');
   const [hover, setHover] = useState<string | null>(null);
   const themeId = useViewStore((s) => s.theme);
+  const swapRaDec = useViewStore((s) => s.swapRaDec);
   // X range tracking persists drag-pans across hover-induced re-renders.
   // Without this, every plotly_hover triggers setHover → React re-render
   // → Plotly.react sees `xaxis.range = xExtent` (the data-derived
@@ -71,6 +70,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
   );
 
   const traces = useMemo<Data[]>(() => {
+    const { ra: RA_COLOR, dec: DEC_COLOR } = raDecColors(swapRaDec);
     const out: Data[] = [];
     const x = Array.from(garun.t).map(toX);
     // Display convention: positive RA (east drift) plots BELOW the
@@ -107,7 +107,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
       } as Data);
     }
     return out;
-  }, [garun, showRa, showDec, k, toX]);
+  }, [garun, showRa, showDec, k, toX, swapRaDec]);
 
   const yRange = useMemo<[number, number]>(() => {
     let max = 1e-9;
