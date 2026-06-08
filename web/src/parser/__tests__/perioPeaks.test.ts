@@ -1,22 +1,27 @@
 import { describe, it, expect } from 'vitest';
 import { primaryPeriod, periodRatio, rampValue } from '../perioPeaks';
 
-// Curve with local maxima at periods 100 (amp 5), 200 (amp 4), 400 (amp 6),
-// 800 (amp 9). 800 is the highest amplitude but exceeds a typical max-period.
+// Local maxima at periods 150 (amp 4), 300 (amp 10), 460 (amp 2). The dominant
+// (largest-amplitude) peak is 300; 460 is a small longer-period bump — exactly
+// the kind of peak the old "longest peak <= max" rule wrongly latched onto.
 const curve = {
-  x: [50, 100, 150, 200, 250, 400, 550, 800, 1000],
-  y: [1, 5, 1, 4, 1, 6, 1, 9, 1],
+  x: [100, 150, 200, 300, 380, 460, 550],
+  y: [1, 4, 1, 10, 1, 2, 1],
 };
 
 describe('primaryPeriod', () => {
-  it('picks the LONGEST-period peak at or below maxPeriodSec (not the highest amplitude)', () => {
-    expect(primaryPeriod(curve, 600)).toBe(400);
+  it('picks the LARGEST-amplitude peak at or below maxPeriodSec (not the longest period)', () => {
+    expect(primaryPeriod(curve, 600)).toBe(300);
   });
-  it('includes peaks up to and including maxPeriodSec', () => {
-    expect(primaryPeriod(curve, 800)).toBe(800);
+  it('still picks the tallest peak when a small longer-period bump is in range', () => {
+    expect(primaryPeriod(curve, 500)).toBe(300);
+  });
+  it('falls back to the tallest remaining peak when the dominant one exceeds max', () => {
+    // max 250 excludes the 300s peak (amp 10), leaving 150s (amp 4) as tallest.
+    expect(primaryPeriod(curve, 250)).toBe(150);
   });
   it('returns null when no peak qualifies', () => {
-    expect(primaryPeriod(curve, 50)).toBeNull();
+    expect(primaryPeriod(curve, 120)).toBeNull();
   });
 });
 

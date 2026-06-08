@@ -73,22 +73,27 @@ export function curveTopPeaks(
 }
 
 /**
- * The "primary period" for period-ratio readouts: the LONGEST-period local-max
- * peak at or below `maxPeriodSec`. On the Raw-RA periodogram this is the
- * periodic-error fundamental (also its #1-amplitude peak); ratios on both the
- * Raw-RA and Residual tabs divide by this single anchor so a residual harmonic
- * at half the period reads 2x. Returns null when no peak qualifies.
+ * The "primary period" for period-ratio readouts: the LARGEST-amplitude local-max
+ * peak at or below `maxPeriodSec` — i.e. the dominant periodic error. On the
+ * Raw-RA periodogram this is the PE fundamental (its harmonics are smaller), and
+ * ratios on both the Raw-RA and Residual tabs divide by this single anchor so a
+ * residual harmonic at half the period reads 2x.
+ *
+ * Originally this took the longest-period peak <= max, but that latched onto tiny
+ * long-period bumps (e.g. a small 461s peak winning over the obvious 376.7s
+ * dominant), so the dominant-by-amplitude rule replaced it. Returns null when no
+ * peak qualifies.
  */
 export function primaryPeriod(
   curve: { x: number[]; y: number[] },
   maxPeriodSec: number,
 ): number | null {
-  let best: number | null = null;
+  let best: { period: number; amplitude: number } | null = null;
   for (const m of curveLocalMaxima(curve)) {
     if (m.period > maxPeriodSec) continue;
-    if (best === null || m.period > best) best = m.period;
+    if (best === null || m.amplitude > best.amplitude) best = m;
   }
-  return best;
+  return best === null ? null : best.period;
 }
 
 /** Ratio of the primary period to a peak's period (primary / period). */

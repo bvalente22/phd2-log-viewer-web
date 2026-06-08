@@ -22,12 +22,14 @@ All work targets `web/`. No parser-format or storage-schema changes.
 
 Several items divide by a single **primary period**:
 
-> The primary period is the **longest-period peak at or below the Max Period filter**, computed on the **Raw RA** periodogram (the GA run whose `undoRaCorrections === true`). It anchors **both** the Raw RA and Residual-error tabs, so a residual harmonic at half the period reads `2.0x` relative to the raw fundamental.
+> The primary period is the **largest-amplitude peak at or below the Max Period filter** (the dominant periodic error), computed on the **Raw RA** periodogram (the GA run whose `undoRaCorrections === true`). It anchors **both** the Raw RA and Residual-error tabs, so a residual harmonic at half the period reads `2.0x` relative to the raw fundamental.
+>
+> *(Revised 2026-06-07: originally the longest-period peak ≤ max, but that latched onto tiny long-period bumps — e.g. a small 461s peak beating the obvious 376.7s dominant — so it now picks the dominant peak by amplitude.)*
 
 - The Raw RA run is always reachable in `AnalysisModal`: it is whichever of `garun` / `garunOther` has `undoRaCorrections === true` (`setKind` swaps the pair, so the active `garun` alternates, but the Raw-RA member is identifiable by that flag).
 - **Peaks** are local maxima of the dense Akima curve (`densePeriodogram` → `curveLocalMaxima`), the same source the cards and chips already use, so the primary always lands on a visible curve peak.
-- "Longest-period peak ≤ Max Period" — among those local maxima with `period <= maxPeriodSec`, pick the one with the **largest period**. For Raw RA this is expected to coincide with its #1-amplitude peak, but the definition is by **period**, not amplitude (the two diverge on the Residual curve, which is why the primary is anchored to Raw RA).
-- **Unguided** mode has no Raw-RA counterpart: the primary is the longest-period peak ≤ Max Period in its single curve.
+- "Largest-amplitude peak ≤ Max Period" — among those local maxima with `period <= maxPeriodSec`, pick the one with the **largest amplitude**. On Raw RA this is the PE fundamental (its harmonics are smaller-amplitude). Equivalently, it is the `#1` entry of `curveTopPeaks(curve, 1, maxPeriodSec)`.
+- **Unguided** mode has no Raw-RA counterpart: the primary is the largest-amplitude peak ≤ Max Period in its single curve.
 - Implemented as a pure helper, e.g. `primaryPeriod(curve, maxPeriodSec): number | null`, in `web/src/parser/perioPeaks.ts` (unit-tested), returning `null` when no peak qualifies (ratios then omitted/blank).
 
 ## Item 4 — Top (drift) chart wall-clock X axis
