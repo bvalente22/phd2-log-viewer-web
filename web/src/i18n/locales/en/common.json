@@ -28,6 +28,10 @@
   "languageTooltip": "Switch the interface language. Astrophotography terms (RA, Dec, RMS, etc.) stay in English.",
   "theme": "Theme",
   "themeTooltip": "Switch the visual theme. Trace colors (RA blue, Dec red, Mass yellow, SNR white) stay constant across all themes.",
+  "raDecColor": "RA/Dec colors",
+  "raDecColorTooltip": "Swap the RA and Dec trace colors across all charts (except the periodogram).",
+  "raDecColorNormal": "RA Blue / Dec Red",
+  "raDecColorSwapped": "RA Red / Dec Blue",
   "themes": {
     "default": "Dark",
     "paper": "Paper white",

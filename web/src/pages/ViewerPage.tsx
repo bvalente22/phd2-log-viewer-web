@@ -16,6 +16,7 @@ import { SidebarResizer } from '../components/SidebarResizer';
 import { AnnotationModal } from '../components/AnnotationModal';
 import { LanguagePicker } from '../components/LanguagePicker';
 import { ThemePicker } from '../components/ThemePicker';
+import { RaDecColorPicker } from '../components/RaDecColorPicker';
 import { GAResultsPanel } from '../components/GAResultsPanel';
 import { GuidingDashboard } from '../components/GuidingDashboard';
 import { useLogStore } from '../state/logStore';
@@ -106,6 +107,7 @@ export function ViewerPage() {
           )}
         </h1>
         <div className="flex items-center gap-3">
+          <RaDecColorPicker />
           <ThemePicker />
           <LanguagePicker />
         </div>
