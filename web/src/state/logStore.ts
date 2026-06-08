@@ -8,6 +8,7 @@ import { parseLogAsync } from '../parser/parseLog.client';
 import { putRecent } from '../storage/recents';
 import { hashLogText } from '../storage/annotations';
 import { useAnnotationStore } from './annotationStore';
+import { usePrimaryPeriodStore } from './primaryPeriodStore';
 
 export interface LogMeta {
   name: string;
@@ -51,10 +52,16 @@ export const useLogStore = create<LogState>((set) => ({
       // Load the saved annotation, or fire the first-open prompt for an
       // unseen log. Fire-and-forget: the UI reacts to annotationStore.
       void useAnnotationStore.getState().loadForLog(hash, name);
+      // Load this log's persisted Primary period (one value per log); a
+      // different log has no record so Analysis recomputes it from scratch.
+      void usePrimaryPeriodStore.getState().loadForLog(hash);
     } catch (e) {
       set({ loading: false, error: e instanceof Error ? e.message : String(e) });
     }
   },
   selectSection: (i) => set({ selectedSection: i }),
-  clear: () => set({ log: null, meta: null, selectedSection: 0, error: null }),
+  clear: () => {
+    usePrimaryPeriodStore.getState().clear();
+    set({ log: null, meta: null, selectedSection: 0, error: null });
+  },
 }));
