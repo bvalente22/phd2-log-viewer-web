@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Debug log</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: #0f172a; color: #cbd5e1;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px;
+    display: flex; flex-direction: column;
+  }
+  header {
+    flex: none; background: #0b1120; color: #93c5fd;
+    padding: 8px 14px; border-bottom: 1px solid #1e293b; white-space: nowrap; overflow: auto;
+  }
+  #scroll { flex: 1; overflow: auto; position: relative; }
+  /* #rows overlays the full-height #spacer (top:0), so absolutely-positioned
+     rows sit at their true offset instead of being pushed down by the spacer. */
+  #rows { position: absolute; top: 0; left: 0; right: 0; }
+  .row { position: absolute; left: 0; right: 0; height: 16px; line-height: 16px; white-space: pre; display: flex; }
+  .row .ln { flex: none; width: 8ch; padding-right: 1ch; text-align: right; color: #475569; user-select: none; }
+  .row.hit { background: rgba(245, 158, 11, 0.30); }
+  .row.hit .txt { color: #fde68a; }
+  #empty { padding: 2rem; color: #94a3b8; }
+</style>
+</head>
+<body>
+<header id="hdr">Debug log</header>
+<div id="scroll"><div id="spacer"></div><div id="rows"></div></div>
+<script>
+// Renders the sibling PHD2 debug log the user double-clicked to. The data
+// (lines array, matched line, timestamps) is handed off by the main app tab via
+// `window.opener.__debugTabData[key]` (same-origin reference — no megabyte copy).
+// A fixed-height virtual list keeps only the visible rows in the DOM, so even a
+// 30 MB / few-hundred-thousand-line log scrolls smoothly.
+(function () {
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function fmt(ms) {
+    var d = new Date(ms);
+    function p(n, w) { return String(n).padStart(w || 2, '0'); }
+    return p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ':' + p(d.getUTCSeconds()) + '.' + p(d.getUTCMilliseconds(), 3);
+  }
+
+  var key = location.hash.slice(1);
+  var data = null;
+  try { data = window.opener && window.opener.__debugTabData ? window.opener.__debugTabData[key] : null; } catch (e) { data = null; }
+  if (!data || !data.lines) {
+    document.body.innerHTML = '<div id="empty">Debug log data is unavailable — the main app tab may have been closed. Double-click the sample again with the app open.</div>';
+    return;
+  }
+
+  var lines = data.lines;
+  var idx = data.matchedIndex | 0;
+  if (idx < 0) idx = 0;
+  if (idx >= lines.length) idx = lines.length - 1;
+  document.title = data.fileName || 'Debug log';
+  document.getElementById('hdr').innerHTML =
+    esc(data.fileName || '') + ' &nbsp;·&nbsp; ' + fmt(data.targetMs) +
+    ' → <b style="color:#fcd34d">' + fmt(data.matchedMs) + '</b> &nbsp;·&nbsp; line ' + (idx + 1);
+
+  var LH = 16, OVER = 30;
+  var sc = document.getElementById('scroll');
+  var rows = document.getElementById('rows');
+  document.getElementById('spacer').style.height = (lines.length * LH) + 'px';
+
+  function render() {
+    var st = sc.scrollTop, h = sc.clientHeight;
+    var first = Math.max(0, Math.floor(st / LH) - OVER);
+    var last = Math.min(lines.length, first + Math.ceil(h / LH) + OVER * 2);
+    var out = '';
+    for (var i = first; i < last; i++) {
+      out += '<div class="row' + (i === idx ? ' hit' : '') + '" style="top:' + (i * LH) + 'px">' +
+        '<span class="ln">' + (i + 1) + '</span><span class="txt">' + esc(lines[i]) + '</span></div>';
+    }
+    rows.innerHTML = out;
+  }
+  sc.addEventListener('scroll', render);
+  window.addEventListener('resize', render);
+  render();
+  // Centre the matched line. Deferred to the next frame because the scroll
+  // container's clientHeight isn't laid out yet while this end-of-body script
+  // runs, which would mis-place the scroll.
+  function centre() {
+    sc.scrollTop = Math.max(0, idx * LH - sc.clientHeight / 2 + LH / 2);
+    render();
+  }
+  requestAnimationFrame(centre);
+})();
+</script>
+</body>
+</html>

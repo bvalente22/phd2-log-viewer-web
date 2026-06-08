@@ -208,8 +208,8 @@
   "resetY": "reset Y",
   "resetYTooltip": "Drop the manual Y-zoom and let the periodogram autorange. The reset is gated when the axis is locked — release the lock first.",
   "topGraph": "Drift Graph",
-  "topGraphShown": "show",
-  "topGraphHidden": "hide",
+  "topGraphHide": "Hide",
+  "topGraphShow": "Show",
   "topGraphTooltip": "Show or hide the drift graph above the periodogram. When hidden, the periodogram expands to fill the space.",
   "gestureHint": "scroll = X zoom · drag = X pan + Y zoom · right-drag = Y pan + X zoom · hover = vertical cursor + readout",
   "topPeaks": "Top 3 peaks",
@@ -240,11 +240,14 @@
     "closeTooltip": "Close the debug-log viewer (Esc)",
     "loading": "Loading debug log…",
     "pick": "Pick debug log…",
+    "dropZone": "Drag the PHD2_DebugLog file here, or click to browse",
+    "dropZoneTooltip": "Drop the sibling PHD2_DebugLog .txt file, or click to choose it — it opens in a new tab scrolled to the matching line.",
     "error": {
-      "notFound": "Couldn't find the matching debug log in the log's folder. PHD2 writes it alongside the guide log as PHD2_DebugLog_<date>.txt — pick it manually below.",
+      "notFound": "Couldn't find the matching debug log in the log's folder. PHD2 writes it alongside the guide log as PHD2_DebugLog_<date>.txt — pick it manually to open it in a new tab.",
       "notDebugLog": "That file doesn't look like a PHD2 debug log (its first line should contain 'begins execution' or 'continues execution'). Pick the correct PHD2_DebugLog file.",
       "noTimestamp": "This log has no parseable start time, so the sample can't be matched to a debug-log timestamp.",
-      "empty": "The debug log appears to be empty."
+      "empty": "The debug log appears to be empty.",
+      "popupBlocked": "Your browser blocked the new tab. Allow pop-ups for this site, then double-click the sample again."
     }
   }
 }
