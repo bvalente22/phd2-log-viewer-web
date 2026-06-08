@@ -5,6 +5,7 @@ import type { TraceVisibility } from '../state/viewStore';
 import type { GuideSession } from '../parser';
 import { AnalysisButton } from './AnalysisButton';
 import { ToolbarPopover } from './ToolbarPopover';
+import { CHIP_TONE, type ChipTone } from './chipTones';
 
 // Hide the RA/Dec pulse-direction "flip" toggles in row 1 of the
 // toolbar. Set this to `true` to restore them — the underlying
@@ -59,38 +60,8 @@ const triggerDownload = (filename: string, content: string, mime: string) => {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 };
 
-// Per-toggle tone loosely keyed to the trace color used on the chart so the
-// toolbar reads at a glance, but deliberately MUTED relative to those trace
-// colors. A solid chip concentrates color far more than a thin plotted line,
-// so matching the vibrant trace saturation makes the toolbar too loud (the
-// yellow Mass chip especially). The chart traces (themes.ts) stay vibrant —
-// the divergence is intentional. See feedback_toolbar_chip_colors.md.
-// Inactive state tints only the text (subtle hint); active fills the
-// background. Disabled stays neutral. RA/Dec pulses share their axis tone so
-// the matching pair lines up visually.
-type ChipTone = 'default' | 'ra' | 'dec' | 'mass' | 'snr';
-const CHIP_TONE: Record<ChipTone, { active: string; inactive: string }> = {
-  default: {
-    active:   'bg-[#3f6b8f] text-white hover:bg-[#4a7ba3]',
-    inactive: 'bg-slate-800 text-slate-400 hover:bg-slate-700',
-  },
-  ra: {
-    active:   'bg-[#3f6b8f] text-white hover:bg-[#4a7ba3]',
-    inactive: 'bg-slate-800 text-[#6fa3c4] hover:bg-slate-700',
-  },
-  dec: {
-    active:   'bg-[#a85f5f] text-white hover:bg-[#b87070]',
-    inactive: 'bg-slate-800 text-[#d09a9a] hover:bg-slate-700',
-  },
-  mass: {
-    active:   'bg-[#ad924a] text-slate-900 hover:bg-[#c0a458]',
-    inactive: 'bg-slate-800 text-[#c4ad6b] hover:bg-slate-700',
-  },
-  snr: {
-    active:   'bg-[#d7dde5] text-slate-900 hover:bg-[#e6ebf1]',
-    inactive: 'bg-slate-800 text-[#cbd5e1] hover:bg-slate-700',
-  },
-};
+// Chip tone palette (CHIP_TONE / ChipTone) is shared with the Analysis modal —
+// see ./chipTones.ts for the rationale behind the deliberately muted colors.
 
 const ToggleChip = ({
   label, active, onClick, disabled, title, tone = 'default', className,
