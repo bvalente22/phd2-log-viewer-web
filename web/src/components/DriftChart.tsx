@@ -59,9 +59,20 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
   const k = scaleMode === 'ARCSEC' ? garun.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
 
+  // Clock-time X axis (ms-since-epoch on a Plotly `type:'date'` axis) when the
+  // run has a parseable wall-clock start — mirrors the main GuideGraph so the
+  // analysis drift chart and the guide chart read the same times. Falls back to
+  // elapsed seconds for unguided / unparseable logs.
+  const startsMs = garun.starts;
+  const useClockTime = startsMs !== null && Number.isFinite(startsMs);
+  const toX = useCallback(
+    (dt: number) => (useClockTime ? (startsMs as number) + dt * 1000 : dt),
+    [useClockTime, startsMs],
+  );
+
   const traces = useMemo<Data[]>(() => {
     const out: Data[] = [];
-    const x = Array.from(garun.t);
+    const x = Array.from(garun.t).map(toX);
     // Display convention: positive RA (east drift) plots BELOW the
     // centerline, positive Dec (north drift) plots ABOVE — the
     // astronomical "north up, east down" orientation. The desktop's
@@ -96,7 +107,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
       } as Data);
     }
     return out;
-  }, [garun, showRa, showDec, k]);
+  }, [garun, showRa, showDec, k, toX]);
 
   const yRange = useMemo<[number, number]>(() => {
     let max = 1e-9;
@@ -111,9 +122,9 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
   // fixed in the main GuideGraph; see commit 414354a).
   const xExtent = useMemo<[number, number]>(() => {
     const t = garun.t;
-    if (t.length < 2) return [0, 1];
-    return [t[0], t[t.length - 1]];
-  }, [garun]);
+    if (t.length < 2) return [toX(0), toX(1)];
+    return [toX(t[0]), toX(t[t.length - 1])];
+  }, [garun, toX]);
 
   useChartGestures(plotId, {}, { enableModifierSelect: false });
 
@@ -150,14 +161,21 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
   const onRelayout = useCallback((ev: Readonly<Record<string, unknown>>) => {
     let lo: number | undefined;
     let hi: number | undefined;
-    const x0 = ev['xaxis.range[0]'];
-    const x1 = ev['xaxis.range[1]'];
+    // On a `type:'date'` axis Plotly emits range values as ISO strings
+    // ("2026-06-05 23:51:53"); coerce both number and string forms to ms.
+    const toMs = (v: unknown): number | null => {
+      if (typeof v === 'number' && Number.isFinite(v)) return v;
+      if (typeof v === 'string') { const t = Date.parse(v); return Number.isFinite(t) ? t : null; }
+      return null;
+    };
+    const x0 = toMs(ev['xaxis.range[0]']);
+    const x1 = toMs(ev['xaxis.range[1]']);
     const xrange = ev['xaxis.range'];
-    if (typeof x0 === 'number' && typeof x1 === 'number') {
+    if (x0 !== null && x1 !== null) {
       lo = x0; hi = x1;
     } else if (Array.isArray(xrange) && xrange.length >= 2) {
-      const a = xrange[0]; const b = xrange[1];
-      if (typeof a === 'number' && typeof b === 'number') { lo = a; hi = b; }
+      const a = toMs(xrange[0]); const b = toMs(xrange[1]);
+      if (a !== null && b !== null) { lo = a; hi = b; }
     }
     if (lo !== undefined && hi !== undefined && Number.isFinite(lo) && Number.isFinite(hi)) {
       setDriftXRange([lo, hi]);
@@ -185,6 +203,8 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
     font: { color: tc.font, size: 11 },
     xaxis: {
       title: { text: tChart('axes.time') }, gridcolor: tc.grid, zerolinecolor: tc.zeroline,
+      type: useClockTime ? 'date' : 'linear',
+      tickformat: useClockTime ? '%H:%M' : undefined,
       fixedrange: false,
       // Tracked range wins over the data-derived default. Persists pan
       // across hover-induced re-renders and across mode swaps.
