@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
 import { useAnnotationStore } from '../state/annotationStore';
+import { setStashedDebugLog } from '../storage/debugLogAccess';
 
 /**
  * Sidebar pane that lets the user load a new guide log via drag-and-drop or
@@ -29,9 +30,19 @@ export function LogsFolderPane() {
   const friendlyName = annotation?.friendlyName ?? null;
   const notes = annotation?.notes ?? null;
 
-  const handleFile = useCallback(async (file: File) => {
-    const text = await file.text();
-    await loadFromText(text, file.name);
+  // Accept one OR more files: the guide log, optionally with its debug log.
+  // Dragging both in at once stashes the debug log so double-clicking a sample
+  // opens it directly — the most reliable path, since the browser can't see a
+  // dropped file's parent folder to auto-find the sibling. Guide log only →
+  // no stash (auto-find / pick fallback).
+  const handleFiles = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const arr = Array.from(files);
+    const guide = arr.find((f) => /GuideLog/i.test(f.name)) ?? arr[0];
+    const debug = arr.find((f) => /DebugLog/i.test(f.name) && f !== guide) ?? null;
+    if (debug) setStashedDebugLog(guide.name, debug);
+    const text = await guide.text();
+    await loadFromText(text, guide.name);
   }, [loadFromText]);
 
   return (
@@ -91,8 +102,7 @@ export function LogsFolderPane() {
             onDrop={(e) => {
               e.preventDefault();
               setDragOver(false);
-              const f = e.dataTransfer.files?.[0];
-              if (f) void handleFile(f);
+              void handleFiles(e.dataTransfer.files);
             }}
           >
             <p className="mb-2 text-xs text-slate-300">{t('dropZone.title')}</p>
@@ -107,10 +117,10 @@ export function LogsFolderPane() {
               ref={inputRef}
               type="file"
               accept=".log,.txt,text/plain"
+              multiple
               className="hidden"
               onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void handleFile(f);
+                void handleFiles(e.target.files);
                 e.target.value = '';
               }}
             />

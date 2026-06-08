@@ -1,10 +1,38 @@
 import { describe, it, expect } from 'vitest';
-import { parseDebugTimes, findClosestTimeIndex } from '../debugTimestamps';
+import {
+  parseDebugTimes, findClosestTimeIndex, debugLogAnchorMs, firstTimestampMsOfDay,
+} from '../debugTimestamps';
 
 const DAY = 86_400_000;
 const A = Date.UTC(2025, 11, 14); // midnight of the session's wall-clock date
 const ms = (h: number, m: number, s: number, mmm = 0) =>
   A + ((h * 60 + m) * 60 + s) * 1000 + mmm;
+
+const msOfDay = (h: number, m: number, s: number) => ((h * 60 + m) * 60 + s) * 1000;
+
+describe('firstTimestampMsOfDay', () => {
+  it('returns the first timestamped line ms-of-day, skipping non-timestamped lines', () => {
+    expect(firstTimestampMsOfDay(['a header, no time', '23:03:41.248 x'])).toBe(msOfDay(23, 3, 41) + 248);
+  });
+  it('returns null when no line has a timestamp', () => {
+    expect(firstTimestampMsOfDay(['a', 'b'])).toBeNull();
+  });
+});
+
+describe('debugLogAnchorMs (cross-midnight)', () => {
+  it('anchors a day earlier when the session is after midnight but the log started the prior evening', () => {
+    const session = new Date(2026, 5, 1, 1, 56, 0).getTime(); // 01:56 local on 2026-06-01
+    expect(debugLogAnchorMs(session, msOfDay(23, 3, 0))).toBe(Date.UTC(2026, 4, 31)); // 2026-05-31 midnight
+  });
+  it('keeps the session date when the log started earlier the same evening', () => {
+    const session = new Date(2026, 5, 1, 22, 0, 0).getTime();
+    expect(debugLogAnchorMs(session, msOfDay(21, 0, 0))).toBe(Date.UTC(2026, 5, 1));
+  });
+  it('returns the session date anchor when there is no first timestamp', () => {
+    const session = new Date(2026, 5, 1, 1, 56, 0).getTime();
+    expect(debugLogAnchorMs(session, null)).toBe(Date.UTC(2026, 5, 1));
+  });
+});
 
 describe('parseDebugTimes', () => {
   it('parses the leading HH:MM:SS.mmm of each line to a wall-clock absolute ms', () => {

@@ -796,7 +796,7 @@ export function AnalysisModal() {
             fills the chart column. */}
         <span className="ms-3 me-1 text-slate-500" title={t('topGraphTooltip')}>{t('topGraph')}:</span>
         <ToggleChip
-          label={showTopChart ? t('topGraphShown') : t('topGraphHidden')}
+          label={showTopChart ? t('topGraphHide') : t('topGraphShow')}
           active={showTopChart}
           onClick={() => setShowTopChart(!showTopChart)}
           title={t('topGraphTooltip')}

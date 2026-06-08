@@ -1,125 +1,157 @@
 import { create } from 'zustand';
 import { validateDebugLogHeader } from '../parser/parseBlt';
 import {
-  parseDebugTimes, findClosestTimeIndex, toWallClockMs, dayAnchorMs,
+  parseDebugTimes, findClosestTimeIndex, toWallClockMs,
+  debugLogAnchorMs, firstTimestampMsOfDay,
 } from '../parser/debugTimestamps';
-import { resolveDebugLogFile } from '../storage/debugLogAccess';
+import { resolveDebugLogFile, grantDebugFolderAndResolve } from '../storage/debugLogAccess';
+import { openDebugTab, setDebugTabSlot } from '../components/debugLogTab';
 
 /** Args identifying the clicked sample + its session anchor. */
 export interface DebugOpenArgs {
   guideLogName: string;
-  /** Session start epoch ms (GARun.starts). Null when the log has no parseable
-   *  timestamp — matching is impossible, so we surface an error. */
+  /** Session start epoch ms (GARun.starts). Null → no timestamp → can't match. */
   startsMs: number | null;
   /** Clicked sample's absolute epoch ms = startsMs + dt*1000. */
   targetEpochMs: number;
 }
 
-export type DebugErrorKey = 'notFound' | 'notDebugLog' | 'noTimestamp' | 'empty';
+export type DebugErrorKey = 'notFound' | 'notDebugLog' | 'noTimestamp' | 'empty' | 'popupBlocked';
 
 interface DebugLogState {
-  status: 'closed' | 'loading' | 'open' | 'error';
-  fileName: string | null;
-  lines: string[];
-  matchedIndex: number;
-  /** Wall-clock ms of the clicked sample and of the matched line (for the header). */
-  targetMs: number;
-  matchedMs: number;
+  /** The rendered log lives in a NEW TAB; this in-app modal is only the
+   *  grant-folder / pick / error dialog, so the store is idle or showing error. */
+  status: 'idle' | 'error';
   errorKey: DebugErrorKey | null;
-  /** Error states that a manual file pick can recover from show a pick button. */
+  /** Error states a manual grant/pick can recover from show those affordances. */
   canPick: boolean;
-  /** Pending args kept so a manual pick can complete the original request. */
+  /** Pending args kept so a grant/pick can complete the original request. */
   pending: DebugOpenArgs | null;
 }
 
 interface DebugLogActions {
   openForSample: (args: DebugOpenArgs) => Promise<void>;
+  /** User picked the debug file (file input or drop). */
   pickFile: (file: File) => Promise<void>;
-  close: () => void;
+  /** User asked to grant the folder so we can auto-find the sibling. */
+  grantFolder: () => Promise<void>;
+  dismiss: () => void;
 }
 
 // Per-session cache of parsed debug logs keyed by guide-log name — a debug log
 // can be tens of MB, so we read/parse it once and reuse for later double-clicks.
 const cache = new Map<string, { fileName: string; lines: string[]; times: Float64Array }>();
 
-const CLOSED: DebugLogState = {
-  status: 'closed', fileName: null, lines: [], matchedIndex: 0,
-  targetMs: 0, matchedMs: 0, errorKey: null, canPick: false, pending: null,
-};
+// The data-slot key of the currently-open debug tab. The tab polls its slot,
+// so we update the slot (not the Window) — no tab reference needed.
+let currentKey: string | null = null;
+
+const IDLE: DebugLogState = { status: 'idle', errorKey: null, canPick: false, pending: null };
 
 export const useDebugLogStore = create<DebugLogState & DebugLogActions>((set, get) => ({
-  ...CLOSED,
+  ...IDLE,
 
   openForSample: async (args) => {
     if (args.startsMs === null) {
-      set({ ...CLOSED, status: 'error', errorKey: 'noTimestamp', canPick: false });
+      set({ ...IDLE, status: 'error', errorKey: 'noTimestamp' });
       return;
     }
+    // Open the tab NOW (in the click gesture, popup-safe) directly to the
+    // static viewer page; it shows "Loading…" and polls for the data below.
+    const opened = openDebugTab();
+    if (!opened.tab) {
+      set({ ...IDLE, status: 'error', errorKey: 'popupBlocked' });
+      return;
+    }
+    currentKey = opened.key;
+    set({ ...IDLE, pending: args });
     const targetMs = toWallClockMs(args.targetEpochMs);
-    set({ ...CLOSED, status: 'loading', targetMs, pending: args });
 
     const cached = cache.get(args.guideLogName);
     if (cached) {
-      openMatched(set, cached, targetMs);
+      ready(opened.key, cached, targetMs);
       return;
     }
-    // Try the folder handle first (must stay within the double-click gesture).
+
     const file = await resolveDebugLogFile(args.guideLogName);
-    if (get().pending !== args) return; // superseded by a newer open/close
+    if (get().pending !== args) return; // superseded by a newer request
     if (!file) {
+      setDebugTabSlot(opened.key, { state: 'needPick' });
       set({ status: 'error', errorKey: 'notFound', canPick: true });
       return;
     }
-    await loadAndOpen(set, get, args, file, targetMs);
+    await loadAndFill(set, get, args, file, targetMs, opened.key);
   },
 
   pickFile: async (file) => {
     const args = get().pending;
-    if (!args || args.startsMs === null) return;
+    if (!args || args.startsMs === null || !currentKey) return;
     const targetMs = toWallClockMs(args.targetEpochMs);
-    set({ status: 'loading', targetMs });
-    await loadAndOpen(set, get, args, file, targetMs);
+    set({ status: 'idle' });
+    await loadAndFill(set, get, args, file, targetMs, currentKey);
   },
 
-  close: () => set({ ...CLOSED }),
+  grantFolder: async () => {
+    const args = get().pending;
+    if (!args || args.startsMs === null || !currentKey) return;
+    const file = await grantDebugFolderAndResolve(args.guideLogName);
+    if (get().pending !== args) return;
+    if (!file) {
+      // Cancelled, or the sibling isn't in the chosen folder — stay on the
+      // dialog so the user can retry, pick the file, or drag it in.
+      set({ status: 'error', errorKey: 'notFound', canPick: true });
+      return;
+    }
+    const targetMs = toWallClockMs(args.targetEpochMs);
+    set({ status: 'idle' });
+    await loadAndFill(set, get, args, file, targetMs, currentKey);
+  },
+
+  dismiss: () => set({ ...IDLE }),
 }));
 
 type SetFn = (partial: Partial<DebugLogState>) => void;
 type GetFn = () => DebugLogState & DebugLogActions;
 
-async function loadAndOpen(
-  set: SetFn, get: GetFn, args: DebugOpenArgs, file: File, targetMs: number,
+async function loadAndFill(
+  set: SetFn, get: GetFn, args: DebugOpenArgs, file: File, targetMs: number, key: string,
 ): Promise<void> {
   const text = await file.text();
   if (get().pending !== args) return;
   const lines = text.split(/\r?\n/);
   if (validateDebugLogHeader(lines[0] ?? '') !== null) {
+    setDebugTabSlot(key, { state: 'error', message: 'That file is not a PHD2 debug log.' });
     set({ status: 'error', errorKey: 'notDebugLog', canPick: true });
     return;
   }
   if (lines.length === 0) {
+    setDebugTabSlot(key, { state: 'error', message: 'The debug log is empty.' });
     set({ status: 'error', errorKey: 'empty', canPick: true });
     return;
   }
-  const times = parseDebugTimes(lines, dayAnchorMs(args.startsMs as number));
-  cache.set(args.guideLogName, { fileName: file.name, lines, times });
-  openMatched(set, { fileName: file.name, lines, times }, targetMs);
+  // Anchor the log's timeline so it brackets the session even when the log
+  // started the previous evening and the session is after midnight.
+  const anchor = debugLogAnchorMs(args.startsMs as number, firstTimestampMsOfDay(lines));
+  const times = parseDebugTimes(lines, anchor);
+  const parsed = { fileName: file.name, lines, times };
+  cache.set(args.guideLogName, parsed);
+  ready(key, parsed, targetMs);
+  set({ ...IDLE });
 }
 
-function openMatched(
-  set: SetFn,
+/** Hand the matched, parsed log to the open tab's data slot. */
+function ready(
+  key: string,
   parsed: { fileName: string; lines: string[]; times: Float64Array },
   targetMs: number,
 ): void {
   const idx = findClosestTimeIndex(parsed.times, targetMs);
-  set({
-    status: 'open',
+  setDebugTabSlot(key, {
+    state: 'ready',
     fileName: parsed.fileName,
     lines: parsed.lines,
     matchedIndex: idx,
     targetMs,
     matchedMs: parsed.times[idx] ?? targetMs,
-    errorKey: null,
-    canPick: false,
   });
 }
