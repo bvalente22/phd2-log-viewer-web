@@ -5,12 +5,13 @@ import {
 
 /**
  * Holds the Primary period for the currently-loaded guide log. One value per
- * log: the auto-detected dominant peak the first time the log is analyzed
- * (`initAuto`, written once when none is stored), or the value the user typed
- * (`setEdited`). `reset-to-auto` re-derives from the current section
- * (`setAuto`). `loadForLog` is called from logStore when a log is opened, so a
- * different log restores/clears the record and the AnalysisModal init effect
- * knows the sidecar read has completed (`loadedHash`).
+ * log: the auto-detected dominant peak from the STRONGEST section analyzed so
+ * far (`setAutoIfStronger` — a section that resolves more cycles of the worm
+ * supersedes a weaker one's auto value), or the value the user typed
+ * (`setEdited`, never auto-overwritten). `reset-to-auto` re-derives from the
+ * current section (`setAuto`). `loadForLog` is called from logStore when a log
+ * is opened, so a different log restores/clears the record and the AnalysisModal
+ * effect knows the sidecar read has completed (`loadedHash`).
  */
 interface PrimaryPeriodState {
   /** Hash of the log this store currently tracks. */
@@ -24,11 +25,16 @@ interface PrimaryPeriodState {
 
 interface PrimaryPeriodActions {
   loadForLog: (hash: string) => Promise<void>;
-  /** Write {auto} ONLY when none is stored yet (first-section init). */
-  initAuto: (hash: string, value: number) => Promise<void>;
+  /**
+   * Store this section's auto-detected primary when it's a BETTER estimate than
+   * what's stored: when nothing is stored, or the stored value is also `auto`
+   * and this section resolved more cycles. Never overwrites a user `edited`
+   * value. This is what makes a strong section supersede a weak one's auto.
+   */
+  setAutoIfStronger: (hash: string, value: number, cycles: number) => Promise<void>;
   setEdited: (hash: string, value: number) => Promise<void>;
-  /** Reset-to-auto: always overwrite with a freshly-computed dominant peak. */
-  setAuto: (hash: string, value: number) => Promise<void>;
+  /** Reset-to-auto: explicitly overwrite with the current section's dominant peak. */
+  setAuto: (hash: string, value: number, cycles: number) => Promise<void>;
   clear: () => void;
 }
 
@@ -45,12 +51,16 @@ export const usePrimaryPeriodStore = create<PrimaryPeriodState & PrimaryPeriodAc
     set({ record: rec ?? null, loadedHash: hash });
   },
 
-  initAuto: async (hash, value) => {
+  setAutoIfStronger: async (hash, value, cycles) => {
     const s = get();
-    // Only when the read for THIS hash finished and found nothing — never
-    // clobber a stored value, and never write before the read completes.
-    if (s.hash !== hash || s.loadedHash !== hash || s.record != null) return;
-    const rec = await putPrimaryPeriod({ key: hash, value, source: 'auto' });
+    // Wait until the sidecar read for THIS hash has completed (so we don't write
+    // before knowing what's stored).
+    if (s.hash !== hash || s.loadedHash !== hash) return;
+    const cur = s.record;
+    // Keep a user edit; keep a stored auto value unless this section resolved
+    // strictly more cycles (a better estimate).
+    if (cur && (cur.source === 'edited' || cycles <= (cur.cycles ?? 0))) return;
+    const rec = await putPrimaryPeriod({ key: hash, value, source: 'auto', cycles });
     if (get().hash !== hash) return;
     set({ record: rec });
   },
@@ -61,8 +71,8 @@ export const usePrimaryPeriodStore = create<PrimaryPeriodState & PrimaryPeriodAc
     set({ record: rec, loadedHash: hash });
   },
 
-  setAuto: async (hash, value) => {
-    const rec = await putPrimaryPeriod({ key: hash, value, source: 'auto' });
+  setAuto: async (hash, value, cycles) => {
+    const rec = await putPrimaryPeriod({ key: hash, value, source: 'auto', cycles });
     if (get().hash !== hash) return;
     set({ record: rec, loadedHash: hash });
   },

@@ -172,19 +172,32 @@ export function AnalysisModal() {
   const logHash = useLogStore((l) => l.meta?.hash ?? null);
   const primaryRecord = usePrimaryPeriodStore((p) => p.record);
   const primaryLoadedHash = usePrimaryPeriodStore((p) => p.loadedHash);
-  const initAutoPrimary = usePrimaryPeriodStore((p) => p.initAuto);
+  const setAutoIfStrongerPrimary = usePrimaryPeriodStore((p) => p.setAutoIfStronger);
   const setEditedPrimary = usePrimaryPeriodStore((p) => p.setEdited);
   const setAutoPrimary = usePrimaryPeriodStore((p) => p.setAuto);
   const primaryPeriodSec = primaryRecord?.value ?? autoPrimaryRaw;
 
-  // First-section init: store the auto value once, when this log has none yet.
-  // Gated on loadedHash so we never write before the sidecar read completes
-  // (which would clobber a stored value), and only when an auto value exists.
+  // How many cycles of the auto primary this section spans (duration ÷ primary).
+  // A short section (e.g. one too brief to resolve the ~370s worm) yields a
+  // low, unreliable value; the store uses this so a stronger section's auto
+  // value can supersede a weaker one's — the per-log Primary tracks the best
+  // section, not just the first one opened. Time span is identical on both
+  // Raw-RA and Residual runs, so `s.garun.t` is fine here.
+  const sectionCycles = useMemo(() => {
+    if (s.state !== 'open' || s.kind === 'spike' || autoPrimaryRaw == null || autoPrimaryRaw <= 0) return 0;
+    const t = s.garun.t;
+    const durationSec = t.length >= 2 ? t[t.length - 1] - t[0] : 0;
+    return durationSec / autoPrimaryRaw;
+  }, [s, autoPrimaryRaw]);
+
+  // Store this section's auto value if it's a better estimate than what's stored
+  // (or nothing is). Gated on loadedHash so we never write before the sidecar
+  // read completes. The store keeps user edits and weaker auto values.
   useEffect(() => {
     if (s.state !== 'open' || !logHash) return;
-    if (primaryLoadedHash !== logHash || primaryRecord != null || autoPrimaryRaw == null) return;
-    void initAutoPrimary(logHash, autoPrimaryRaw);
-  }, [s.state, logHash, primaryLoadedHash, primaryRecord, autoPrimaryRaw, initAutoPrimary]);
+    if (primaryLoadedHash !== logHash || autoPrimaryRaw == null) return;
+    void setAutoIfStrongerPrimary(logHash, autoPrimaryRaw, sectionCycles);
+  }, [s.state, logHash, primaryLoadedHash, autoPrimaryRaw, sectionCycles, setAutoIfStrongerPrimary]);
 
   const peaks = useMemo(() => {
     if (s.state !== 'open') return [];
@@ -861,7 +874,7 @@ export function AnalysisModal() {
               edited={primaryRecord?.source === 'edited'}
               canReset={autoPrimaryRaw != null}
               onCommit={(v) => void setEditedPrimary(logHash, v)}
-              onReset={() => { if (autoPrimaryRaw != null) void setAutoPrimary(logHash, autoPrimaryRaw); }}
+              onReset={() => { if (autoPrimaryRaw != null) void setAutoPrimary(logHash, autoPrimaryRaw, sectionCycles); }}
             />
           )}
           {kind === 'spike' && spikeRun && (
