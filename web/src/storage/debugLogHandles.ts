@@ -53,6 +53,11 @@ export async function deleteDebugLogHandle(key: string): Promise<void> {
   await saveIndex((await loadIndex()).filter((n) => n !== key));
 }
 
+/** Guide-log hashes that have a remembered debug-log handle (the MRU index). */
+export async function getAllDebugLogHandleHashes(): Promise<string[]> {
+  return loadIndex();
+}
+
 /** Test/maintenance helper — every debug-log-handle key (with the `dbgh:` prefix). */
 export async function _allDebugLogHandleKeys(): Promise<string[]> {
   return (await keys()).map(String).filter((k) => k.startsWith(PREFIX) && k !== INDEX_KEY);
