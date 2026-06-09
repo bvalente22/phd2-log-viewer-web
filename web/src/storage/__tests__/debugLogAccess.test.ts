@@ -13,7 +13,7 @@ vi.mock('../debugLogHandles', () => ({
 
 import { useLogStore } from '../../state/logStore';
 import { getDebugLogHandle } from '../debugLogHandles';
-import { resolveDebugLogFile, setStashedDebugLog } from '../debugLogAccess';
+import { resolveDebugLogFile, setStashedDebugLog, readDroppedFiles } from '../debugLogAccess';
 
 const setHash = (hash: string | null) =>
   (useLogStore.getState as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ meta: hash ? { hash } : null });
@@ -59,5 +59,42 @@ describe('resolveDebugLogFile resolution order', () => {
   it('returns null when no guide log hash is loaded and no folder', async () => {
     setHash(null);
     expect(await resolveDebugLogFile('g.txt')).toBeNull();
+  });
+});
+
+describe('readDroppedFiles', () => {
+  it('captures the dropped files synchronously, surviving DataTransfer neutering after the handle await', async () => {
+    const guide = new File(['g'], 'PHD2_GuideLog_x.txt');
+    const debug = new File(['d'], 'PHD2_DebugLog_x.txt');
+    // Array-like FileList that EMPTIES (as a real browser neuters it) the moment
+    // the getAsFileSystemHandle promise resolves — i.e. during readDroppedFiles'
+    // await. The fix must have already captured the files before that.
+    const fileList: Record<number, File> & { length: number } = { 0: guide, 1: debug, length: 2 };
+    const neuter = () => { delete fileList[0]; delete fileList[1]; fileList.length = 0; };
+    const dataTransfer = {
+      get files() { return fileList as unknown as FileList; },
+      items: [
+        {
+          kind: 'file',
+          getAsFileSystemHandle: () =>
+            Promise.resolve().then(() => { neuter(); return { kind: 'file', name: 'PHD2_DebugLog_x.txt' }; }),
+        },
+      ] as unknown as DataTransferItemList,
+    } as unknown as DataTransfer;
+
+    const { files, debugHandle } = await readDroppedFiles(dataTransfer);
+    expect(files.map((f) => f.name)).toEqual(['PHD2_GuideLog_x.txt', 'PHD2_DebugLog_x.txt']);
+    expect((debugHandle as unknown as { name: string } | null)?.name).toBe('PHD2_DebugLog_x.txt');
+  });
+
+  it('returns no debug handle when the browser does not expose getAsFileSystemHandle', async () => {
+    const guide = new File(['g'], 'PHD2_GuideLog_y.txt');
+    const dataTransfer = {
+      files: { 0: guide, length: 1 } as unknown as FileList,
+      items: [{ kind: 'file' }] as unknown as DataTransferItemList,
+    } as unknown as DataTransfer;
+    const { files, debugHandle } = await readDroppedFiles(dataTransfer);
+    expect(files.map((f) => f.name)).toEqual(['PHD2_GuideLog_y.txt']);
+    expect(debugHandle).toBeNull();
   });
 });

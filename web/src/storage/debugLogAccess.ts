@@ -40,6 +40,38 @@ export async function rememberDebugLogHandle(
   await putDebugLogHandle(hash, handle, fileName);
 }
 
+/**
+ * Read a drop's files, capturing the File list SYNCHRONOUSLY. The browser
+ * neuters the DataTransfer the instant the drop handler yields at an `await`, so
+ * reading `e.dataTransfer.files` *after* awaiting the handle promises returns an
+ * empty list — which silently dropped the pair. Capture the files first, then
+ * collect the debug log's FileSystemFileHandle (Chromium) when offered.
+ */
+export async function readDroppedFiles(
+  dataTransfer: DataTransfer,
+): Promise<{ files: File[]; debugHandle: FileSystemFileHandle | null }> {
+  const files = Array.from(dataTransfer.files); // capture NOW, before any await
+  const handlePromises: Promise<FileSystemHandle | null>[] = [];
+  const items = dataTransfer.items;
+  if (items) {
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i] as DataTransferItem & {
+        getAsFileSystemHandle?: () => Promise<FileSystemHandle | null>;
+      };
+      if (it.kind === 'file' && it.getAsFileSystemHandle) handlePromises.push(it.getAsFileSystemHandle());
+    }
+  }
+  let debugHandle: FileSystemFileHandle | null = null;
+  try {
+    const handles = await Promise.all(handlePromises);
+    const dh = handles.find((h) => h && h.kind === 'file' && /DebugLog/i.test(h.name));
+    if (dh) debugHandle = dh as FileSystemFileHandle;
+  } catch {
+    // handles are best-effort (Chromium only) — files still carry the data.
+  }
+  return { files, debugHandle };
+}
+
 const currentHash = (): string | null => useLogStore.getState().meta?.hash ?? null;
 
 let grantedFolder: FileSystemDirectoryHandle | null = null;
