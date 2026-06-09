@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { BltSequence } from '../parser/parseBlt';
 import { parseDebugLogFile } from '../parser/parseBlt';
 import { putBltCache, getBltCache, clearBltCache } from '../storage/bltCache';
+import { resolveDebugLogFile } from '../storage/debugLogAccess';
 
 /**
  * Backlash Analyzer state. Loaded debug-log results are cached per
@@ -67,15 +68,25 @@ export const useBltStore = create<BltState & BltActions>((set, get) => ({
     });
     if (!guideLogName) return;
     const cached = await getBltCache(guideLogName);
-    if (!cached) return;
     // Binding may have changed while IDB was reading — bail if so.
     if (get().guideLogName !== guideLogName) return;
-    set({
-      debugLogName: cached.debugLogName,
-      debugLogSize: cached.debugLogSize,
-      sequences: cached.sequences,
-      selectedIndex: cached.sequences.length > 0 ? 0 : -1,
-    });
+    if (cached) {
+      set({
+        debugLogName: cached.debugLogName,
+        debugLogSize: cached.debugLogSize,
+        sequences: cached.sequences,
+        selectedIndex: cached.sequences.length > 0 ? 0 : -1,
+      });
+      return;
+    }
+    // No cached result — auto-load the debug log the user already provided
+    // (dragged in this session, or a remembered handle / accessible folder),
+    // parsing on demand now that Backlash is open. Nothing available (or a cold
+    // handle that needs a permission prompt) → resolve returns null and the
+    // drop zone shows, unchanged.
+    const file = await resolveDebugLogFile(guideLogName);
+    if (get().guideLogName !== guideLogName) return;
+    if (file) await get().loadDebugLog(file);
   },
 
   loadDebugLog: async (file) => {
