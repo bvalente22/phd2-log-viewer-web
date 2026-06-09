@@ -55,7 +55,7 @@
     "resizeTooltip": "Drag to resize the sidebar. Double-click to reset to the default width."
   },
   "dropZone": {
-    "title": "Drop a PHD2 guide log here",
+    "title": "Drop PHD guide/debug log pair here",
     "tooltip": "Drop a PHD2 guide log file here (parsed locally; nothing is uploaded). Tip: drag the guide log AND its PHD2_DebugLog together to enable double-click-to-open-debug-log.",
     "pickFile": "or pick a file",
     "pickFileTooltip": "Open the file picker to choose a PHD2 guide log (you can select its PHD2_DebugLog too).",
@@ -63,5 +63,9 @@
     "chooseLogsFolder": "Choose logs folder…",
     "chooseLogsFolderTooltip": "Pick your PHD2 logs folder; afterwards every guide log will be browsable from the sidebar",
     "browseAllByDate": "Browse all your guide logs by date."
+  },
+  "debugBadge": {
+    "tooltip": "A companion PHD2 debug log is available for this log — double-click a drift sample or open Backlash to use it.",
+    "ariaLabel": "Has companion debug log"
   }
 }

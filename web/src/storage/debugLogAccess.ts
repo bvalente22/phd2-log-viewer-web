@@ -24,6 +24,11 @@ export function setStashedDebugLog(hash: string, file: File): void {
   stashedDebugLogs.set(hash, file);
 }
 
+/** Guide-log hashes whose debug log is stashed in memory this session. */
+export function getStashedDebugLogHashes(): string[] {
+  return [...stashedDebugLogs.keys()];
+}
+
 /**
  * Persist a HANDLE (link, not bytes) to the dragged debug log so a later session
  * can re-read it. Chromium-only — `getAsFileSystemHandle` yields the handle from

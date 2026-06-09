@@ -5,6 +5,8 @@ import type { RecentMeta } from '../storage/recents';
 import { getAnnotation, type Annotation } from '../storage/annotations';
 import { useLogStore } from '../state/logStore';
 import { useAnnotationStore } from '../state/annotationStore';
+import { useDebugPresenceStore } from '../state/debugLogPresenceStore';
+import { DebugBadge } from './DebugBadge';
 
 export function RecentsDropdown() {
   const { t } = useTranslation('sections');
@@ -18,6 +20,8 @@ export function RecentsDropdown() {
   const openEditor = useAnnotationStore((s) => s.openEditor);
   // Re-fetch annotations whenever any annotation is persisted.
   const revision = useAnnotationStore((s) => s.revision);
+  // Guide-log hashes with an available companion debug log → "D" badge.
+  const debugHashes = useDebugPresenceStore((s) => s.hashes);
 
   const refresh = async () => {
     const list = await listRecents();
@@ -29,6 +33,7 @@ export function RecentsDropdown() {
       if (a) map[r.id] = a;
     }
     setAnnos(map);
+    void useDebugPresenceStore.getState().refresh();
   };
 
   useEffect(() => { void refresh(); }, [revision]);
@@ -116,6 +121,10 @@ export function RecentsDropdown() {
                         </span>
                       )}
                     </button>
+                    {/* "D" badge: this guide log has a companion debug log available. */}
+                    {r.hash && debugHashes.has(r.hash) && (
+                      <span className="px-0.5"><DebugBadge /></span>
+                    )}
                     {/* Annotate affordance: a note glyph when notes exist (even
                         without a name), otherwise a pencil to add a name. */}
                     {r.hash && (
