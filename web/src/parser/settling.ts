@@ -24,11 +24,19 @@ const DITHER_SETTLE_FRAMES = 5;
  * current logs. Older logs that emitted the underlying state-machine
  * payloads (`state=1` / `state=0`) are matched as a back-compat alias.
  *
+ * A settle can also END by FAILING ("Settling failed") — PHD2 abandons the
+ * settle and resumes normal guiding. The desktop's `ExcludeSettlingByAPI`
+ * closes the window on either completion OR failure (`info.find("Settling
+ * fail")`), so we treat "Settling failed" as a closing marker too. Without
+ * it, `inSettle` would stay latched after a failure and leak the mask
+ * forward to the *next* "Settling complete", wrongly excluding every good
+ * guiding frame in between.
+ *
  * The result is OR-merged with `base` when supplied, so callers can layer
  * this onto an existing user-edited mask.
  */
 const SETTLING_START = new Set(['Settling started', 'state=1']);
-const SETTLING_END = new Set(['Settling complete', 'state=0']);
+const SETTLING_END = new Set(['Settling complete', 'Settling failed', 'state=0']);
 
 export function computeSettlingMask(s: GuideSession, base?: Uint8Array): Uint8Array {
   const m = base && base.length === s.entries.length
