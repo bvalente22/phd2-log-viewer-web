@@ -1,7 +1,9 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
 import { useAnnotationStore } from '../state/annotationStore';
+import { useDebugPresenceStore } from '../state/debugLogPresenceStore';
+import { DebugBadge } from './DebugBadge';
 import { setStashedDebugLog, rememberDebugLogHandle } from '../storage/debugLogAccess';
 
 /**
@@ -30,6 +32,13 @@ export function LogsFolderPane() {
   const friendlyName = annotation?.friendlyName ?? null;
   const notes = annotation?.notes ?? null;
 
+  // Does the open log have a companion debug log available? → "D" badge.
+  const debugHashes = useDebugPresenceStore((s) => s.hashes);
+  const hasDebug = meta?.hash ? debugHashes.has(meta.hash) : false;
+  // Load persisted debug-log presence once on mount (handles remembered from
+  // previous sessions); drag-both refreshes it again via processFiles.
+  useEffect(() => { void useDebugPresenceStore.getState().refresh(); }, []);
+
   // Accept one OR more files: the guide log, optionally with its debug log.
   // Dragging both in at once makes the debug log available so double-clicking a
   // sample (and Backlash) opens it directly — the most reliable path, since the
@@ -49,6 +58,7 @@ export function LogsFolderPane() {
     if (debug && hash) {
       setStashedDebugLog(hash, debug); // this session
       if (debugHandle) await rememberDebugLogHandle(hash, debugHandle, debug.name); // across sessions
+      void useDebugPresenceStore.getState().refresh(); // light up the "D" badge
     }
   }, [loadFromText]);
 
@@ -118,6 +128,8 @@ export function LogsFolderPane() {
                   </span>
                 )}
               </span>
+              {/* "D" badge: this log has a companion debug log available. */}
+              {hasDebug && <DebugBadge />}
               {/* Blue pencil, no background of its own (the strip is the button). */}
               <span className="text-sm text-sky-400" aria-hidden="true">✎</span>
             </button>
