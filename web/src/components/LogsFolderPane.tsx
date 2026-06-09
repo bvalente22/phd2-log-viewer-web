@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
 import { useAnnotationStore } from '../state/annotationStore';
-import { setStashedDebugLog } from '../storage/debugLogAccess';
+import { setStashedDebugLog, rememberDebugLogHandle } from '../storage/debugLogAccess';
 
 /**
  * Sidebar pane that lets the user load a new guide log via drag-and-drop or
@@ -31,19 +31,49 @@ export function LogsFolderPane() {
   const notes = annotation?.notes ?? null;
 
   // Accept one OR more files: the guide log, optionally with its debug log.
-  // Dragging both in at once stashes the debug log so double-clicking a sample
-  // opens it directly — the most reliable path, since the browser can't see a
-  // dropped file's parent folder to auto-find the sibling. Guide log only →
-  // no stash (auto-find / pick fallback).
-  const handleFiles = useCallback(async (files: FileList | null) => {
+  // Dragging both in at once makes the debug log available so double-clicking a
+  // sample (and Backlash) opens it directly — the most reliable path, since the
+  // browser can't see a dropped file's parent folder to auto-find the sibling.
+  // `debugHandle` (drag only, Chromium) persists a link to it across sessions.
+  // Guide log only → nothing stashed (auto-find / pick fallback).
+  const processFiles = useCallback(async (
+    files: FileList | null, debugHandle: FileSystemFileHandle | null,
+  ) => {
     if (!files || files.length === 0) return;
     const arr = Array.from(files);
     const guide = arr.find((f) => /GuideLog/i.test(f.name)) ?? arr[0];
     const debug = arr.find((f) => /DebugLog/i.test(f.name) && f !== guide) ?? null;
-    if (debug) setStashedDebugLog(guide.name, debug);
     const text = await guide.text();
     await loadFromText(text, guide.name);
+    const hash = useLogStore.getState().meta?.hash;
+    if (debug && hash) {
+      setStashedDebugLog(hash, debug); // this session
+      if (debugHandle) await rememberDebugLogHandle(hash, debugHandle, debug.name); // across sessions
+    }
   }, [loadFromText]);
+
+  // Drop: collect the debug log's FileSystemFileHandle synchronously (the items
+  // are only valid during the event) so we can persist a link to it.
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    const files = e.dataTransfer.files;
+    const handlePromises: Promise<FileSystemHandle | null>[] = [];
+    const items = e.dataTransfer.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i] as DataTransferItem & {
+          getAsFileSystemHandle?: () => Promise<FileSystemHandle | null>;
+        };
+        if (it.kind === 'file' && it.getAsFileSystemHandle) handlePromises.push(it.getAsFileSystemHandle());
+      }
+    }
+    let debugHandle: FileSystemFileHandle | null = null;
+    try {
+      const handles = await Promise.all(handlePromises);
+      const dh = handles.find((h) => h && h.kind === 'file' && /DebugLog/i.test(h.name));
+      if (dh) debugHandle = dh as FileSystemFileHandle;
+    } catch { /* handles are best-effort (Chromium only) */ }
+    await processFiles(files, debugHandle);
+  }, [processFiles]);
 
   return (
     <div className="border-b border-slate-800">
@@ -102,7 +132,7 @@ export function LogsFolderPane() {
             onDrop={(e) => {
               e.preventDefault();
               setDragOver(false);
-              void handleFiles(e.dataTransfer.files);
+              void handleDrop(e);
             }}
           >
             <p className="mb-2 text-xs text-slate-300">{t('dropZone.title')}</p>
@@ -120,7 +150,7 @@ export function LogsFolderPane() {
               multiple
               className="hidden"
               onChange={(e) => {
-                void handleFiles(e.target.files);
+                void processFiles(e.target.files, null);
                 e.target.value = '';
               }}
             />
