@@ -20,6 +20,7 @@ import { ThemePicker } from '../components/ThemePicker';
 import { RaDecColorPicker } from '../components/RaDecColorPicker';
 import { GAResultsPanel } from '../components/GAResultsPanel';
 import { GuidingDashboard } from '../components/GuidingDashboard';
+import { CalibrationDashboard } from '../components/CalibrationDashboard';
 import { useLogStore } from '../state/logStore';
 import { useAnnotationStore } from '../state/annotationStore';
 import { useViewStore } from '../state/viewStore';
@@ -217,6 +218,8 @@ export function ViewerPage() {
               />
             )}
             {sectionHdr && <SectionHeader hdr={sectionHdr} kind="CALIBRATION" />}
+            {/* Pointing-context strip mirroring the guiding dashboard. */}
+            <CalibrationDashboard />
             {/* Two-tab view: original Calibration plot+stats on tab 1,
                 Backlash Analysis on tab 2 (loads a paired DEBUG log). */}
             <CalibrationTabs />

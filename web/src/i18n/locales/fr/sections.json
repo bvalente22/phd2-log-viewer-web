@@ -41,11 +41,14 @@
     "hourAngle": "Angle horaire",
     "altitude": "Altitude",
     "rotator": "Rotateur",
+    "declination": "Déclinaison",
+    "azimuth": "Azimut",
     "backlashComp": "Comp. backlash",
     "raAlgorithm": "Algorithme RA",
     "decAlgorithm": "Algorithme Dec",
     "backlashEnabled": "Activé · {{pulse}} ms",
     "backlashDisabled": "Désactivé",
-    "tooltip": "Réglages de guidage clés de l'en-tête PHD2 de cette section — côté pier, pointage, backlash et algorithmes RA/Dec."
+    "tooltip": "Réglages de guidage clés de l'en-tête PHD2 de cette section — côté pier, pointage, backlash et algorithmes RA/Dec.",
+    "calibrationTooltip": "Contexte de pointage de l'en-tête PHD2 de cette section — côté de la monture, angle horaire, déclinaison, altitude, azimut et position du rotateur."
   }
 }

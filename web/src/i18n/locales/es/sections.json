@@ -41,11 +41,14 @@
     "hourAngle": "Ángulo horario",
     "altitude": "Altitud",
     "rotator": "Rotador",
+    "declination": "Declinación",
+    "azimuth": "Acimut",
     "backlashComp": "Comp. holgura",
     "raAlgorithm": "Algoritmo RA",
     "decAlgorithm": "Algoritmo Dec",
     "backlashEnabled": "Activado · {{pulse}} ms",
     "backlashDisabled": "Desactivado",
-    "tooltip": "Configuración de guiado clave del encabezado PHD2 de esta sección: lado de montura, apuntado, holgura y algoritmos RA/Dec."
+    "tooltip": "Configuración de guiado clave del encabezado PHD2 de esta sección: lado de montura, apuntado, holgura y algoritmos RA/Dec.",
+    "calibrationTooltip": "Contexto de apuntado del encabezado PHD2 de esta sección: lado de la montura, ángulo horario, declinación, altitud, acimut y posición del rotador."
   }
 }
