@@ -41,11 +41,14 @@
     "hourAngle": "Angolo orario",
     "altitude": "Altitudine",
     "rotator": "Rotatore",
+    "declination": "Declinazione",
+    "azimuth": "Azimut",
     "backlashComp": "Comp. gioco",
     "raAlgorithm": "Algoritmo RA",
     "decAlgorithm": "Algoritmo Dec",
     "backlashEnabled": "Attivo · {{pulse}} ms",
     "backlashDisabled": "Disattivato",
-    "tooltip": "Impostazioni di guida principali dall'header PHD2 di questa sezione — lato pier, puntamento, gioco e algoritmi RA/Dec."
+    "tooltip": "Impostazioni di guida principali dall'header PHD2 di questa sezione — lato pier, puntamento, gioco e algoritmi RA/Dec.",
+    "calibrationTooltip": "Contesto di puntamento dall'intestazione PHD2 di questa sezione: lato della montatura, angolo orario, declinazione, altitudine, azimut e posizione del rotatore."
   }
 }

@@ -16,6 +16,17 @@ describe('parseGuideHeader', () => {
     expect(info.rotator).toBeNull();
   });
 
+  it('extracts declination and azimuth (feeds the calibration dashboard)', () => {
+    const info = parseGuideHeader([coord]);
+    expect(info.declination).toBe('-90.0');
+    expect(info.azimuth).toBe('180.0');
+    // `Dec = ` must not be confused with the Dec guide algorithm.
+    expect(info.dec).toBeNull();
+    const info2 = parseGuideHeader([coordRot]);
+    expect(info2.declination).toBe('-0.0');
+    expect(info2.azimuth).toBe('173.4');
+  });
+
   it('reads a present rotator position and East pier', () => {
     const info = parseGuideHeader([coordRot]);
     expect(info.pierSide).toBe('East');
@@ -79,8 +90,8 @@ describe('parseGuideHeader', () => {
   it('returns all-null when header lacks the relevant lines', () => {
     const info = parseGuideHeader(['Equipment Profile = ASI MACH1', 'Exposure = 2000 ms']);
     expect(info).toEqual({
-      pierSide: null, hourAngle: null, altitude: null, rotator: null,
-      backlash: null, ra: null, dec: null,
+      pierSide: null, hourAngle: null, declination: null, altitude: null,
+      azimuth: null, rotator: null, backlash: null, ra: null, dec: null,
     });
   });
 });

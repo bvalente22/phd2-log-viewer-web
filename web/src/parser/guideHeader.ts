@@ -18,10 +18,13 @@ export interface AlgoInfo {
 }
 
 export interface GuideHeaderInfo {
-  pierSide: string | null;   // "West" | "East"
-  hourAngle: string | null;  // hours, e.g. "-6.00" (unit appended in the view)
-  altitude: string | null;   // degrees, e.g. "20.1"
-  rotator: string | null;    // degrees when present; null for "N/A"/absent
+  pierSide: string | null;     // "West" | "East"
+  hourAngle: string | null;    // hours, e.g. "-6.00" (unit appended in the view)
+  declination: string | null;  // degrees, e.g. "47.0" (the sky Dec, NOT the Dec
+                               //   guide algorithm — that's `dec` below)
+  altitude: string | null;     // degrees, e.g. "20.1"
+  azimuth: string | null;      // degrees, e.g. "25.1"
+  rotator: string | null;      // degrees when present; null for "N/A"/absent
   backlash: { enabled: boolean; pulseMs: string } | null;
   ra: AlgoInfo | null;
   dec: AlgoInfo | null;
@@ -87,10 +90,18 @@ const parseAlgo = (line: string | undefined): AlgoInfo | null => {
 };
 
 export const parseGuideHeader = (hdr: string[]): GuideHeaderInfo => {
+  // The coordinate line is identical between guiding and calibration sections:
+  //   RA = .. hr, Dec = .. deg, Hour angle = .. hr, Pier side = .., Rotator
+  //   pos = .., Alt = .. deg, Az = .. deg
+  // so this one parser feeds both the GuidingDashboard and the
+  // CalibrationDashboard. `Dec = ` (space-equals-space) matches only the sky
+  // declination here, never "Dec Guide Speed = " or "Y guide algorithm".
   const coord = hdr.find((l) => l.includes('Pier side =')) ?? '';
   const pierSide = (coord.match(/Pier side = ([^,]+)/)?.[1] ?? '').trim() || null;
   const hourAngle = coord.match(/Hour angle = (-?[\d.]+)/)?.[1] ?? null;
+  const declination = coord.match(/Dec = (-?[\d.]+)/)?.[1] ?? null;
   const altitude = coord.match(/Alt = (-?[\d.]+)/)?.[1] ?? null;
+  const azimuth = coord.match(/Az = (-?[\d.]+)/)?.[1] ?? null;
   const rotRaw = (coord.match(/Rotator pos = ([^,]+)/)?.[1] ?? '').trim();
   const rotator = rotRaw && rotRaw.toUpperCase() !== 'N/A' ? rotRaw : null;
 
@@ -100,7 +111,9 @@ export const parseGuideHeader = (hdr: string[]): GuideHeaderInfo => {
   return {
     pierSide,
     hourAngle,
+    declination,
     altitude,
+    azimuth,
     rotator,
     backlash,
     ra: parseAlgo(hdr.find((l) => l.startsWith('X guide algorithm'))),
