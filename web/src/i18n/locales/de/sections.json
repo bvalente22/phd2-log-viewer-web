@@ -41,11 +41,14 @@
     "hourAngle": "Stundenwinkel",
     "altitude": "Höhe",
     "rotator": "Rotator",
+    "declination": "Deklination",
+    "azimuth": "Azimut",
     "backlashComp": "Backlash-Komp.",
     "raAlgorithm": "RA-Algorithmus",
     "decAlgorithm": "Dec-Algorithmus",
     "backlashEnabled": "Aktiviert · {{pulse}} ms",
     "backlashDisabled": "Deaktiviert",
-    "tooltip": "Wichtige Guiding-Einstellungen aus dem PHD2-Header dieses Abschnitts — Pier-Seite, Ausrichtung, Backlash und RA/Dec-Algorithmen."
+    "tooltip": "Wichtige Guiding-Einstellungen aus dem PHD2-Header dieses Abschnitts — Pier-Seite, Ausrichtung, Backlash und RA/Dec-Algorithmen.",
+    "calibrationTooltip": "Ausrichtungskontext aus dem PHD2-Header dieses Abschnitts – Seite der Montierung, Stundenwinkel, Deklination, Höhe, Azimut und Rotatorposition."
   }
 }
