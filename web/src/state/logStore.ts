@@ -9,6 +9,7 @@ import { putRecent } from '../storage/recents';
 import { hashLogText } from '../storage/annotations';
 import { useAnnotationStore } from './annotationStore';
 import { usePrimaryPeriodStore } from './primaryPeriodStore';
+import { useViewStore } from './viewStore';
 
 export interface LogMeta {
   name: string;
@@ -39,6 +40,11 @@ export const useLogStore = create<LogState>((set) => ({
     try {
       const log = await parseLogAsync(text);
       const hash = hashLogText(text);
+      // Drop the previous log's per-session exclusion masks. They're keyed by
+      // sessionIdx (0,1,2…), so without this a stale mask collides with the
+      // new log's same-index session — and a length mismatch silently breaks
+      // manual exclude/include drags until a context-menu item rebuilds it.
+      useViewStore.getState().clearExclusions();
       let recentId: string | null = null;
       if (opts?.persist !== false) {
         recentId = await putRecent({ name, size: text.length, text, hash });
@@ -62,6 +68,7 @@ export const useLogStore = create<LogState>((set) => ({
   selectSection: (i) => set({ selectedSection: i }),
   clear: () => {
     usePrimaryPeriodStore.getState().clear();
+    useViewStore.getState().clearExclusions();
     set({ log: null, meta: null, selectedSection: 0, error: null });
   },
 }));
