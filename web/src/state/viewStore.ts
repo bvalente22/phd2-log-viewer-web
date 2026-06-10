@@ -15,6 +15,23 @@ export const SIDEBAR_DEFAULT = 260;
 export const clampSidebarWidth = (n: number): number =>
   Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, n));
 
+/**
+ * Return a fresh, editable copy of a session's exclusion mask sized to the
+ * CURRENT session's entry count.
+ *
+ * The exclusions Map is keyed by per-log `sessionIdx` (0, 1, 2…). Loading a
+ * second log whose session 0 has a different frame count would otherwise
+ * leave a stale, wrong-length mask under the same key — and editing it via
+ * `new Uint8Array(cur)` inherited that wrong length, so writes past the old
+ * end were silently dropped on the typed array (the "ctrl-drag does nothing
+ * until you pick a context-menu item" bug). Discarding any mask whose length
+ * doesn't match `entryCount` (same guard as `ensureMask`) makes every edit
+ * land on a correctly-sized buffer. `clearExclusions` on log-load is the
+ * primary defense; this is belt-and-suspenders.
+ */
+const maskForEdit = (cur: Uint8Array | undefined, entryCount: number): Uint8Array =>
+  cur && cur.length === entryCount ? new Uint8Array(cur) : new Uint8Array(entryCount);
+
 export interface TraceVisibility {
   ra: boolean;
   dec: boolean;
@@ -134,6 +151,9 @@ interface ViewState {
   excludeAll: (sessionIdx: number, entryCount: number) => void;
   excludeRange: (sessionIdx: number, entryCount: number, fromFrame: number, toFrame: number, frames: number[]) => void;
   includeRange: (sessionIdx: number, entryCount: number, fromFrame: number, toFrame: number, frames: number[]) => void;
+  /** Drop every per-session mask. Called when a new log loads so stale masks
+   *  from the previous log can't collide by sessionIdx with the new one. */
+  clearExclusions: () => void;
 }
 
 // View preferences are persisted to localStorage so toggles survive a reload.
@@ -271,8 +291,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   },
 
   excludeRange: (sessionIdx, entryCount, fromFrame, toFrame, frames) => {
-    const cur = get().exclusions.get(sessionIdx) ?? new Uint8Array(entryCount);
-    const m = new Uint8Array(cur);
+    const m = maskForEdit(get().exclusions.get(sessionIdx), entryCount);
     const lo = Math.min(fromFrame, toFrame);
     const hi = Math.max(fromFrame, toFrame);
     for (let i = 0; i < frames.length; i++) {
@@ -284,8 +303,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   },
 
   includeRange: (sessionIdx, entryCount, fromFrame, toFrame, frames) => {
-    const cur = get().exclusions.get(sessionIdx) ?? new Uint8Array(entryCount);
-    const m = new Uint8Array(cur);
+    const m = maskForEdit(get().exclusions.get(sessionIdx), entryCount);
     const lo = Math.min(fromFrame, toFrame);
     const hi = Math.max(fromFrame, toFrame);
     for (let i = 0; i < frames.length; i++) {
@@ -295,6 +313,8 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
     next.set(sessionIdx, m);
     set({ exclusions: next });
   },
+
+  clearExclusions: () => set({ exclusions: new Map() }),
 }), {
   name: 'phd-view-settings',
   // Persist UI preferences only; exclusion masks and lockedYRange are

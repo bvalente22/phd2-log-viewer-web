@@ -584,6 +584,9 @@ export function GuideGraph() {
     };
   }
 
+  // Container holding the Plot. Observed by a ResizeObserver below so the
+  // chart re-lays-out on container-driven size changes.
+  const plotContainerRef = useRef<HTMLDivElement | null>(null);
   const refreshAnnotationsRef = useRef<() => void>(() => {});
   /**
    * True between pointerdown and pointerup of an active drag. Used by
@@ -751,7 +754,12 @@ export function GuideGraph() {
   // recorded and we leave it alone.
   useEffect(() => {
     if (!data) return;
-    if (exclusions.has(data.sessionIdx)) return;
+    // Length-aware guard (not just `.has`): a stale mask left under this
+    // sessionIdx by a previously-loaded log can have the wrong length. Only
+    // skip auto-masking when a mask of the CURRENT session's size already
+    // exists — otherwise recompute so the settling overlay matches this log.
+    const existing = exclusions.get(data.sessionIdx);
+    if (existing && existing.length === data.session.entries.length) return;
     const mask = computeSettlingMask(data.session);
     let any = false;
     for (let i = 0; i < mask.length; i++) if (mask[i]) { any = true; break; }
@@ -1049,6 +1057,31 @@ export function GuideGraph() {
     return () => cancelAnimationFrame(id);
   }, [data, traces.events]);
 
+  // Re-lay-out the chart when its CONTAINER resizes. react-plotly.js's
+  // `useResizeHandler` only listens to the window `resize` event, so chart
+  // area changes that don't resize the window — collapsing the SectionHeader
+  // disclosure, dragging the sidebar resizer, the GA panel appearing — left
+  // the canvas at its old size (the "chart doesn't expand when the header
+  // collapses" bug). A ResizeObserver catches all of them; the rAF coalesces
+  // bursts and the annotation pass re-stacks inline labels at the new width.
+  useEffect(() => {
+    const el = plotContainerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let raf: number | null = null;
+    const ro = new ResizeObserver(() => {
+      if (raf != null) return;
+      raf = requestAnimationFrame(() => {
+        raf = null;
+        const div = document.getElementById(plotId) as PlotDiv | null;
+        if (!div?._fullLayout) return;
+        void Plotly.Plots.resize(div);
+        refreshAnnotationsRef.current?.();
+      });
+    });
+    ro.observe(el);
+    return () => { ro.disconnect(); if (raf != null) cancelAnimationFrame(raf); };
+  }, [plotId]);
+
   // Compute yTitle outside the early-return so the memo below can reference
   // it without being skipped when data is null (hooks must run unconditionally).
   const yTitle = scaleMode === 'ARCSEC' ? tChart('axes.arcsec') : tChart('axes.pixels');
@@ -1184,7 +1217,7 @@ export function GuideGraph() {
 
   return (
     <div className="flex h-full w-full flex-col">
-      <div className="relative flex-1">
+      <div ref={plotContainerRef} className="relative flex-1">
         <Plot
           divId={plotId}
           data={data.traces}
