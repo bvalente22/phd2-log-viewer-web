@@ -38,6 +38,9 @@
   "dashboard": {
     "sectionLabel": "Réglages de guidage",
     "pierSide": "Côté pier",
+    "exposure": "Exposition",
+    "aoUnit": "Unité AO",
+    "aoPresent": "Présent",
     "hourAngle": "Angle horaire",
     "altitude": "Altitude",
     "rotator": "Rotateur",

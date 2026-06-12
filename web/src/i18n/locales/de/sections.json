@@ -38,6 +38,9 @@
   "dashboard": {
     "sectionLabel": "Guiding-Setup",
     "pierSide": "Pier-Seite",
+    "exposure": "Belichtung",
+    "aoUnit": "AO-Einheit",
+    "aoPresent": "Vorhanden",
     "hourAngle": "Stundenwinkel",
     "altitude": "Höhe",
     "rotator": "Rotator",
