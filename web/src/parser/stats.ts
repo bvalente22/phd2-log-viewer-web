@@ -6,9 +6,6 @@ export interface SessionStats {
   rmsRa: number;
   rmsDec: number;
   rmsTotal: number;
-  /** Scatter eccentricity in [0,1]: sqrt(1 - min(rmsRa,rmsDec)^2 / max^2).
-   *  0 = round/balanced, ->1 = elongated. Scale-independent (a ratio). */
-  ecc: number;
   peakRa: number;
   peakDec: number;
   meanRa: number;
@@ -103,13 +100,6 @@ export function calcStats(s: GuideSession, mask?: ExclusionMask): SessionStats {
   const rmsDec = rmsAboutMean(decs, meanDec);
   const rmsTotal = Math.sqrt(rmsRa * rmsRa + rmsDec * rmsDec);
 
-  // Scatter eccentricity: smaller axis under the larger (semi-major), so it is
-  // always real and in [0,1] regardless of which axis is worse. Equal axes -> 0
-  // (round), divergent -> 1 (elongated). Guard the degenerate no-motion case.
-  const eccLo = Math.min(rmsRa, rmsDec);
-  const eccHi = Math.max(rmsRa, rmsDec);
-  const ecc = eccHi > 0 ? Math.sqrt(1 - (eccLo * eccLo) / (eccHi * eccHi)) : 0;
-
   const driftRa = linregSlope(dts, ras) * 60;
   const driftDec = linregSlope(dts, decs) * 60;
 
@@ -121,7 +111,6 @@ export function calcStats(s: GuideSession, mask?: ExclusionMask): SessionStats {
 
   return {
     rmsRa, rmsDec, rmsTotal,
-    ecc,
     peakRa, peakDec,
     meanRa, meanDec,
     driftRa, driftDec,

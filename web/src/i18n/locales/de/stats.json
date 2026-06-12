@@ -13,6 +13,7 @@
     "mean": "Mittel",
     "drift": "Drift",
     "eccentricity": "Guiding-Exzentrizität",
+    "aspectRatio": "Seitenverhältnis",
     "secondsSuffix": "s",
     "perMinSuffix": "/min"
   },
@@ -59,6 +60,7 @@
   },
   "copyTooltip": "{{label}}: {{value}} — Klick zum Kopieren",
   "eccentricityTooltip": "Exzentrizität {{value}} — Elongation der RA/Dec-Streuung (0 = rund, 1 = eine Linie). RA {{ra}} / Dec {{dec}}",
+  "aspectRatioTooltip": "Seitenverhältnis {{value}} — Max/Min des RA- und Dec-RMS (1.00 = rund, höher = länglich). RA {{ra}} / Dec {{dec}}",
   "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}. Klick zum Kopieren.",
   "ga": {
     "summary": "Guiding Assistant ({{count}})",
