@@ -12,7 +12,7 @@
     "peak": "Peak",
     "mean": "Mittel",
     "drift": "Drift",
-    "eccentricity": "Ecc",
+    "eccentricity": "Guiding-Exzentrizität",
     "secondsSuffix": "s",
     "perMinSuffix": "/min"
   },

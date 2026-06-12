@@ -12,7 +12,7 @@
     "peak": "Pic",
     "mean": "Moyenne",
     "drift": "Drift",
-    "eccentricity": "Ecc",
+    "eccentricity": "Excentricité du guidage",
     "secondsSuffix": "s",
     "perMinSuffix": "/min"
   },
