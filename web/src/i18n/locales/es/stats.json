@@ -12,7 +12,7 @@
     "peak": "Pico",
     "mean": "Media",
     "drift": "Drift",
-    "eccentricity": "Ecc",
+    "eccentricity": "Excentricidad de guiado",
     "secondsSuffix": "s",
     "perMinSuffix": "/min"
   },

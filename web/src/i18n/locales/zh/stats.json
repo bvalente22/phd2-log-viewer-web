@@ -12,7 +12,7 @@
     "peak": "峰值",
     "mean": "均值",
     "drift": "Drift",
-    "eccentricity": "Ecc",
+    "eccentricity": "导星偏心率",
     "secondsSuffix": "s",
     "perMinSuffix": "/分"
   },
