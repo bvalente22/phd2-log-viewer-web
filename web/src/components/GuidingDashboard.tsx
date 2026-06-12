@@ -63,7 +63,7 @@ export function GuidingDashboard() {
   if (!info) return null;
   const hasAny =
     info.pierSide || info.hourAngle || info.altitude || info.rotator ||
-    info.backlash || info.ra || info.dec;
+    info.backlash || info.ra || info.dec || info.exposure || info.aoPresent;
   if (!hasAny) return null;
 
   return (
@@ -73,9 +73,11 @@ export function GuidingDashboard() {
       title={t('dashboard.tooltip')}
     >
       {info.pierSide && <Tile caption={t('dashboard.pierSide')} value={info.pierSide} />}
+      {info.exposure && <Tile caption={t('dashboard.exposure')} value={`${Number(info.exposure) / 1000} s`} />}
       {info.hourAngle && <Tile caption={t('dashboard.hourAngle')} value={`${info.hourAngle} h`} />}
       {info.altitude && <Tile caption={t('dashboard.altitude')} value={`${info.altitude}°`} />}
       {info.rotator && <Tile caption={t('dashboard.rotator')} value={`${info.rotator}°`} />}
+      {info.aoPresent && <Tile caption={t('dashboard.aoUnit')} value={t('dashboard.aoPresent')} />}
       {info.backlash && (
         <Tile
           caption={t('dashboard.backlashComp')}

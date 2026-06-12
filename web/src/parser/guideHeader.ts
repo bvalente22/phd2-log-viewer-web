@@ -28,6 +28,8 @@ export interface GuideHeaderInfo {
   backlash: { enabled: boolean; pulseMs: string } | null;
   ra: AlgoInfo | null;
   dec: AlgoInfo | null;
+  exposure: string | null;     // raw exposure in ms, e.g. "2000"
+  aoPresent: boolean;          // an "AO = …" line exists in the header
 }
 
 /** Strip trailing zeros after a decimal point (and a dangling dot), keeping a
@@ -89,6 +91,19 @@ const parseAlgo = (line: string | undefined): AlgoInfo | null => {
   return { name, param, minMove };
 };
 
+// Predictive PEC logs the control gain on the "X guide algorithm" line and the
+// prediction gain on its own following line. Surface both with short labels
+// (consistent with the agg/min/hyst code-side labels). Returns null when
+// neither gain is present (caller keeps the generic param).
+const ppecParam = (xLine: string, hdr: string[]): string | null => {
+  const ctrl = xLine.match(/Control gain = ([\d.]+)/)?.[1];
+  const pred = firstMatch(hdr, /Prediction gain = ([\d.]+)/)?.[1];
+  const parts: string[] = [];
+  if (ctrl) parts.push(`ctrl ${tidyNum(ctrl)}`);
+  if (pred) parts.push(`pred ${tidyNum(pred)}`);
+  return parts.length ? parts.join(' · ') : null;
+};
+
 export const parseGuideHeader = (hdr: string[]): GuideHeaderInfo => {
   // The coordinate line is identical between guiding and calibration sections:
   //   RA = .. hr, Dec = .. deg, Hour angle = .. hr, Pier side = .., Rotator
@@ -108,6 +123,15 @@ export const parseGuideHeader = (hdr: string[]): GuideHeaderInfo => {
   const bl = firstMatch(hdr, /Backlash comp = (enabled|disabled), pulse = (\d+) ms/);
   const backlash = bl ? { enabled: bl[1] === 'enabled', pulseMs: bl[2] } : null;
 
+  const xLine = hdr.find((l) => l.startsWith('X guide algorithm'));
+  let ra = parseAlgo(xLine);
+  if (ra && ra.name === 'Predictive PEC' && xLine) {
+    ra = { ...ra, param: ppecParam(xLine, hdr) ?? ra.param };
+  }
+
+  const exposure = firstMatch(hdr, /Exposure = (\d+) ms/)?.[1] ?? null;
+  const aoPresent = hdr.some((l) => l.startsWith('AO = '));
+
   return {
     pierSide,
     hourAngle,
@@ -116,7 +140,9 @@ export const parseGuideHeader = (hdr: string[]): GuideHeaderInfo => {
     azimuth,
     rotator,
     backlash,
-    ra: parseAlgo(hdr.find((l) => l.startsWith('X guide algorithm'))),
+    ra,
     dec: parseAlgo(hdr.find((l) => l.startsWith('Y guide algorithm'))),
+    exposure,
+    aoPresent,
   };
 };

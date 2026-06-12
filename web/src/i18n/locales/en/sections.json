@@ -43,6 +43,9 @@
   "dashboard": {
     "sectionLabel": "Guiding setup",
     "pierSide": "Pier side",
+    "exposure": "Exposure",
+    "aoUnit": "AO Unit",
+    "aoPresent": "Present",
     "hourAngle": "Hour angle",
     "altitude": "Altitude",
     "rotator": "Rotator",

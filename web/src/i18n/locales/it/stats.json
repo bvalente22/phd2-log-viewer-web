@@ -12,6 +12,7 @@
     "peak": "Picco",
     "mean": "Media",
     "drift": "Drift",
+    "eccentricity": "Ecc",
     "secondsSuffix": "s",
     "perMinSuffix": "/min"
   },
@@ -57,6 +58,7 @@
     "msSuffix": "ms"
   },
   "copyTooltip": "{{label}}: {{value}} — clic per copiare",
+  "eccentricityTooltip": "Eccentricità {{value}} — allungamento della dispersione RA/Dec (0 = rotonda, 1 = una linea). RA {{ra}} / Dec {{dec}}",
   "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}. Clic per copiare.",
   "ga": {
     "summary": "Guiding Assistant ({{count}})",

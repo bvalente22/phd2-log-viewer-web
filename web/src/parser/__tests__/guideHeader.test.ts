@@ -87,11 +87,42 @@ describe('parseGuideHeader', () => {
     expect(info.dec?.name).toBe('Hysteresis');
   });
 
+  it('parses exposure (raw ms) and reports AO presence', () => {
+    const info = parseGuideHeader([
+      'Exposure = 2000 ms',
+      'AO = SX AO-LF, ...',
+    ]);
+    expect(info.exposure).toBe('2000');
+    expect(info.aoPresent).toBe(true);
+  });
+
+  it('exposure null + aoPresent false when those lines are absent', () => {
+    const info = parseGuideHeader(['Pier side = West']);
+    expect(info.exposure).toBeNull();
+    expect(info.aoPresent).toBe(false);
+  });
+
+  it('PPEC: surfaces both control and prediction gains on the RA tile', () => {
+    const a = parseGuideHeader([
+      'X guide algorithm = Predictive PEC, Control gain = 0.800',
+      'Prediction gain = 0.800',
+    ]).ra;
+    expect(a).toEqual({ name: 'Predictive PEC', param: 'ctrl 0.8 · pred 0.8', minMove: null });
+  });
+
+  it('PPEC with only a control gain shows just ctrl', () => {
+    const a = parseGuideHeader([
+      'X guide algorithm = Predictive PEC, Control gain = 0.600',
+    ]).ra;
+    expect(a).toEqual({ name: 'Predictive PEC', param: 'ctrl 0.6', minMove: null });
+  });
+
   it('returns all-null when header lacks the relevant lines', () => {
-    const info = parseGuideHeader(['Equipment Profile = ASI MACH1', 'Exposure = 2000 ms']);
+    const info = parseGuideHeader(['Equipment Profile = ASI MACH1']);
     expect(info).toEqual({
       pierSide: null, hourAngle: null, declination: null, altitude: null,
       azimuth: null, rotator: null, backlash: null, ra: null, dec: null,
+      exposure: null, aoPresent: false,
     });
   });
 });

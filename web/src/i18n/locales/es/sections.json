@@ -38,6 +38,9 @@
   "dashboard": {
     "sectionLabel": "Configuración de guiado",
     "pierSide": "Lado de montura",
+    "exposure": "Exposición",
+    "aoUnit": "Unidad AO",
+    "aoPresent": "Presente",
     "hourAngle": "Ángulo horario",
     "altitude": "Altitud",
     "rotator": "Rotador",
