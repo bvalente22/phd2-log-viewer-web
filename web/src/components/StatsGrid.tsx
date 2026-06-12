@@ -4,7 +4,7 @@ import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { calcStats } from '../parser';
 import { fmtNumber, fmtInteger, fmtRoundedInt } from '../i18n/format';
-import { eccBand, ECC_BAND_CLASSES } from './eccBand';
+import { guidingMetric, BAND_CLASSES } from './guidingMetric';
 
 const fmt = (n: number, d = 3) => fmtNumber(n, d);
 
@@ -81,23 +81,27 @@ export function StatsGrid() {
     </div>
   );
 
-  // Eccentricity badge: color-coded by band, with readable contrast text.
-  // Placed in the Total row beside the combined RMS. Scale-independent.
-  const eccBadge = (
+  // Guiding metric badge (Aspect Ratio by default; see the guidingMetric switch).
+  // Color-coded by band with readable contrast text; neutral "—" when N/A.
+  const metric = guidingMetric;
+  const metricValue = metric.compute(s.rmsRa, s.rmsDec);
+  const metricText = metricValue === null ? '—' : fmt(metricValue, 2);
+  const metricCls = metricValue === null ? 'bg-slate-700 text-slate-400' : BAND_CLASSES[metric.band(metricValue)];
+  const metricBadge = (
     <button
-      className={`flex items-baseline gap-1 rounded px-1.5 py-0.5 ${ECC_BAND_CLASSES[eccBand(s.ecc)]} hover:opacity-90`}
-      onClick={() => copy(fmt(s.ecc, 2))}
-      title={t('eccentricityTooltip', { value: fmt(s.ecc, 2), ra: v(s.rmsRa), dec: v(s.rmsDec) })}
+      className={`flex items-baseline gap-1 rounded px-1.5 py-0.5 ${metricCls} hover:opacity-90`}
+      onClick={metricValue === null ? undefined : () => copy(metricText)}
+      title={t(metric.tooltipKey, { value: metricText, ra: v(s.rmsRa), dec: v(s.rmsDec) })}
     >
-      <span className="text-[10px] font-medium uppercase tracking-wide opacity-90">{t('guide.eccentricity')}</span>
-      <span className="font-mono">{fmt(s.ecc, 2)}</span>
+      <span className="text-[10px] font-medium uppercase tracking-wide opacity-90">{t(metric.labelKey)}</span>
+      <span className="font-mono">{metricText}</span>
     </button>
   );
 
   // RA / Dec are PHD2 jargon — kept in English across all locales.
   return (
     <div className="flex flex-col gap-1 px-4 py-2 text-sm">
-      <Row label={t('rows.total')} items={common} trailing={eccBadge} />
+      <Row label={t('rows.total')} items={common} trailing={metricBadge} />
       <Row label="RA" color="text-sky-400" items={raRow} />
       <Row label="Dec" color="text-rose-400" items={decRow} />
     </div>
