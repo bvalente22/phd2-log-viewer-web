@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseLogFilename } from '../filename';
+import { parseLogFilename, dateFromFilename } from '../filename';
 
 describe('parseLogFilename', () => {
   it('parses a standard PHD2 guide-log filename', () => {
@@ -53,5 +53,26 @@ describe('parseLogFilename', () => {
     expect(out!.isGuideLog).toBe(true);
     expect(out!.dateMs).toBeNull();
     expect(out!.dateLabel).toBe('PHD2_GuideLog_2026-03-30.txt');
+  });
+});
+
+describe('dateFromFilename', () => {
+  it('extracts the YYYY-MM-DD date, stripping everything else', () => {
+    expect(dateFromFilename('PHD2_GuideLog_2026-03-30_161541.txt')).toBe('2026-03-30');
+    expect(dateFromFilename('name_test_PHD2_GuideLog_2026-05-11_182420.txt')).toBe('2026-05-11');
+    expect(dateFromFilename('G11_PHD2_GuideLog_2020-09-21_194307.txt')).toBe('2020-09-21');
+  });
+
+  it('extracts the date even without an HHMMSS suffix', () => {
+    expect(dateFromFilename('PHD2_GuideLog_2026-03-30.txt')).toBe('2026-03-30');
+  });
+
+  it('returns the first date when several are present', () => {
+    expect(dateFromFilename('a_2026-03-30_then_2026-04-01.txt')).toBe('2026-03-30');
+  });
+
+  it('returns null when the name carries no date', () => {
+    expect(dateFromFilename('PHD2_GuideLog_renamed.txt')).toBeNull();
+    expect(dateFromFilename('log.txt')).toBeNull();
   });
 });

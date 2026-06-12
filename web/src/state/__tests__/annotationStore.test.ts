@@ -8,12 +8,17 @@ beforeEach(async () => {
 });
 
 describe('annotationStore', () => {
-  it('first open of an unseen log opens the first-open prompt prefilled with the filename', async () => {
-    await useAnnotationStore.getState().loadForLog('k1', 'log.txt');
+  it('first open of an unseen log opens the first-open prompt prefilled with the date from the filename', async () => {
+    await useAnnotationStore.getState().loadForLog('k1', 'PHD2_GuideLog_2026-03-30_161541.txt');
     const m = useAnnotationStore.getState().modal;
     expect(m?.mode).toBe('first-open');
-    expect(m?.name).toBe('log.txt');
+    expect(m?.name).toBe('2026-03-30');
     expect(useAnnotationStore.getState().current).toBeNull();
+  });
+
+  it('first-open prompt falls back to the filename when no date is present', async () => {
+    await useAnnotationStore.getState().loadForLog('k1', 'log.txt');
+    expect(useAnnotationStore.getState().modal?.name).toBe('log.txt');
   });
 
   it('loading a seen log does not prompt and sets current', async () => {
