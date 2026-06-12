@@ -12,6 +12,7 @@
     "peak": "Peak",
     "mean": "Mean",
     "drift": "Drift",
+    "eccentricity": "Ecc",
     "secondsSuffix": "s",
     "perMinSuffix": "/min"
   },
@@ -57,6 +58,7 @@
     "msSuffix": "ms"
   },
   "copyTooltip": "{{label}}: {{value}} — click to copy",
+  "eccentricityTooltip": "Eccentricity {{value}} — elongation of the RA/Dec scatter (0 = round, 1 = a line). RA {{ra}} / Dec {{dec}}",
   "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}. Click to copy.",
   "ga": {
     "summary": "Guiding Assistant ({{count}})",
