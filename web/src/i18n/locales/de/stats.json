@@ -12,6 +12,7 @@
     "peak": "Peak",
     "mean": "Mittel",
     "drift": "Drift",
+    "eccentricity": "Ecc",
     "secondsSuffix": "s",
     "perMinSuffix": "/min"
   },
@@ -57,6 +58,7 @@
     "msSuffix": "ms"
   },
   "copyTooltip": "{{label}}: {{value}} — Klick zum Kopieren",
+  "eccentricityTooltip": "Exzentrizität {{value}} — Elongation der RA/Dec-Streuung (0 = rund, 1 = eine Linie). RA {{ra}} / Dec {{dec}}",
   "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}. Klick zum Kopieren.",
   "ga": {
     "summary": "Guiding Assistant ({{count}})",

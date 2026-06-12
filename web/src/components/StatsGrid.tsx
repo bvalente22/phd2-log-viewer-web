@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { calcStats } from '../parser';
 import { fmtNumber, fmtInteger, fmtRoundedInt } from '../i18n/format';
+import { eccBand, ECC_BAND_CLASSES } from './eccBand';
 
 const fmt = (n: number, d = 3) => fmtNumber(n, d);
 
@@ -72,17 +73,31 @@ export function StatsGrid() {
     </button>
   );
 
-  const Row = ({ label, color, items }: { label: string; color?: string; items: [string, string][] }) => (
+  const Row = ({ label, color, items, trailing }: { label: string; color?: string; items: [string, string][]; trailing?: ReactNode }) => (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
       <span className={`w-12 text-xs font-semibold uppercase tracking-wide ${color ?? 'text-slate-400'}`}>{label}</span>
       {items.map(([k, val]) => <Cell key={k} k={k} v={val} />)}
+      {trailing}
     </div>
+  );
+
+  // Eccentricity badge: color-coded by band, with readable contrast text.
+  // Placed in the Total row beside the combined RMS. Scale-independent.
+  const eccBadge = (
+    <button
+      className={`flex items-baseline gap-1 rounded px-1.5 py-0.5 ${ECC_BAND_CLASSES[eccBand(s.ecc)]} hover:opacity-90`}
+      onClick={() => copy(fmt(s.ecc, 2))}
+      title={t('eccentricityTooltip', { value: fmt(s.ecc, 2), ra: v(s.rmsRa), dec: v(s.rmsDec) })}
+    >
+      <span className="text-[10px] font-medium uppercase tracking-wide opacity-90">{t('guide.eccentricity')}</span>
+      <span className="font-mono">{fmt(s.ecc, 2)}</span>
+    </button>
   );
 
   // RA / Dec are PHD2 jargon — kept in English across all locales.
   return (
     <div className="flex flex-col gap-1 px-4 py-2 text-sm">
-      <Row label={t('rows.total')} items={common} />
+      <Row label={t('rows.total')} items={common} trailing={eccBadge} />
       <Row label="RA" color="text-sky-400" items={raRow} />
       <Row label="Dec" color="text-rose-400" items={decRow} />
     </div>

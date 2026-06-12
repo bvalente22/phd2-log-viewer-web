@@ -12,6 +12,7 @@
     "peak": "峰值",
     "mean": "均值",
     "drift": "Drift",
+    "eccentricity": "Ecc",
     "secondsSuffix": "s",
     "perMinSuffix": "/分"
   },
@@ -57,6 +58,7 @@
     "msSuffix": "ms"
   },
   "copyTooltip": "{{label}}: {{value}} — 点击复制",
+  "eccentricityTooltip": "偏心率 {{value}} — RA/Dec 散布的拉长程度（0 = 圆形，1 = 直线）。RA {{ra}} / Dec {{dec}}",
   "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}。点击复制。",
   "ga": {
     "summary": "Guiding Assistant ({{count}})",

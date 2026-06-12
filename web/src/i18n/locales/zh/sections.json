@@ -38,6 +38,9 @@
   "dashboard": {
     "sectionLabel": "导星设置",
     "pierSide": "中天侧",
+    "exposure": "曝光",
+    "aoUnit": "AO 单元",
+    "aoPresent": "存在",
     "hourAngle": "时角",
     "altitude": "高度",
     "rotator": "旋转器",
