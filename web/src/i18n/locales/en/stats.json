@@ -13,6 +13,7 @@
     "mean": "Mean",
     "drift": "Drift",
     "eccentricity": "Guiding Eccentricity",
+    "aspectRatio": "Aspect Ratio",
     "secondsSuffix": "s",
     "perMinSuffix": "/min"
   },
@@ -59,6 +60,7 @@
   },
   "copyTooltip": "{{label}}: {{value}} — click to copy",
   "eccentricityTooltip": "Eccentricity {{value}} — elongation of the RA/Dec scatter (0 = round, 1 = a line). RA {{ra}} / Dec {{dec}}",
+  "aspectRatioTooltip": "Aspect ratio {{value}} — Max/Min of the RA & Dec RMS (1.00 = round, higher = elongated). RA {{ra}} / Dec {{dec}}",
   "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}. Click to copy.",
   "ga": {
     "summary": "Guiding Assistant ({{count}})",

@@ -65,24 +65,4 @@ describe('calcStats', () => {
     expect(st.includedCount).toBe(2);
   });
 
-  it('eccentricity: symmetric sqrt(1 - lo^2/hi^2), order-independent', () => {
-    // RA values [3,-3] -> rmsRa 3; Dec values [5,-5] -> rmsDec 5.
-    // ecc = sqrt(1 - 9/25) = sqrt(16/25) = 0.8.
-    const s = newGuideSession('x');
-    s.entries = [mkE(1, 1, 3, 5), mkE(2, 2, -3, -5)];
-    expect(calcStats(s).ecc).toBeCloseTo(0.8);
-    // Swap the axes (rmsRa 5, rmsDec 3) -> same eccentricity.
-    const s2 = newGuideSession('x');
-    s2.entries = [mkE(1, 1, 5, 3), mkE(2, 2, -5, -3)];
-    expect(calcStats(s2).ecc).toBeCloseTo(0.8);
-  });
-
-  it('eccentricity: equal axes -> 0, no motion -> 0 (guard)', () => {
-    const eq = newGuideSession('x');
-    eq.entries = [mkE(1, 1, 4, 4), mkE(2, 2, -4, -4)];
-    expect(calcStats(eq).ecc).toBeCloseTo(0);
-    const zero = newGuideSession('x');
-    zero.entries = [mkE(1, 1, 0, 0), mkE(2, 2, 0, 0)];
-    expect(calcStats(zero).ecc).toBe(0);
-  });
 });

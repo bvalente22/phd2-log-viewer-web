@@ -13,6 +13,7 @@
     "mean": "均值",
     "drift": "Drift",
     "eccentricity": "导星偏心率",
+    "aspectRatio": "纵横比",
     "secondsSuffix": "s",
     "perMinSuffix": "/分"
   },
@@ -59,6 +60,7 @@
   },
   "copyTooltip": "{{label}}: {{value}} — 点击复制",
   "eccentricityTooltip": "偏心率 {{value}} — RA/Dec 散布的拉长程度（0 = 圆形，1 = 直线）。RA {{ra}} / Dec {{dec}}",
+  "aspectRatioTooltip": "纵横比 {{value}} — RA 与 Dec RMS 的最大/最小值（1.00 = 圆形，越大越拉长）。RA {{ra}} / Dec {{dec}}",
   "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}。点击复制。",
   "ga": {
     "summary": "Guiding Assistant ({{count}})",

@@ -13,6 +13,7 @@
     "mean": "Moyenne",
     "drift": "Drift",
     "eccentricity": "Excentricité du guidage",
+    "aspectRatio": "Rapport d'aspect",
     "secondsSuffix": "s",
     "perMinSuffix": "/min"
   },
@@ -59,6 +60,7 @@
   },
   "copyTooltip": "{{label}} : {{value}} — clic pour copier",
   "eccentricityTooltip": "Excentricité {{value}} — allongement de la dispersion RA/Dec (0 = ronde, 1 = une ligne). RA {{ra}} / Dec {{dec}}",
+  "aspectRatioTooltip": "Rapport d'aspect {{value}} — Max/Min des RMS RA et Dec (1.00 = ronde, plus élevé = allongée). RA {{ra}} / Dec {{dec}}",
   "copyTooltipDetailed": "{{label}} : {{value}} — {{tip}}. Clic pour copier.",
   "ga": {
     "summary": "Guiding Assistant ({{count}})",
