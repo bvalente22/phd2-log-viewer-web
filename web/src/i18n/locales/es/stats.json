@@ -17,6 +17,25 @@
     "secondsSuffix": "s",
     "perMinSuffix": "/min"
   },
+  "imageImpact": {
+    "title": "Impacto en la imagen",
+    "tooltip": "Estimación de cómo la asimetría del error de guiado RA/Dec puede alargar las estrellas en el telescopio de imagen al combinarse con el seeing. Solo una estimación: la forma real también depende de óptica, enfoque, flexión, viento y procesado.",
+    "imagingScale": "Escala de imagen",
+    "estimatedSeeing": "Seeing estimado",
+    "seeingValueTitle": "FWHM del seeing (arcsec)",
+    "preset_exceptional": "Excepcional (0.5–1″)",
+    "preset_good": "Bueno (1–2″)",
+    "preset_ok": "Aceptable (2–4″)",
+    "preset_poor": "Pobre (4–5″)",
+    "preset_veryPoor": "Muy pobre (5–6″)",
+    "preset_custom": "Personalizado",
+    "guidingError": "Error de guiado",
+    "dominant": "{{axis}} dominante",
+    "finalStar": "Estrella final",
+    "finalFwhm": "FWHM {{major}}″ × {{minor}}″ ({{majorpx}} × {{minorpx}} px)",
+    "eccentricity": "excentricidad est. {{value}}",
+    "noData": "Sin datos de guiado para estimar"
+  },
   "calibration": {
     "device": "Dispositivo",
     "deviceTooltip": "Si esta calibración es para una montura o un AO",

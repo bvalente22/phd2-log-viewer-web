@@ -17,6 +17,25 @@
     "secondsSuffix": "s",
     "perMinSuffix": "/min"
   },
+  "imageImpact": {
+    "title": "Image Impact",
+    "tooltip": "Estimate of how RA/Dec guide-error asymmetry may elongate stars in the imaging scope after combining with seeing. An estimate only — real star shape also depends on optics, focus, flexure, wind, and processing.",
+    "imagingScale": "Imaging scale",
+    "estimatedSeeing": "Estimated Seeing",
+    "seeingValueTitle": "Seeing FWHM (arcsec)",
+    "preset_exceptional": "Exceptional (0.5–1″)",
+    "preset_good": "Good (1–2″)",
+    "preset_ok": "OK Seeing (2–4″)",
+    "preset_poor": "Poor (4–5″)",
+    "preset_veryPoor": "Very Poor (5–6″)",
+    "preset_custom": "Custom",
+    "guidingError": "Guiding error",
+    "dominant": "{{axis}}-dominant",
+    "finalStar": "Final star",
+    "finalFwhm": "FWHM {{major}}″ × {{minor}}″ ({{majorpx}} × {{minorpx}} px)",
+    "eccentricity": "est. eccentricity {{value}}",
+    "noData": "No guiding data to estimate"
+  },
   "calibration": {
     "device": "Device",
     "deviceTooltip": "Whether this calibration is for a Mount or an AO unit",

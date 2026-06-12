@@ -17,6 +17,25 @@
     "secondsSuffix": "s",
     "perMinSuffix": "/分"
   },
+  "imageImpact": {
+    "title": "成像影响",
+    "tooltip": "估算 RA/Dec 导星误差的不对称在与视宁度结合后，可能使成像镜中的星点拉长的程度。仅为估算——真实星形还取决于光学、对焦、挠曲、风和后期处理。",
+    "imagingScale": "成像比例",
+    "estimatedSeeing": "估计视宁度",
+    "seeingValueTitle": "视宁度 FWHM（角秒）",
+    "preset_exceptional": "极佳 (0.5–1″)",
+    "preset_good": "良好 (1–2″)",
+    "preset_ok": "一般 (2–4″)",
+    "preset_poor": "较差 (4–5″)",
+    "preset_veryPoor": "很差 (5–6″)",
+    "preset_custom": "自定义",
+    "guidingError": "导星误差",
+    "dominant": "{{axis}} 主导",
+    "finalStar": "最终星点",
+    "finalFwhm": "FWHM {{major}}″ × {{minor}}″ ({{majorpx}} × {{minorpx}} px)",
+    "eccentricity": "估计偏心率 {{value}}",
+    "noData": "无导星数据可估算"
+  },
   "calibration": {
     "device": "设备",
     "deviceTooltip": "本次 calibration 是针对 mount 还是 AO",

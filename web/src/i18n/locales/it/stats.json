@@ -17,6 +17,25 @@
     "secondsSuffix": "s",
     "perMinSuffix": "/min"
   },
+  "imageImpact": {
+    "title": "Impatto sull'immagine",
+    "tooltip": "Stima di quanto l'asimmetria dell'errore di guida RA/Dec possa allungare le stelle nel telescopio di ripresa, combinata con il seeing. Solo una stima — la forma reale dipende anche da ottica, fuoco, flessione, vento ed elaborazione.",
+    "imagingScale": "Scala immagine",
+    "estimatedSeeing": "Seeing stimato",
+    "seeingValueTitle": "FWHM del seeing (arcsec)",
+    "preset_exceptional": "Eccezionale (0.5–1″)",
+    "preset_good": "Buono (1–2″)",
+    "preset_ok": "Discreto (2–4″)",
+    "preset_poor": "Scarso (4–5″)",
+    "preset_veryPoor": "Molto scarso (5–6″)",
+    "preset_custom": "Personalizzato",
+    "guidingError": "Errore di guida",
+    "dominant": "{{axis}} dominante",
+    "finalStar": "Stella finale",
+    "finalFwhm": "FWHM {{major}}″ × {{minor}}″ ({{majorpx}} × {{minorpx}} px)",
+    "eccentricity": "eccentricità stim. {{value}}",
+    "noData": "Nessun dato di guida da stimare"
+  },
   "calibration": {
     "device": "Dispositivo",
     "deviceTooltip": "Se questa calibrazione è per una montatura o un AO",

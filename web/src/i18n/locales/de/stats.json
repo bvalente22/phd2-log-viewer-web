@@ -17,6 +17,25 @@
     "secondsSuffix": "s",
     "perMinSuffix": "/min"
   },
+  "imageImpact": {
+    "title": "Bildauswirkung",
+    "tooltip": "Schätzung, wie die Asymmetrie des RA/Dec-Guiding-Fehlers Sterne im Aufnahmeteleskop in Kombination mit dem Seeing verlängern kann. Nur eine Schätzung – die echte Sternform hängt auch von Optik, Fokus, Flexure, Wind und Bearbeitung ab.",
+    "imagingScale": "Bildskala",
+    "estimatedSeeing": "Geschätztes Seeing",
+    "seeingValueTitle": "Seeing-FWHM (Bogensekunden)",
+    "preset_exceptional": "Außergewöhnlich (0.5–1″)",
+    "preset_good": "Gut (1–2″)",
+    "preset_ok": "OK (2–4″)",
+    "preset_poor": "Schlecht (4–5″)",
+    "preset_veryPoor": "Sehr schlecht (5–6″)",
+    "preset_custom": "Benutzerdefiniert",
+    "guidingError": "Guiding-Fehler",
+    "dominant": "{{axis}}-dominant",
+    "finalStar": "Endstern",
+    "finalFwhm": "FWHM {{major}}″ × {{minor}}″ ({{majorpx}} × {{minorpx}} px)",
+    "eccentricity": "geschätzte Exzentrizität {{value}}",
+    "noData": "Keine Guiding-Daten zur Schätzung"
+  },
   "calibration": {
     "device": "Gerät",
     "deviceTooltip": "Ob diese Kalibrierung für eine Montierung oder ein AO-Gerät ist",
