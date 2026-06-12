@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import {
   getAnnotation, putAnnotation, markSeen, type Annotation,
 } from '../storage/annotations';
+import { dateFromFilename } from '../parser/filename';
 
 /** Notes hard cap — see the design spec (≈32k). */
 export const NOTES_MAXLEN = 32768;
@@ -54,10 +55,20 @@ export const useAnnotationStore = create<AnnotationState>((set, get) => ({
     if (existing) {
       set({ current: existing, currentKey: key });
     } else {
+      // Default the suggested friendly name to the log's date (YYYY-MM-DD)
+      // rather than its verbose PHD2 filename; fall back to the filename when
+      // the name carries no date. If the user cancels/skips, no name is saved
+      // and every list view falls back to the filename anyway.
       set({
         current: null,
         currentKey: key,
-        modal: { mode: 'first-open', key, filename, name: filename, notes: '' },
+        modal: {
+          mode: 'first-open',
+          key,
+          filename,
+          name: dateFromFilename(filename) ?? filename,
+          notes: '',
+        },
       });
     }
   },
