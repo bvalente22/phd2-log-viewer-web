@@ -72,7 +72,9 @@ function FinalEllipse({ r }: { r: ImageImpactResult }) {
           major: f2(r.finalFwhmMajorArcsec), minor: f2(r.finalFwhmMinorArcsec),
           majorpx: f2(r.finalFwhmMajorPx), minorpx: f2(r.finalFwhmMinorPx),
         })}
-        <span className="text-slate-500"> · {t('imageImpact.eccentricity', { value: f2(r.estimatedEccentricity) })}</span>
+        {/* est. eccentricity intentionally hidden — r.estimatedEccentricity is
+            still computed in imageImpact.ts (imageImpact.eccentricity i18n key
+            kept) so the caption can be re-enabled later. */}
       </div>
     </div>
   );

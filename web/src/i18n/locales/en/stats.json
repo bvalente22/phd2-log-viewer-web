@@ -18,7 +18,7 @@
     "perMinSuffix": "/min"
   },
   "imageImpact": {
-    "title": "Image Impact",
+    "title": "Estimating Imaging Impact",
     "tooltip": "Estimate of how RA/Dec guide-error asymmetry may elongate stars in the imaging scope after combining with seeing. An estimate only — real star shape also depends on optics, focus, flexure, wind, and processing.",
     "imagingScale": "Imaging scale",
     "estimatedSeeing": "Estimated Seeing",
