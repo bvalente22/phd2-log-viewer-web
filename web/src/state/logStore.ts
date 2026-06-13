@@ -9,6 +9,7 @@ import { putRecent } from '../storage/recents';
 import { hashLogText } from '../storage/annotations';
 import { useAnnotationStore } from './annotationStore';
 import { usePrimaryPeriodStore } from './primaryPeriodStore';
+import { useImagingSettingsStore } from './imagingSettingsStore';
 import { useViewStore } from './viewStore';
 
 export interface LogMeta {
@@ -61,6 +62,7 @@ export const useLogStore = create<LogState>((set) => ({
       // Load this log's persisted Primary period (one value per log); a
       // different log has no record so Analysis recomputes it from scratch.
       void usePrimaryPeriodStore.getState().loadForLog(hash);
+      void useImagingSettingsStore.getState().loadForLog(hash);
     } catch (e) {
       set({ loading: false, error: e instanceof Error ? e.message : String(e) });
     }
@@ -68,6 +70,7 @@ export const useLogStore = create<LogState>((set) => ({
   selectSection: (i) => set({ selectedSection: i }),
   clear: () => {
     usePrimaryPeriodStore.getState().clear();
+    useImagingSettingsStore.getState().clear();
     useViewStore.getState().clearExclusions();
     set({ log: null, meta: null, selectedSection: 0, error: null });
   },

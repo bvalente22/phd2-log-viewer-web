@@ -128,6 +128,13 @@ interface ViewState {
    */
   imagingScale: number;
   seeingFwhm: number;
+  /**
+   * When true, the Image Impact panel uses one global imaging scale + seeing for
+   * ALL logs (and persists them across sessions). When false (default), those
+   * two values are remembered per guide log; a new log seeds from the global
+   * values. Checking the box copies the current values into the global ones.
+   */
+  rememberImaging: boolean;
 
   setCoordMode: (m: CoordMode) => void;
   setDevice: (d: Device) => void;
@@ -145,6 +152,7 @@ interface ViewState {
   setSwapRaDec: (b: boolean) => void;
   setImagingScale: (n: number) => void;
   setSeeingFwhm: (n: number) => void;
+  setRememberImaging: (b: boolean) => void;
   toggleTrace: (k: keyof TraceVisibility) => void;
   /**
    * Per-axis master toggle. Off → snapshots the current sub-trace state and
@@ -196,6 +204,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   swapRaDec: false,
   imagingScale: 1.0,
   seeingFwhm: 3.0,
+  rememberImaging: false,
 
   setCoordMode: (m) => set({ coordMode: m }),
   setDevice: (d) => set({ device: d }),
@@ -213,6 +222,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   setSwapRaDec: (b) => set({ swapRaDec: b }),
   setImagingScale: (n) => set({ imagingScale: n }),
   setSeeingFwhm: (n) => set({ seeingFwhm: n }),
+  setRememberImaging: (b) => set({ rememberImaging: b }),
   toggleTrace: (k) => set((s) => ({ traces: { ...s.traces, [k]: !s.traces[k] } })),
 
   toggleRaAxis: () => set((s) => {
@@ -354,5 +364,6 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
     swapRaDec: s.swapRaDec,
     imagingScale: s.imagingScale,
     seeingFwhm: s.seeingFwhm,
+    rememberImaging: s.rememberImaging,
   }),
 }));
