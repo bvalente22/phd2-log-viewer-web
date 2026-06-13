@@ -18,7 +18,7 @@
     "perMinSuffix": "/min"
   },
   "imageImpact": {
-    "title": "Schätzung der Bildauswirkung",
+    "title": "Geschätzte Bildauswirkung",
     "tooltip": "Schätzung, wie die Asymmetrie des RA/Dec-Guiding-Fehlers Sterne im Aufnahmeteleskop in Kombination mit dem Seeing verlängern kann. Nur eine Schätzung – die echte Sternform hängt auch von Optik, Fokus, Flexure, Wind und Bearbeitung ab.",
     "imagingScale": "Bildskala",
     "estimatedSeeing": "Seeing-Bedingungen (FWHM)",
@@ -31,6 +31,7 @@
     "preset_custom": "Benutzerdefiniert",
     "guidingError": "Guiding-Fehler",
     "dominant": "{{axis}}-dominant",
+    "dominantEqual": "Achsen ≈ gleich",
     "finalStar": "Endstern",
     "finalFwhm": "FWHM {{major}}″ × {{minor}}″ ({{majorpx}} × {{minorpx}} px)",
     "eccentricity": "geschätzte Exzentrizität {{value}}",
@@ -44,6 +45,7 @@
     "ratingModerate": "mäßige geschätzte Elongation",
     "ratingHigh": "hohe geschätzte Elongation",
     "interpGuide": "Der Guiding-Fehler ist {{axis}}-dominant — die geschätzte Elongation tendiert zur {{axis}}-Richtung am Himmel (die kameraprojizierte {{axis}}-Achse, nicht zwingend {{orient}}, außer die Kamera ist so ausgerichtet). Guiding-Exzentrizität {{ecc}}.",
+    "interpEqual": "RA- und Dec-Guiding-RMS liegen innerhalb von 0.2″ zueinander — praktisch gleich, daher ist der Guiding-Fehler weitgehend rund und fügt kaum Asymmetrie hinzu. Guiding-Exzentrizität {{ecc}}.",
     "interpFinalPreset": "Mit dem Mittelwert von {{preset}} {{fwhm}}″ beträgt die geschätzte finale Exzentrizität {{ecc}} — {{rating}}.",
     "interpFinalCustom": "Mit einem benutzerdefinierten FWHM von {{fwhm}}″ beträgt die geschätzte finale Exzentrizität {{ecc}} — {{rating}}.",
     "samplingCoarser": "Die Guiding-Kamera ist um {{ratio}}× gröber als die Aufnahmekamera, sodass derselbe Himmelsfehler auf der Aufnahmekamera mehr Pixel einnimmt.",

@@ -18,7 +18,7 @@
     "perMinSuffix": "/min"
   },
   "imageImpact": {
-    "title": "Estimación del impacto en la imagen",
+    "title": "Impacto estimado en la imagen",
     "tooltip": "Estimación de cómo la asimetría del error de guiado RA/Dec puede alargar las estrellas en el telescopio de imagen al combinarse con el seeing. Solo una estimación: la forma real también depende de óptica, enfoque, flexión, viento y procesado.",
     "imagingScale": "Escala de imagen",
     "estimatedSeeing": "Condiciones de seeing (FWHM)",
@@ -31,6 +31,7 @@
     "preset_custom": "Personalizado",
     "guidingError": "Error de guiado",
     "dominant": "{{axis}} dominante",
+    "dominantEqual": "ejes ≈ iguales",
     "finalStar": "Estrella final",
     "finalFwhm": "FWHM {{major}}″ × {{minor}}″ ({{majorpx}} × {{minorpx}} px)",
     "eccentricity": "excentricidad est. {{value}}",
@@ -44,6 +45,7 @@
     "ratingModerate": "elongación estimada moderada",
     "ratingHigh": "elongación estimada alta",
     "interpGuide": "El error de guiado es {{axis}} dominante — la elongación estimada tiende hacia la dirección {{axis}} en el cielo (el eje {{axis}} proyectado en la cámara, no necesariamente {{orient}} salvo que la cámara esté alineada así). Excentricidad solo de guiado {{ecc}}.",
+    "interpEqual": "El RMS de guiado en RA y Dec están dentro de 0.2″ entre sí — efectivamente iguales, así que el error de guiado es bastante redondo y añade poca asimetría. Excentricidad solo de guiado {{ecc}}.",
     "interpFinalPreset": "Con el punto medio de {{preset}} {{fwhm}}″, la excentricidad final estimada es {{ecc}} — {{rating}}.",
     "interpFinalCustom": "Con un FWHM personalizado de {{fwhm}}″, la excentricidad final estimada es {{ecc}} — {{rating}}.",
     "samplingCoarser": "La cámara de guiado es más gruesa que la de imagen por {{ratio}}×, así que el mismo error del cielo ocupa más píxeles en la cámara de imagen.",
