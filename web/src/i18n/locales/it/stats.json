@@ -18,7 +18,7 @@
     "perMinSuffix": "/min"
   },
   "imageImpact": {
-    "title": "Impatto sull'immagine",
+    "title": "Stima dell'impatto sull'immagine",
     "tooltip": "Stima di quanto l'asimmetria dell'errore di guida RA/Dec possa allungare le stelle nel telescopio di ripresa, combinata con il seeing. Solo una stima — la forma reale dipende anche da ottica, fuoco, flessione, vento ed elaborazione.",
     "imagingScale": "Scala immagine",
     "estimatedSeeing": "Seeing stimato",

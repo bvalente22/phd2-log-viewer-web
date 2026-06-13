@@ -18,7 +18,7 @@
     "perMinSuffix": "/min"
   },
   "imageImpact": {
-    "title": "Impact sur l'image",
+    "title": "Estimation de l'impact sur l'image",
     "tooltip": "Estimation de la façon dont l'asymétrie de l'erreur de guidage RA/Dec peut allonger les étoiles dans le télescope d'imagerie, combinée au seeing. Estimation seulement — la forme réelle dépend aussi de l'optique, de la mise au point, de la flexion, du vent et du traitement.",
     "imagingScale": "Échelle d'image",
     "estimatedSeeing": "Seeing estimé",

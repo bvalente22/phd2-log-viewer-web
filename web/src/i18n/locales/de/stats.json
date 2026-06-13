@@ -18,7 +18,7 @@
     "perMinSuffix": "/min"
   },
   "imageImpact": {
-    "title": "Bildauswirkung",
+    "title": "Schätzung der Bildauswirkung",
     "tooltip": "Schätzung, wie die Asymmetrie des RA/Dec-Guiding-Fehlers Sterne im Aufnahmeteleskop in Kombination mit dem Seeing verlängern kann. Nur eine Schätzung – die echte Sternform hängt auch von Optik, Fokus, Flexure, Wind und Bearbeitung ab.",
     "imagingScale": "Bildskala",
     "estimatedSeeing": "Geschätztes Seeing",
