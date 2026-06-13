@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { computeImageImpact, presetForFwhm, SEEING_PRESETS } from '../imageImpact';
+import {
+  computeImageImpact, presetForFwhm, SEEING_PRESETS,
+  elongationRating, samplingRelation,
+} from '../imageImpact';
 
 describe('computeImageImpact', () => {
   it('worked example is RA-dominant with the expected final shape', () => {
@@ -43,5 +46,31 @@ describe('presetForFwhm', () => {
   });
   it('SEEING_PRESETS lists the five tiers in order', () => {
     expect(SEEING_PRESETS.map((p) => p.key)).toEqual(['exceptional', 'good', 'ok', 'poor', 'veryPoor']);
+  });
+});
+
+describe('guidingOnlyEccentricity', () => {
+  it('is the guide-error ellipse eccentricity, before adding seeing', () => {
+    const r = computeImageImpact(0.75, 0.55, 0.80, 3.00)!;
+    expect(r.guidingOnlyEccentricity).toBeCloseTo(0.680, 2); // sqrt(1-(0.55/0.75)^2)
+  });
+});
+
+describe('elongationRating', () => {
+  it('low below 0.25, moderate below 0.45, else high', () => {
+    expect(elongationRating(0.2)).toBe('low');
+    expect(elongationRating(0.25)).toBe('moderate');
+    expect(elongationRating(0.3)).toBe('moderate');
+    expect(elongationRating(0.45)).toBe('high');
+    expect(elongationRating(0.5)).toBe('high');
+  });
+});
+
+describe('samplingRelation', () => {
+  it('coarser when guide scale larger, finer when smaller, same when ~equal', () => {
+    expect(samplingRelation(2.5, 0.8)).toEqual({ relation: 'coarser', ratio: 2.5 / 0.8 });
+    expect(samplingRelation(0.8, 2.5)).toEqual({ relation: 'finer', ratio: 2.5 / 0.8 });
+    expect(samplingRelation(1.0, 1.0)).toEqual({ relation: 'same', ratio: 1 });
+    expect(samplingRelation(1.0, 1.0005)).toEqual({ relation: 'same', ratio: 1 });
   });
 });
