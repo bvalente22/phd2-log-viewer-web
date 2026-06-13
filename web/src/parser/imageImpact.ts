@@ -36,6 +36,7 @@ export interface ImageImpactResult {
   finalFwhmMajorPx: number;
   finalFwhmMinorPx: number;
   estimatedEccentricity: number; // [0,1)
+  guidingOnlyEccentricity: number; // guide-error ellipse alone, before seeing
   baseFwhmArcsec: number;        // = input fwhm (dashed base circle)
 }
 
@@ -63,6 +64,7 @@ export function computeImageImpact(
   const sigmaMinor = safeSqrt(baseSigma * baseSigma + minor * minor);
 
   const estimatedEccentricity = safeSqrt(1 - (sigmaMinor / sigmaMajor) ** 2);
+  const guidingOnlyEccentricity = safeSqrt(1 - (minor / major) ** 2);
   const finalFwhmMajorArcsec = sigmaMajor * FWHM_PER_SIGMA;
   const finalFwhmMinorArcsec = sigmaMinor * FWHM_PER_SIGMA;
 
@@ -75,6 +77,33 @@ export function computeImageImpact(
     finalFwhmMajorPx: finalFwhmMajorArcsec / imagingScale,
     finalFwhmMinorPx: finalFwhmMinorArcsec / imagingScale,
     estimatedEccentricity,
+    guidingOnlyEccentricity,
     baseFwhmArcsec: fwhmArcsec,
   };
+}
+
+export type ElongationRating = 'low' | 'moderate' | 'high';
+
+/** Qualitative label for an estimated eccentricity (prototype thresholds). */
+export function elongationRating(ecc: number): ElongationRating {
+  if (ecc < 0.25) return 'low';
+  if (ecc < 0.45) return 'moderate';
+  return 'high';
+}
+
+export interface SamplingRelation {
+  relation: 'same' | 'coarser' | 'finer';
+  ratio: number; // larger/smaller scale; 1 when essentially equal
+}
+
+/**
+ * How the guide-camera pixel scale compares to the imaging-camera scale. Does
+ * not affect eccentricity (RMS are already arc-sec); it explains how the same
+ * sky error maps onto each camera's pixels.
+ */
+export function samplingRelation(guideScale: number, imagingScale: number): SamplingRelation {
+  if (Math.abs(guideScale - imagingScale) < 0.001) return { relation: 'same', ratio: 1 };
+  return guideScale > imagingScale
+    ? { relation: 'coarser', ratio: guideScale / imagingScale }
+    : { relation: 'finer', ratio: imagingScale / guideScale };
 }
