@@ -18,7 +18,7 @@
     "perMinSuffix": "/min"
   },
   "imageImpact": {
-    "title": "Impacto en la imagen",
+    "title": "Estimación del impacto en la imagen",
     "tooltip": "Estimación de cómo la asimetría del error de guiado RA/Dec puede alargar las estrellas en el telescopio de imagen al combinarse con el seeing. Solo una estimación: la forma real también depende de óptica, enfoque, flexión, viento y procesado.",
     "imagingScale": "Escala de imagen",
     "estimatedSeeing": "Seeing estimado",
