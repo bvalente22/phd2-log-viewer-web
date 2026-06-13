@@ -4,6 +4,7 @@ import { AnalysisModal } from '../components/AnalysisModal';
 import { DebugLogViewer } from '../components/DebugLogViewer';
 import { SectionList } from '../components/SectionList';
 import { StatsGrid } from '../components/StatsGrid';
+import { ImageImpact } from '../components/ImageImpact';
 import { GuideGraph } from '../components/GuideGraph';
 import { ScatterView } from '../components/ScatterView';
 import { CalibrationTabs } from '../components/CalibrationTabs';
@@ -199,8 +200,11 @@ export function ViewerPage() {
             {/* Elevated slate-800 surface (matches the dashboard) so the
                 stats read as a separate panel, not a continuation of the
                 chart background. */}
-            <div className="border-t border-slate-700 bg-slate-800">
-              <StatsGrid />
+            <div className="flex flex-wrap border-t border-slate-700 bg-slate-800">
+              <div className="min-w-0 flex-1">
+                <StatsGrid />
+              </div>
+              <ImageImpact />
             </div>
           </>
         )}
