@@ -18,7 +18,7 @@
     "perMinSuffix": "/min"
   },
   "imageImpact": {
-    "title": "Stima dell'impatto sull'immagine",
+    "title": "Impatto stimato sull'immagine",
     "tooltip": "Stima di quanto l'asimmetria dell'errore di guida RA/Dec possa allungare le stelle nel telescopio di ripresa, combinata con il seeing. Solo una stima — la forma reale dipende anche da ottica, fuoco, flessione, vento ed elaborazione.",
     "imagingScale": "Scala immagine",
     "estimatedSeeing": "Condizioni di seeing (FWHM)",
@@ -31,6 +31,7 @@
     "preset_custom": "Personalizzato",
     "guidingError": "Errore di guida",
     "dominant": "{{axis}} dominante",
+    "dominantEqual": "assi ≈ uguali",
     "finalStar": "Stella finale",
     "finalFwhm": "FWHM {{major}}″ × {{minor}}″ ({{majorpx}} × {{minorpx}} px)",
     "eccentricity": "eccentricità stim. {{value}}",
@@ -44,6 +45,7 @@
     "ratingModerate": "allungamento stimato moderato",
     "ratingHigh": "allungamento stimato alto",
     "interpGuide": "L'errore di guida è {{axis}}-dominante — l'allungamento stimato tende verso la direzione {{axis}} nel cielo (l'asse {{axis}} proiettato sulla camera, non necessariamente {{orient}} a meno che la camera non sia allineata così). Eccentricità della sola guida {{ecc}}.",
+    "interpEqual": "Gli RMS di guida in RA e Dec sono entro 0.2″ tra loro — effettivamente uguali, quindi l'errore di guida è piuttosto rotondo e aggiunge poca asimmetria. Eccentricità della sola guida {{ecc}}.",
     "interpFinalPreset": "Con il punto medio di {{preset}} {{fwhm}}″, l'eccentricità finale stimata è {{ecc}} — {{rating}}.",
     "interpFinalCustom": "Con un FWHM personalizzato di {{fwhm}}″, l'eccentricità finale stimata è {{ecc}} — {{rating}}.",
     "samplingCoarser": "La camera di guida è più grossolana di quella di ripresa di {{ratio}}×, quindi lo stesso errore del cielo occupa più pixel sulla camera di ripresa.",

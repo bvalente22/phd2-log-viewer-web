@@ -18,7 +18,7 @@
     "perMinSuffix": "/min"
   },
   "imageImpact": {
-    "title": "Estimation de l'impact sur l'image",
+    "title": "Impact estimé sur l'image",
     "tooltip": "Estimation de la façon dont l'asymétrie de l'erreur de guidage RA/Dec peut allonger les étoiles dans le télescope d'imagerie, combinée au seeing. Estimation seulement — la forme réelle dépend aussi de l'optique, de la mise au point, de la flexion, du vent et du traitement.",
     "imagingScale": "Échelle d'image",
     "estimatedSeeing": "Conditions de seeing (FWHM)",
@@ -31,6 +31,7 @@
     "preset_custom": "Personnalisé",
     "guidingError": "Erreur de guidage",
     "dominant": "{{axis}} dominant",
+    "dominantEqual": "axes ≈ égaux",
     "finalStar": "Étoile finale",
     "finalFwhm": "FWHM {{major}}″ × {{minor}}″ ({{majorpx}} × {{minorpx}} px)",
     "eccentricity": "excentricité est. {{value}}",
@@ -44,6 +45,7 @@
     "ratingModerate": "élongation estimée modérée",
     "ratingHigh": "élongation estimée élevée",
     "interpGuide": "L'erreur de guidage est dominée par {{axis}} — l'élongation estimée tend vers la direction {{axis}} dans le ciel (l'axe {{axis}} projeté sur la caméra, pas nécessairement {{orient}} sauf si la caméra est alignée ainsi). Excentricité de guidage seule {{ecc}}.",
+    "interpEqual": "Les RMS de guidage RA et Dec sont à moins de 0.2″ l'un de l'autre — effectivement égaux, donc l'erreur de guidage est à peu près ronde et ajoute peu d'asymétrie. Excentricité de guidage seule {{ecc}}.",
     "interpFinalPreset": "Avec le point médian de {{preset}} {{fwhm}}″, l'excentricité finale estimée est {{ecc}} — {{rating}}.",
     "interpFinalCustom": "Avec un FWHM personnalisé de {{fwhm}}″, l'excentricité finale estimée est {{ecc}} — {{rating}}.",
     "samplingCoarser": "La caméra de guidage est plus grossière que la caméra d'imagerie de {{ratio}}×, donc la même erreur du ciel occupe plus de pixels sur la caméra d'imagerie.",
