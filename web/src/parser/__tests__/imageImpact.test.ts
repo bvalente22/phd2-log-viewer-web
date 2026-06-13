@@ -56,6 +56,15 @@ describe('guidingOnlyEccentricity', () => {
   });
 });
 
+describe('axesEffectivelyEqual', () => {
+  it('true when the RA/Dec RMS differ by less than 0.2 arcsec', () => {
+    expect(computeImageImpact(0.70, 0.60, 1, 3)!.axesEffectivelyEqual).toBe(true);  // diff ~0.10
+    expect(computeImageImpact(0.80, 0.50, 1, 3)!.axesEffectivelyEqual).toBe(false); // diff ~0.30
+    // order-independent
+    expect(computeImageImpact(0.60, 0.70, 1, 3)!.axesEffectivelyEqual).toBe(true);
+  });
+});
+
 describe('elongationRating', () => {
   it('low below 0.25, moderate below 0.45, else high', () => {
     expect(elongationRating(0.2)).toBe('low');

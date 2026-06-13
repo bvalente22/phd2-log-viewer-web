@@ -18,7 +18,7 @@
     "perMinSuffix": "/min"
   },
   "imageImpact": {
-    "title": "Estimating Imaging Impact",
+    "title": "Estimated Imaging Impact",
     "tooltip": "Estimate of how RA/Dec guide-error asymmetry may elongate stars in the imaging scope after combining with seeing. An estimate only — real star shape also depends on optics, focus, flexure, wind, and processing.",
     "imagingScale": "Imaging scale",
     "estimatedSeeing": "Seeing conditions (FWHM)",
@@ -31,6 +31,7 @@
     "preset_custom": "Custom",
     "guidingError": "Guiding error",
     "dominant": "{{axis}}-dominant",
+    "dominantEqual": "axes ≈ equal",
     "finalStar": "Final star",
     "finalFwhm": "FWHM {{major}}″ × {{minor}}″ ({{majorpx}} × {{minorpx}} px)",
     "eccentricity": "est. eccentricity {{value}}",
@@ -44,6 +45,7 @@
     "ratingModerate": "moderate estimated elongation",
     "ratingHigh": "high estimated elongation",
     "interpGuide": "The guiding error is {{axis}}-dominant — estimated elongation tends toward the {{axis}} direction on the sky (the camera-projected {{axis}} axis, not necessarily {{orient}} unless the camera is aligned that way). Guiding-only eccentricity {{ecc}}.",
+    "interpEqual": "RA and Dec guide RMS are within 0.2″ of each other — effectively equal, so the guiding error is roughly round and adds little asymmetry. Guiding-only eccentricity {{ecc}}.",
     "interpFinalPreset": "Using the {{preset}} midpoint {{fwhm}}″, the estimated final eccentricity is {{ecc}} — {{rating}}.",
     "interpFinalCustom": "Using a custom FWHM of {{fwhm}}″, the estimated final eccentricity is {{ecc}} — {{rating}}.",
     "samplingCoarser": "The guide camera is coarser than the imaging camera by {{ratio}}×, so the same sky error spans more pixels on the imaging camera.",

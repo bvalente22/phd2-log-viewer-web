@@ -37,6 +37,9 @@ export interface ImageImpactResult {
   finalFwhmMinorPx: number;
   estimatedEccentricity: number; // [0,1)
   guidingOnlyEccentricity: number; // guide-error ellipse alone, before seeing
+  /** True when the RA/Dec RMS differ by < 0.2″ — the axes are effectively equal
+   *  (guide error roughly round, little asymmetry to contribute). */
+  axesEffectivelyEqual: boolean;
   baseFwhmArcsec: number;        // = input fwhm (dashed base circle)
 }
 
@@ -78,6 +81,7 @@ export function computeImageImpact(
     finalFwhmMinorPx: finalFwhmMinorArcsec / imagingScale,
     estimatedEccentricity,
     guidingOnlyEccentricity,
+    axesEffectivelyEqual: major - minor < 0.2,
     baseFwhmArcsec: fwhmArcsec,
   };
 }
