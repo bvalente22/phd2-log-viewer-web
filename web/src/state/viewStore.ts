@@ -120,6 +120,14 @@ interface ViewState {
    * every chart except the periodogram. Persisted per-browser like `theme`.
    */
   swapRaDec: boolean;
+  /**
+   * Imaging-scope settings for the Image Impact panel. Persisted across
+   * sessions because they describe the user's imaging rig, not a log.
+   * `imagingScale` is arcsec/pixel; `seeingFwhm` is the base seeing FWHM in
+   * arcseconds (preset midpoint or a custom override).
+   */
+  imagingScale: number;
+  seeingFwhm: number;
 
   setCoordMode: (m: CoordMode) => void;
   setDevice: (d: Device) => void;
@@ -135,6 +143,8 @@ interface ViewState {
   setSidebarWidth: (n: number) => void;
   setTheme: (t: ThemeId) => void;
   setSwapRaDec: (b: boolean) => void;
+  setImagingScale: (n: number) => void;
+  setSeeingFwhm: (n: number) => void;
   toggleTrace: (k: keyof TraceVisibility) => void;
   /**
    * Per-axis master toggle. Off → snapshots the current sub-trace state and
@@ -184,6 +194,8 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   lastStarTraces: { mass: true, snr: false },
   theme: DEFAULT_THEME,
   swapRaDec: false,
+  imagingScale: 1.0,
+  seeingFwhm: 3.0,
 
   setCoordMode: (m) => set({ coordMode: m }),
   setDevice: (d) => set({ device: d }),
@@ -199,6 +211,8 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   setSidebarWidth: (n) => set({ sidebarWidth: clampSidebarWidth(n) }),
   setTheme: (t) => set({ theme: t }),
   setSwapRaDec: (b) => set({ swapRaDec: b }),
+  setImagingScale: (n) => set({ imagingScale: n }),
+  setSeeingFwhm: (n) => set({ seeingFwhm: n }),
   toggleTrace: (k) => set((s) => ({ traces: { ...s.traces, [k]: !s.traces[k] } })),
 
   toggleRaAxis: () => set((s) => {
@@ -338,5 +352,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
     lastStarTraces: s.lastStarTraces,
     theme: s.theme,
     swapRaDec: s.swapRaDec,
+    imagingScale: s.imagingScale,
+    seeingFwhm: s.seeingFwhm,
   }),
 }));
