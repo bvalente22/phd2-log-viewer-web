@@ -5,19 +5,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // (A real FileSystemFileHandle is structured-cloneable; a fake with method
 // properties is not, so we mock the handle store rather than round-trip IDB.)
 vi.mock('../../state/logStore', () => ({ useLogStore: { getState: vi.fn(() => ({ meta: null })) } }));
-vi.mock('../../state/folderStore', () => ({ useFolderStore: { getState: () => ({ state: 'idle', handle: null }) } }));
+// Reconfigurable folder-store mock — tests set `folderState` to drive the
+// folder-resolution branch (default: no folder).
+let folderState: { state: string; handle: unknown } = { state: 'idle', handle: null };
+vi.mock('../../state/folderStore', () => ({ useFolderStore: { getState: () => folderState } }));
 vi.mock('../debugLogHandles', () => ({
   getDebugLogHandle: vi.fn(async () => undefined),
   putDebugLogHandle: vi.fn(async () => {}),
 }));
 
 import { useLogStore } from '../../state/logStore';
-import { getDebugLogHandle } from '../debugLogHandles';
+import { getDebugLogHandle, putDebugLogHandle } from '../debugLogHandles';
 import { resolveDebugLogFile, setStashedDebugLog, readDroppedFiles } from '../debugLogAccess';
 
 const setHash = (hash: string | null) =>
   (useLogStore.getState as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ meta: hash ? { hash } : null });
 const getHandleMock = getDebugLogHandle as unknown as ReturnType<typeof vi.fn>;
+const putHandleMock = putDebugLogHandle as unknown as ReturnType<typeof vi.fn>;
 
 const storedHandle = (file: File, perm: PermissionState = 'granted') => ({
   key: 'k', fileName: 'd.txt', cachedAt: 0,
@@ -32,6 +36,8 @@ const storedHandle = (file: File, perm: PermissionState = 'granted') => ({
 beforeEach(() => {
   getHandleMock.mockReset();
   getHandleMock.mockResolvedValue(undefined);
+  putHandleMock.mockClear();
+  folderState = { state: 'idle', handle: null };
 });
 
 describe('resolveDebugLogFile resolution order', () => {
@@ -59,6 +65,23 @@ describe('resolveDebugLogFile resolution order', () => {
   it('returns null when no guide log hash is loaded and no folder', async () => {
     setHash(null);
     expect(await resolveDebugLogFile('g.txt')).toBeNull();
+  });
+
+  it('resolves the sibling from a connected folder AND persists its handle by hash', async () => {
+    setHash('h4');
+    const file = new File(['x'], 'PHD2_DebugLog_x.txt');
+    const fileHandle = { kind: 'file', name: 'PHD2_DebugLog_x.txt', getFile: async () => file };
+    const dirHandle = {
+      queryPermission: async () => 'granted',
+      requestPermission: async () => 'granted',
+      getFileHandle: async (name: string) =>
+        name === 'PHD2_DebugLog_x.txt' ? fileHandle : Promise.reject(new Error('NotFound')),
+    };
+    folderState = { state: 'listing', handle: dirHandle };
+    expect(await resolveDebugLogFile('PHD2_GuideLog_x.txt')).toBe(file);
+    // The exact sibling file handle is saved against the guide-log hash so a
+    // later session (Recents reopen) resolves it without re-granting the folder.
+    expect(putHandleMock).toHaveBeenCalledWith('h4', fileHandle, 'PHD2_DebugLog_x.txt');
   });
 });
 
