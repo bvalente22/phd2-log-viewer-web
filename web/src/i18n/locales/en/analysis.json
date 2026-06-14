@@ -225,6 +225,8 @@
   "peakTitle": "Peak {{index}}: a periodic-error component at {{period}}s period",
   "peakIndex": "#{{index}}",
   "period": "Period",
+  "decCorr": "Dec-corr",
+  "decCorrTooltip": "Declination-corrected: value × 1/cos(Dec), Dec = {{deg}}°",
   "amplitude": "Amplitude",
   "pp": "P-P",
   "rms": "RMS",

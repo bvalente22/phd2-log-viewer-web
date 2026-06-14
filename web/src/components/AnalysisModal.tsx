@@ -19,6 +19,7 @@ import { manualSpikeStats } from '../parser/manualSpikeAnalysis';
 import { fmtNumber } from '../i18n/format';
 import type { GARun } from '../parser/analyze';
 import { densePeriodogram, curveTopPeaks, primaryPeriod, periodRatio, rampValue } from '../parser/perioPeaks';
+import { parseGuideHeader } from '../parser/guideHeader';
 import { pickTopSpikePeriods, type SpikeRun } from '../parser/spikeAnalysis';
 import { Spline } from '../parser/spline';
 
@@ -170,6 +171,27 @@ export function AnalysisModal() {
   // the auto value; the EFFECTIVE `primaryPeriodSec` below drives both Ratio
   // readouts and the top-3 cap.
   const logHash = useLogStore((l) => l.meta?.hash ?? null);
+  // Declination-correction factor for the active guide section: 1/cos(Dec).
+  // RA periodic-error amplitudes scale with cos(Dec) as the mount tracks, so
+  // dividing by cos(Dec) (× 1/cos) projects the measured guide error back to the
+  // value it would have at the celestial equator. Null when the section isn't a
+  // guiding section, has no parsed sky Dec, or sits within ~0.001° of a pole
+  // (where 1/cos blows up). The Analysis modal opens over the selected section,
+  // so `selectedSection` is the analyzed one.
+  const log = useLogStore((l) => l.log);
+  const selectedSection = useLogStore((l) => l.selectedSection);
+  const decCorr = useMemo<{ factor: number; deg: number } | null>(() => {
+    if (!log || selectedSection < 0) return null;
+    const sec = log.sections[selectedSection];
+    if (!sec || sec.type !== 'GUIDING') return null;
+    const decStr = parseGuideHeader(log.sessions[sec.idx].hdr).declination;
+    if (decStr == null) return null;
+    const deg = parseFloat(decStr);
+    if (!Number.isFinite(deg)) return null;
+    const c = Math.cos((deg * Math.PI) / 180);
+    if (Math.abs(c) < 1e-6) return null;
+    return { factor: 1 / c, deg };
+  }, [log, selectedSection]);
   const primaryRecord = usePrimaryPeriodStore((p) => p.record);
   const primaryLoadedHash = usePrimaryPeriodStore((p) => p.loadedHash);
   const setAutoIfStrongerPrimary = usePrimaryPeriodStore((p) => p.setAutoIfStronger);
@@ -952,8 +974,22 @@ export function AnalysisModal() {
                     )}
                     {'  '}{t('ramp')} {fmtNumber(rampValue(scaleMode === 'ARCSEC' ? aArc : aPx, p.period), 2)}
                   </div>
-                  <div>{t('amplitude')}: {fmtNumber(aArc, 2)}″ ({fmtNumber(aPx, 2)}px)</div>
-                  <div>{t('pp')}: {fmtNumber(ppArc, 2)}″ ({fmtNumber(ppPx, 2)}px)</div>
+                  <div>
+                    {t('amplitude')}: {fmtNumber(aArc, 2)}″ ({fmtNumber(aPx, 2)}px)
+                    {decCorr && (
+                      <span className="text-sky-300/80" title={t('decCorrTooltip', { deg: fmtNumber(decCorr.deg, 1) })}>
+                        {'  '}· {t('decCorr')} {fmtNumber(aArc * decCorr.factor, 2)}″ ({fmtNumber(aPx * decCorr.factor, 2)}px)
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    {t('pp')}: {fmtNumber(ppArc, 2)}″ ({fmtNumber(ppPx, 2)}px)
+                    {decCorr && (
+                      <span className="text-sky-300/80" title={t('decCorrTooltip', { deg: fmtNumber(decCorr.deg, 1) })}>
+                        {'  '}· {t('decCorr')} {fmtNumber(ppArc * decCorr.factor, 2)}″ ({fmtNumber(ppPx * decCorr.factor, 2)}px)
+                      </span>
+                    )}
+                  </div>
                   <div>{t('rms')}: {fmtNumber(rmsArc, 2)}″ ({fmtNumber(rmsPx, 2)}px)</div>
                 </div>
               );
