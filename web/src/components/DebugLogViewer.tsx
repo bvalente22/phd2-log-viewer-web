@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDebugLogStore } from '../state/debugLogStore';
-import { canGrantFolder } from '../storage/debugLogAccess';
+import { canGrantFolder, canPickFileHandle } from '../storage/debugLogAccess';
 
 /**
  * In-app dialog for the debug-log feature. The log itself renders in a NEW
@@ -22,6 +22,7 @@ export function DebugLogViewer() {
   const canPick = useDebugLogStore((s) => s.canPick);
   const dismiss = useDebugLogStore((s) => s.dismiss);
   const pickFile = useDebugLogStore((s) => s.pickFile);
+  const pickViaHandle = useDebugLogStore((s) => s.pickViaHandle);
   const grantFolder = useDebugLogStore((s) => s.grantFolder);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -60,7 +61,10 @@ export function DebugLogViewer() {
               </button>
             )}
             <div
-              onClick={() => fileInputRef.current?.click()}
+              // Prefer the File System Access picker so the pick yields a
+              // durable handle we persist by guide-log hash (survives reloads);
+              // fall back to the one-shot <input> when it's unavailable.
+              onClick={() => { if (canPickFileHandle) void pickViaHandle(); else fileInputRef.current?.click(); }}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={(e) => {

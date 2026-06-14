@@ -4,7 +4,10 @@ import {
   parseDebugTimes, findClosestTimeIndex, toWallClockMs,
   debugLogAnchorMs, firstTimestampMsOfDay,
 } from '../parser/debugTimestamps';
-import { resolveDebugLogFile, grantDebugFolderAndResolve } from '../storage/debugLogAccess';
+import {
+  resolveDebugLogFile, grantDebugFolderAndResolve,
+  pickDebugLogFileHandle, stashDebugLogForCurrentLog,
+} from '../storage/debugLogAccess';
 import { openDebugTab, setDebugTabSlot } from '../components/debugLogTab';
 
 /** Args identifying the clicked sample + its session anchor. */
@@ -31,8 +34,13 @@ interface DebugLogState {
 
 interface DebugLogActions {
   openForSample: (args: DebugOpenArgs) => Promise<void>;
-  /** User picked the debug file (file input or drop). */
+  /** User picked the debug file (file input or drop) — a one-shot File with no
+   *  durable handle; stashed for the session only. */
   pickFile: (file: File) => Promise<void>;
+  /** User picked the debug file via the File System Access API — yields a
+   *  durable handle persisted by guide-log hash, so the association survives
+   *  reloads. Preferred over `pickFile` when the browser supports it. */
+  pickViaHandle: () => Promise<void>;
   /** User asked to grant the folder so we can auto-find the sibling. */
   grantFolder: () => Promise<void>;
   dismiss: () => void;
@@ -86,6 +94,21 @@ export const useDebugLogStore = create<DebugLogState & DebugLogActions>((set, ge
   pickFile: async (file) => {
     const args = get().pending;
     if (!args || args.startsMs === null || !currentKey) return;
+    // No durable handle from an <input>/drop File — stash it for the session so
+    // other components (and repeat double-clicks) reuse it without re-picking.
+    stashDebugLogForCurrentLog(file);
+    const targetMs = toWallClockMs(args.targetEpochMs);
+    set({ status: 'idle' });
+    await loadAndFill(set, get, args, file, targetMs, currentKey);
+  },
+
+  pickViaHandle: async () => {
+    const args = get().pending;
+    if (!args || args.startsMs === null || !currentKey) return;
+    // The picker (and the handle persistence it does) runs in the click gesture.
+    const file = await pickDebugLogFileHandle();
+    if (!file) return; // unavailable or cancelled — leave the dialog open
+    if (get().pending !== args) return; // superseded by a newer request
     const targetMs = toWallClockMs(args.targetEpochMs);
     set({ status: 'idle' });
     await loadAndFill(set, get, args, file, targetMs, currentKey);
