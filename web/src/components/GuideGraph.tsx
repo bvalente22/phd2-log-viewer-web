@@ -8,6 +8,7 @@ import Plotly from 'plotly.js/dist/plotly';
 import type { Data, Layout, Shape, Annotations } from 'plotly.js';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
+import { useDebugLogStore } from '../state/debugLogStore';
 import type { GuideSession } from '../parser';
 import { useChartGestures } from './useChartGestures';
 import { layoutInlineEvents } from './eventLayout';
@@ -956,6 +957,10 @@ export function GuideGraph() {
   // need to re-bind the listener.
   const hoverRafRef = useRef<number | null>(null);
   const pendingHoverRef = useRef<string | null>(null);
+  // Elapsed-seconds dt of the sample under the cursor — captured on hover,
+  // consumed by the double-click handler so it can open the sibling debug log
+  // at the matching timestamp without re-deriving it from a pixel position.
+  const lastHoverDtRef = useRef<number | null>(null);
   const onHover = useCallback((ev: PlotlyHoverEvent) => {
     if (!data) return;
     const raw = ev.points?.[0]?.x;
@@ -970,6 +975,7 @@ export function GuideGraph() {
     // bisects against `e.dt` (elapsed seconds) so we convert back first.
     const entry = findClosestEntry(data.session.entries, data.fromX(x));
     if (!entry) return;
+    lastHoverDtRef.current = entry.dt;
     pendingHoverRef.current = formatRowInfo(entry);
     if (hoverRafRef.current == null) {
       hoverRafRef.current = requestAnimationFrame(() => {
@@ -993,6 +999,46 @@ export function GuideGraph() {
   useEffect(() => () => {
     if (hoverRafRef.current != null) cancelAnimationFrame(hoverRafRef.current);
   }, []);
+
+  // Double-click → open the sibling debug log at the matching timestamp.
+  // Mirrors the analysis DriftChart: useChartGestures preventDefaults
+  // pointerdown (to own pan/zoom), which suppresses the native click/dblclick,
+  // so we detect a double-tap from the pointer events directly — two quick,
+  // near-stationary left-button taps. The target sample is whatever the cursor
+  // last hovered (lastHoverDtRef); session + filename come from dataRef so the
+  // listener can bind once and still see the current section.
+  useEffect(() => {
+    const div = document.getElementById(plotId);
+    if (!div) return;
+    let downX = 0, downY = 0, lastTapT = 0, lastTapX = 0, lastTapY = 0;
+    const dist = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
+    const onDown = (e: PointerEvent) => { downX = e.clientX; downY = e.clientY; };
+    const onUp = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      if (dist(downX, downY, e.clientX, e.clientY) > 6) { lastTapT = 0; return; } // a drag, not a tap
+      const now = e.timeStamp;
+      if (now - lastTapT < 400 && dist(lastTapX, lastTapY, e.clientX, e.clientY) < 12) {
+        lastTapT = 0;
+        const dt = lastHoverDtRef.current;
+        const ctx = dataRef.current;
+        if (dt === null || !ctx) return;
+        const startsMs = ctx.session.startsMs;
+        void useDebugLogStore.getState().openForSample({
+          guideLogName: useLogStore.getState().meta?.name ?? '',
+          startsMs,
+          targetEpochMs: (startsMs ?? 0) + dt * 1000,
+        });
+      } else {
+        lastTapT = now; lastTapX = e.clientX; lastTapY = e.clientY;
+      }
+    };
+    div.addEventListener('pointerdown', onDown, true);
+    div.addEventListener('pointerup', onUp, true);
+    return () => {
+      div.removeEventListener('pointerdown', onDown, true);
+      div.removeEventListener('pointerup', onUp, true);
+    };
+  }, [plotId]);
 
   // Plotly fires plotly_relayout for any user-driven range change (scroll
   // zoom, drag-zoom, etc.). Persist the new range into the per-section view
@@ -1238,7 +1284,7 @@ export function GuideGraph() {
           hover; blank until the cursor is over a point. */}
       <div
         className="min-h-[24px] truncate border-t border-slate-800 bg-slate-900/40 px-3 py-1 font-mono text-[11px] text-slate-300"
-        title="Frame info under the cursor (matches the desktop's status bar). The vertical line tracks the cursor on the chart; the details show here. Move the mouse off the chart to clear."
+        title="Frame info under the cursor (matches the desktop's status bar). The vertical line tracks the cursor on the chart; the details show here. Move the mouse off the chart to clear. Double-click a point to open the sibling debug log at that timestamp."
       >
         {hoverInfo ?? ' '}
       </div>
