@@ -213,6 +213,8 @@
   "peakTitle": "Peak {{index}}：周期为 {{period}}s 的周期误差分量",
   "peakIndex": "#{{index}}",
   "period": "周期",
+  "decCorr": "Dec-corr",
+  "decCorrTooltip": "赤纬校正：数值 × 1/cos(赤纬)，赤纬 = {{deg}}°",
   "amplitude": "振幅",
   "pp": "P-P",
   "rms": "RMS"

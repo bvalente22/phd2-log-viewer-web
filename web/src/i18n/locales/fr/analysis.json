@@ -213,6 +213,8 @@
   "peakTitle": "Pic {{index}} : une composante d'erreur périodique de période {{period}}s",
   "peakIndex": "n°{{index}}",
   "period": "Période",
+  "decCorr": "Dec-corr",
+  "decCorrTooltip": "Corrigé en déclinaison : valeur × 1/cos(Dec), Dec = {{deg}}°",
   "amplitude": "Amplitude",
   "pp": "P-P",
   "rms": "RMS"
