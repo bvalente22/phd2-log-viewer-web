@@ -4,7 +4,7 @@ import { useLogStore } from '../state/logStore';
 import { useAnnotationStore } from '../state/annotationStore';
 import { useDebugPresenceStore } from '../state/debugLogPresenceStore';
 import { DebugBadge } from './DebugBadge';
-import { setStashedDebugLog, rememberDebugLogHandle, readDroppedFiles } from '../storage/debugLogAccess';
+import { setStashedDebugLog, rememberDebugLogHandle, readDroppedFiles, canPickFileHandle } from '../storage/debugLogAccess';
 
 /**
  * Sidebar pane that lets the user load a new guide log via drag-and-drop or
@@ -65,6 +65,28 @@ export function LogsFolderPane() {
   // moment this handler yields at an await) before collecting the debug handle.
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     const { files, debugHandle } = await readDroppedFiles(e.dataTransfer);
+    await processFiles(files, debugHandle);
+  }, [processFiles]);
+
+  // "Pick file": prefer the File System Access picker (Chromium) so selecting
+  // the guide log AND its debug log together yields a durable debug-log HANDLE —
+  // processFiles persists it by guide-log hash, so the double-click-to-debug
+  // jump still works after reopening the guide log from Recents in a later
+  // session. Falls back to the plain multi-file <input> (bytes only, no handle)
+  // where the API is missing.
+  const handlePick = useCallback(async () => {
+    if (!canPickFileHandle) { inputRef.current?.click(); return; }
+    let handles: FileSystemFileHandle[];
+    try {
+      handles = await window.showOpenFilePicker({
+        multiple: true,
+        types: [{ description: 'PHD2 guide / debug log', accept: { 'text/plain': ['.txt', '.log'] } }],
+      });
+    } catch {
+      return; // user cancelled the picker
+    }
+    const files = await Promise.all(handles.map((h) => h.getFile()));
+    const debugHandle = handles.find((h) => /DebugLog/i.test(h.name)) ?? null;
     await processFiles(files, debugHandle);
   }, [processFiles]);
 
@@ -133,7 +155,7 @@ export function LogsFolderPane() {
             <p className="mb-2 text-xs text-slate-300">{t('dropZone.title')}</p>
             <button
               className="rounded bg-sky-600 px-3 py-1 text-xs hover:bg-sky-500"
-              onClick={() => inputRef.current?.click()}
+              onClick={() => void handlePick()}
               title={t('dropZone.pickFileTooltip')}
             >
               {t('dropZone.pickFile')}
