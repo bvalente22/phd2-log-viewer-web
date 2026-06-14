@@ -957,10 +957,6 @@ export function GuideGraph() {
   // need to re-bind the listener.
   const hoverRafRef = useRef<number | null>(null);
   const pendingHoverRef = useRef<string | null>(null);
-  // Elapsed-seconds dt of the sample under the cursor — captured on hover,
-  // consumed by the double-click handler so it can open the sibling debug log
-  // at the matching timestamp without re-deriving it from a pixel position.
-  const lastHoverDtRef = useRef<number | null>(null);
   const onHover = useCallback((ev: PlotlyHoverEvent) => {
     if (!data) return;
     const raw = ev.points?.[0]?.x;
@@ -975,7 +971,6 @@ export function GuideGraph() {
     // bisects against `e.dt` (elapsed seconds) so we convert back first.
     const entry = findClosestEntry(data.session.entries, data.fromX(x));
     if (!entry) return;
-    lastHoverDtRef.current = entry.dt;
     pendingHoverRef.current = formatRowInfo(entry);
     if (hoverRafRef.current == null) {
       hoverRafRef.current = requestAnimationFrame(() => {
@@ -1004,14 +999,22 @@ export function GuideGraph() {
   // Mirrors the analysis DriftChart: useChartGestures preventDefaults
   // pointerdown (to own pan/zoom), which suppresses the native click/dblclick,
   // so we detect a double-tap from the pointer events directly — two quick,
-  // near-stationary left-button taps. The target sample is whatever the cursor
-  // last hovered (lastHoverDtRef); session + filename come from dataRef so the
-  // listener can bind once and still see the current section.
+  // near-stationary left-button taps.
+  //
+  // The target sample is derived from the CLICK's X pixel position at release —
+  // NOT from the last hover. An earlier version read a hover-populated ref, but
+  // plotly_hover doesn't reliably fire for the click position (focus returns to
+  // the app after the debug tab opens, trackpad taps without a preceding move,
+  // hover debouncing), so every double-click reused a stale dt and jumped to the
+  // same line. Mapping the click pixel straight through the x-axis is
+  // deterministic and lands on exactly the double-clicked sample.
   useEffect(() => {
-    const div = document.getElementById(plotId);
+    const div = document.getElementById(plotId) as PlotDiv | null;
     if (!div) return;
     let downX = 0, downY = 0, lastTapT = 0, lastTapX = 0, lastTapY = 0;
     const dist = (ax: number, ay: number, bx: number, by: number) => Math.hypot(ax - bx, ay - by);
+    const toMs = (v: unknown): number =>
+      typeof v === 'number' ? v : typeof v === 'string' ? Date.parse(v) : NaN;
     const onDown = (e: PointerEvent) => { downX = e.clientX; downY = e.clientY; };
     const onUp = (e: PointerEvent) => {
       if (e.button !== 0) return;
@@ -1019,14 +1022,23 @@ export function GuideGraph() {
       const now = e.timeStamp;
       if (now - lastTapT < 400 && dist(lastTapX, lastTapY, e.clientX, e.clientY) < 12) {
         lastTapT = 0;
-        const dt = lastHoverDtRef.current;
         const ctx = dataRef.current;
-        if (dt === null || !ctx) return;
+        const xa = div._fullLayout?.xaxis;
+        if (!ctx || !xa) return;
+        // clientX → data-X via the axis pixel mapping (range can be ISO date
+        // strings on the clock-time axis, so coerce to ms first), then → dt.
+        const rect = div.getBoundingClientRect();
+        const px = e.clientX - rect.left;
+        const [x0, x1] = [toMs(xa.range[0]), toMs(xa.range[1])];
+        if (!Number.isFinite(x0) || !Number.isFinite(x1) || !xa._length) return;
+        const dataX = x0 + ((px - xa._offset) / xa._length) * (x1 - x0);
+        const entry = findClosestEntry(ctx.session.entries, ctx.fromX(dataX));
+        if (!entry) return;
         const startsMs = ctx.session.startsMs;
         void useDebugLogStore.getState().openForSample({
           guideLogName: useLogStore.getState().meta?.name ?? '',
           startsMs,
-          targetEpochMs: (startsMs ?? 0) + dt * 1000,
+          targetEpochMs: (startsMs ?? 0) + entry.dt * 1000,
         });
       } else {
         lastTapT = now; lastTapX = e.clientX; lastTapY = e.clientY;
