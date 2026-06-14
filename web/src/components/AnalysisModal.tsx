@@ -138,10 +138,27 @@ export function AnalysisModal() {
   useEffect(() => {
     setManualSpikeThresholdArc(0);
   }, [manualSpikeAxisForEffect]);
+  // Keyboard shortcuts (mode tabs + Esc). Each is the keyboard equivalent of
+  // clicking the matching mode tab, and only fires when that tab is actually
+  // available — same gating as the tab's render condition. Ignored while a
+  // field is focused (e.g. the Max Period / threshold inputs) so typing isn't
+  // hijacked:
+  //   a → Raw RA, d → Residual error, f → Manual Spike, Esc → close.
   useEffect(() => {
     if (s.state !== 'open') return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') s.close();
+      if (s.state !== 'open') return;
+      const el = e.target as HTMLElement | null;
+      const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+      if (e.key === 'Escape') { if (!typing) s.close(); return; }
+      if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+      const hasResidualTabs = s.kind !== 'unguided' && !!s.garunOther;
+      const hasManualSpike = s.kind !== 'unguided' && !!s.spikeSource;
+      switch (e.key.toLowerCase()) {
+        case 'a': if (hasResidualTabs) { s.setKind('all-raw-ra'); e.preventDefault(); } break;
+        case 'd': if (hasResidualTabs) { s.setKind('all'); e.preventDefault(); } break;
+        case 'f': if (hasManualSpike) { s.setKind('manual-spike'); e.preventDefault(); } break;
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -442,10 +459,10 @@ export function AnalysisModal() {
                       compare against the residual-after-correction
                       signal. */}
                   <ModeTab target="all-raw-ra" current={kind} label={t('mode.rawRa')}
-                    onClick={() => s.setKind('all-raw-ra')} tip={t('mode.rawRaTooltip')}
+                    onClick={() => s.setKind('all-raw-ra')} tip={`${t('mode.rawRaTooltip')} (a)`}
                     accent={tc.fftRawRa} />
                   <ModeTab target="all" current={kind} label={t('mode.selected')}
-                    onClick={() => s.setKind('all')} tip={t('mode.selectedTooltip')}
+                    onClick={() => s.setKind('all')} tip={`${t('mode.selectedTooltip')} (d)`}
                     accent={tc.fftResidual} />
                 </>
               )}
@@ -463,7 +480,7 @@ export function AnalysisModal() {
               )}
               {showManualSpikeTab && (
                 <ModeTab target="manual-spike" current={kind} label={t('mode.manualSpike')}
-                  onClick={() => s.setKind('manual-spike')} tip={t('mode.manualSpikeTooltip')} />
+                  onClick={() => s.setKind('manual-spike')} tip={`${t('mode.manualSpikeTooltip')} (f)`} />
               )}
             </div>
           )}
