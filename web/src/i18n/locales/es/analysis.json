@@ -213,6 +213,8 @@
   "peakTitle": "Pico {{index}}: una componente de error periódico con periodo de {{period}}s",
   "peakIndex": "#{{index}}",
   "period": "Periodo",
+  "decCorr": "Dec-corr",
+  "decCorrTooltip": "Corregido por declinación: valor × 1/cos(Dec), Dec = {{deg}}°",
   "amplitude": "Amplitud",
   "pp": "P-P",
   "rms": "RMS"

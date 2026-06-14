@@ -213,6 +213,8 @@
   "peakTitle": "Peak {{index}}: eine periodische Fehlerkomponente bei {{period}}s",
   "peakIndex": "#{{index}}",
   "period": "Periode",
+  "decCorr": "Dec-corr",
+  "decCorrTooltip": "Deklinationskorrigiert: Wert × 1/cos(Dek), Dek = {{deg}}°",
   "amplitude": "Amplitude",
   "pp": "P-P",
   "rms": "RMS"
