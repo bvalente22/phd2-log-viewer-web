@@ -62,7 +62,7 @@ export function GuidingDashboard() {
 
   if (!info) return null;
   const hasAny =
-    info.pierSide || info.hourAngle || info.altitude || info.rotator ||
+    info.pierSide || info.hourAngle || info.declination || info.altitude || info.rotator ||
     info.backlash || info.ra || info.dec || info.exposure || info.aoPresent;
   if (!hasAny) return null;
 
@@ -75,6 +75,9 @@ export function GuidingDashboard() {
       {info.pierSide && <Tile caption={t('dashboard.pierSide')} value={info.pierSide} />}
       {info.exposure && <Tile caption={t('dashboard.exposure')} value={`${Number(info.exposure) / 1000} s`} />}
       {info.hourAngle && <Tile caption={t('dashboard.hourAngle')} value={`${info.hourAngle} h`} />}
+      {/* Sky declination (the pointing Dec), distinct from the Dec guide
+          algorithm tile below — same field the CalibrationDashboard shows. */}
+      {info.declination && <Tile caption={t('dashboard.declination')} value={`${info.declination}°`} />}
       {info.altitude && <Tile caption={t('dashboard.altitude')} value={`${info.altitude}°`} />}
       {info.rotator && <Tile caption={t('dashboard.rotator')} value={`${info.rotator}°`} />}
       {info.aoPresent && <Tile caption={t('dashboard.aoUnit')} value={t('dashboard.aoPresent')} />}
