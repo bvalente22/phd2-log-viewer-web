@@ -64,28 +64,52 @@ export const useDebugLogStore = create<DebugLogState & DebugLogActions>((set, ge
       set({ ...IDLE, status: 'error', errorKey: 'noTimestamp' });
       return;
     }
-    // Open the tab NOW (in the click gesture, popup-safe) directly to the
-    // static viewer page; it shows "Loading…" and polls for the data below.
+    const targetMs = toWallClockMs(args.targetEpochMs);
+
+    // Fast path: the bytes are already parsed this session. No file resolution
+    // (and so no permission prompt) is needed, so open the tab immediately —
+    // the double-click's transient activation is still intact — and fill it.
+    const cached = cache.get(args.guideLogName);
+    if (cached) {
+      const opened = openDebugTab();
+      if (!opened.tab) {
+        set({ ...IDLE, status: 'error', errorKey: 'popupBlocked' });
+        return;
+      }
+      currentKey = opened.key;
+      set({ ...IDLE, pending: args });
+      ready(opened.key, cached, targetMs);
+      return;
+    }
+
+    // Slow path: resolve the sibling debug log BEFORE opening the tab.
+    //
+    // `window.open` CONSUMES the click's transient user activation. A persisted
+    // FileSystemFileHandle (the debug log remembered when the guide+debug pair
+    // was opened) has its read permission reset to "prompt" in every new
+    // session, so resolving it calls `requestPermission`, which REQUIRES that
+    // activation. Opening the tab first spent the activation, so the prompt was
+    // silently suppressed and resolution failed — that's the "debug window says
+    // it has no debug log" after reopening a guide log from Recents. Resolving
+    // first lets the permission prompt actually appear.
+    set({ ...IDLE, pending: args });
+    const file = await resolveDebugLogFile(args.guideLogName);
+    if (get().pending !== args) return; // superseded by a newer request
+
+    // Now open the viewer tab. If the permission prompt above consumed or
+    // outlived the activation window the popup may be blocked; the file is
+    // resolved and (once loaded) cached, so the next double-click — permission
+    // now granted for the session — takes the fast path and opens cleanly.
     const opened = openDebugTab();
     if (!opened.tab) {
       set({ ...IDLE, status: 'error', errorKey: 'popupBlocked' });
       return;
     }
     currentKey = opened.key;
-    set({ ...IDLE, pending: args });
-    const targetMs = toWallClockMs(args.targetEpochMs);
 
-    const cached = cache.get(args.guideLogName);
-    if (cached) {
-      ready(opened.key, cached, targetMs);
-      return;
-    }
-
-    const file = await resolveDebugLogFile(args.guideLogName);
-    if (get().pending !== args) return; // superseded by a newer request
     if (!file) {
       setDebugTabSlot(opened.key, { state: 'needPick' });
-      set({ status: 'error', errorKey: 'notFound', canPick: true });
+      set({ status: 'error', errorKey: 'notFound', canPick: true, pending: args });
       return;
     }
     await loadAndFill(set, get, args, file, targetMs, opened.key);
