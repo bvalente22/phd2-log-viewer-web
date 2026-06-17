@@ -1,4 +1,5 @@
 import type { GuideSession } from './types';
+import { computePolarAlignment } from './polarAlignment';
 
 export type ExclusionMask = Uint8Array;
 
@@ -18,25 +19,16 @@ export interface SessionStats {
   driftRaArcsec: number;
   driftDecArcsec: number;
   paeArcMin: number;
+  altArcMin: number | null;
+  azArcMin: number | null;
+  altTrust: boolean;
+  azTrust: boolean;
+  hourAngleHours: number | null;
   ellipse: { theta: number; lx: number; ly: number; elongation: number };
   durationSec: number;
   includedCount: number;
   excludedCount: number;
 }
-
-const linregSlope = (xs: number[], ys: number[]): number => {
-  if (xs.length < 2) return 0;
-  let mx = 0, my = 0;
-  for (let i = 0; i < xs.length; i++) { mx += xs[i]; my += ys[i]; }
-  mx /= xs.length; my /= ys.length;
-  let num = 0, den = 0;
-  for (let i = 0; i < xs.length; i++) {
-    const dx = xs[i] - mx;
-    num += dx * (ys[i] - my);
-    den += dx * dx;
-  }
-  return den === 0 ? 0 : num / den;
-};
 
 const pcaEllipse = (ras: number[], decs: number[]) => {
   const n = ras.length;
@@ -66,7 +58,6 @@ const pcaEllipse = (ras: number[], decs: number[]) => {
 export function calcStats(s: GuideSession, mask?: ExclusionMask): SessionStats {
   const ras: number[] = [];
   const decs: number[] = [];
-  const dts: number[] = [];
   let included = 0;
   let excluded = 0;
 
@@ -80,7 +71,6 @@ export function calcStats(s: GuideSession, mask?: ExclusionMask): SessionStats {
     included++;
     ras.push(e.raraw);
     decs.push(e.decraw);
-    dts.push(e.dt);
   }
 
   const peakRa = ras.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
@@ -100,14 +90,13 @@ export function calcStats(s: GuideSession, mask?: ExclusionMask): SessionStats {
   const rmsDec = rmsAboutMean(decs, meanDec);
   const rmsTotal = Math.sqrt(rmsRa * rmsRa + rmsDec * rmsDec);
 
-  const driftRa = linregSlope(dts, ras) * 60;
-  const driftDec = linregSlope(dts, decs) * 60;
+  const pa = computePolarAlignment(s, mask);
+  const driftRa = pa.driftRaPxMin;
+  const driftDec = pa.driftDecPxMin;
 
   const ellipse = pcaEllipse(ras, decs);
 
-  const driftDecArcsecMin = Math.abs(driftDec) * s.pixelScale;
-  const cosDec = Math.cos(s.declination) || 1;
-  const paeArcMin = (driftDecArcsecMin * 3.81972) / cosDec;
+  const paeArcMin = pa.paeTotalArcMin;
 
   return {
     rmsRa, rmsDec, rmsTotal,
@@ -120,6 +109,11 @@ export function calcStats(s: GuideSession, mask?: ExclusionMask): SessionStats {
     driftRaArcsec: driftRa * s.pixelScale,
     driftDecArcsec: driftDec * s.pixelScale,
     paeArcMin,
+    altArcMin: pa.altArcMin,
+    azArcMin: pa.azArcMin,
+    altTrust: pa.altTrust,
+    azTrust: pa.azTrust,
+    hourAngleHours: pa.hourAngleHours,
     ellipse,
     durationSec: s.duration,
     includedCount: included,

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { calcStats } from '../stats';
 import { newGuideSession } from '../types';
 import type { GuideEntry } from '../types';
+import { computePolarAlignment } from '../polarAlignment';
 
 const mkE = (frame: number, dt: number, ra: number, dec: number, included = true): GuideEntry => ({
   frame, dt, mount: 'MOUNT', included, guiding: true,
@@ -65,4 +66,21 @@ describe('calcStats', () => {
     expect(st.includedCount).toBe(2);
   });
 
+});
+
+describe('calcStats polar-alignment fields', () => {
+  it('exposes Alt/Az/trust/HA and drift matching computePolarAlignment', () => {
+    const s = newGuideSession('x');
+    s.entries = [mkE(1, 0, 0, 0), mkE(2, 60, 0, 1), mkE(3, 120, 0, 2), mkE(4, 180, 0, 3)];
+    s.pixelScale = 2; s.declination = 0; s.hourAngleHours = 3;
+    const pa = computePolarAlignment(s);
+    const st = calcStats(s);
+    expect(st.driftDec).toBeCloseTo(pa.driftDecPxMin, 6);
+    expect(st.paeArcMin).toBeCloseTo(pa.paeTotalArcMin, 6);
+    expect(st.altArcMin).toBeCloseTo(pa.altArcMin!, 6);
+    expect(st.azArcMin).toBeCloseTo(pa.azArcMin!, 6);
+    expect(st.altTrust).toBe(true);
+    expect(st.azTrust).toBe(true);
+    expect(st.hourAngleHours).toBe(3);
+  });
 });
