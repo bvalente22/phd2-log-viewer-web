@@ -60,3 +60,10 @@ export const eccentricityMetric: GuidingMetric = {
 
 // Source-code switch: change to `eccentricityMetric` to restore the old metric.
 export const guidingMetric: GuidingMetric = aspectRatioMetric;
+
+// Polar-alignment stoplight: ≤2′ green, 2–5′ yellow, >5′ red (per spec).
+export function polarAlignmentBand(arcMin: number): Band {
+  if (arcMin <= 2) return 'green';
+  if (arcMin <= 5) return 'yellow';
+  return 'red';
+}
