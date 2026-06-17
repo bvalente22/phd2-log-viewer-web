@@ -131,4 +131,10 @@ describe('computePolarAlignment PAE + decomposition', () => {
     expect(pa.altTrust).toBe(false);
     expect(pa.azTrust).toBe(false);
   });
+
+  it('PAE = 0 near declination ±90° (cos guard)', () => {
+    const s = ramp();
+    s.declination = Math.PI / 2; // cos ≈ 0 → guarded
+    expect(computePolarAlignment(s).paeTotalArcMin).toBe(0);
+  });
 });
