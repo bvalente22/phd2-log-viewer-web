@@ -77,3 +77,58 @@ describe('computePolarAlignment drift', () => {
     expect(Math.abs(pa.driftDecPxMin)).toBeLessThan(0.5);
   });
 });
+
+describe('computePolarAlignment PAE + decomposition', () => {
+  // Dec drift fixture: decraw ramps so drift = 1 px/min; pixelScale 2 → 2"/min.
+  const ramp = () => {
+    const s = session([
+      e({ dt: 0, decraw: 0 }), e({ dt: 60, decraw: 1 }),
+      e({ dt: 120, decraw: 2 }), e({ dt: 180, decraw: 3 }),
+    ]);
+    s.pixelScale = 2;
+    return s;
+  };
+
+  it('total PAE = 3.8197 * |Dec drift "/min| / cos(dec)', () => {
+    const s = ramp();
+    s.declination = 0; // cos = 1
+    const pa = computePolarAlignment(s);
+    expect(pa.paeTotalArcMin).toBeCloseTo(3.8197 * 2, 3); // 1 px/min * 2 "/px = 2 "/min
+  });
+
+  it('at HA 0h: all azimuth, altitude untrusted', () => {
+    const s = ramp(); s.hourAngleHours = 0;
+    const pa = computePolarAlignment(s);
+    expect(pa.azArcMin).toBeCloseTo(pa.paeTotalArcMin, 4);
+    expect(pa.altArcMin).toBeCloseTo(0, 4);
+    expect(pa.azTrust).toBe(true);
+    expect(pa.altTrust).toBe(false);
+  });
+
+  it('at HA 6h: all altitude, azimuth untrusted', () => {
+    const s = ramp(); s.hourAngleHours = 6; // 90 deg
+    const pa = computePolarAlignment(s);
+    expect(pa.altArcMin).toBeCloseTo(pa.paeTotalArcMin, 4);
+    expect(pa.azArcMin).toBeCloseTo(0, 4);
+    expect(pa.altTrust).toBe(true);
+    expect(pa.azTrust).toBe(false);
+  });
+
+  it('at HA 3h (45 deg): both axes trusted and equal', () => {
+    const s = ramp(); s.hourAngleHours = 3; // 45 deg
+    const pa = computePolarAlignment(s);
+    expect(pa.altArcMin).toBeCloseTo(pa.azArcMin!, 4);
+    expect(pa.altTrust).toBe(true);
+    expect(pa.azTrust).toBe(true);
+    expect(Math.hypot(pa.altArcMin!, pa.azArcMin!)).toBeCloseTo(pa.paeTotalArcMin, 4);
+  });
+
+  it('null hour angle leaves Alt/Az null and untrusted', () => {
+    const s = ramp(); s.hourAngleHours = null;
+    const pa = computePolarAlignment(s);
+    expect(pa.altArcMin).toBeNull();
+    expect(pa.azArcMin).toBeNull();
+    expect(pa.altTrust).toBe(false);
+    expect(pa.azTrust).toBe(false);
+  });
+});

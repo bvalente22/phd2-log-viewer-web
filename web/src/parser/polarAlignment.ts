@@ -99,15 +99,35 @@ export function computePolarAlignment(session: GuideSession, mask?: Uint8Array):
   const driftRaPxMin = driftRaPps * 60;
   const driftDecPxMin = driftDecPps * 60;
 
-  // PAE + decomposition are filled in Task 3; provide safe defaults for now.
+  const cosDec = Math.cos(session.declination);
+  const paeTotalArcMin = Math.abs(cosDec) > 1e-6
+    ? (PAE_CONSTANT * Math.abs(driftDecPxMin) * session.pixelScale) / Math.abs(cosDec)
+    : 0;
+
+  // Alt/Az hour-angle projection (min-norm). Needs the section hour angle.
+  const ha = session.hourAngleHours;
+  let altArcMin: number | null = null;
+  let azArcMin: number | null = null;
+  let altTrust = false;
+  let azTrust = false;
+  if (ha !== null) {
+    const haRad = (ha * 15 * Math.PI) / 180;
+    const azSens = Math.abs(Math.cos(haRad)); // azimuth sensitivity (max at meridian)
+    const altSens = Math.abs(Math.sin(haRad)); // altitude sensitivity (max at ±6h)
+    azArcMin = paeTotalArcMin * azSens;
+    altArcMin = paeTotalArcMin * altSens;
+    azTrust = azSens >= TRUST_THRESHOLD;
+    altTrust = altSens >= TRUST_THRESHOLD;
+  }
+
   return {
     driftRaPxMin,
     driftDecPxMin,
-    paeTotalArcMin: 0,
-    altArcMin: null,
-    azArcMin: null,
-    altTrust: false,
-    azTrust: false,
-    hourAngleHours: session.hourAngleHours,
+    paeTotalArcMin,
+    altArcMin,
+    azArcMin,
+    altTrust,
+    azTrust,
+    hourAngleHours: ha,
   };
 }
