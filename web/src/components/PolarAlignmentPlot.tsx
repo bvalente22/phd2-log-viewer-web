@@ -39,9 +39,10 @@ interface Props {
   altTrust: boolean;
   azTrust: boolean;
   hasHa: boolean;
+  determinable: boolean;
 }
 
-export default function PolarAlignmentPlot({ paeTotal, altArcMin, azArcMin, altTrust, azTrust, hasHa }: Props) {
+export default function PolarAlignmentPlot({ paeTotal, altArcMin, azArcMin, altTrust, azTrust, hasHa, determinable }: Props) {
   const { t } = useTranslation('stats');
   const band = polarAlignmentBand(paeTotal);
   const dot = paePlotDot(paeTotal, altArcMin, azArcMin, PER_MIN, CX, CY);
@@ -58,14 +59,14 @@ export default function PolarAlignmentPlot({ paeTotal, altArcMin, azArcMin, altT
       <line x1={CX} y1={CY - R} x2={CX} y2={CY + R} stroke="#64748b" strokeOpacity="0.45" />
       <text x={CX} y={CY - R - 3} fill="#94a3b8" fontSize="9" textAnchor="middle">Alt</text>
       <text x={CX + R + 1} y={CY - 3} fill="#94a3b8" fontSize="9" textAnchor="end">Az</text>
-      {paeTotal > 0 && (
+      {paeTotal > 0 && determinable && (
         <>
           <line x1={CX} y1={CY} x2={dot.x} y2={dot.y} stroke="#e2e8f0" strokeWidth="2" />
           <circle cx={dot.x} cy={dot.y} r="5" fill={BAND_HEX[band]} stroke="#fff" strokeWidth="1.4" />
         </>
       )}
-      <text x={CX} y={182} fill={BAND_HEX[band]} fontSize="15" fontWeight="700" textAnchor="middle">
-        {paeTotal.toFixed(1)}′
+      <text x={CX} y={182} fill={determinable ? BAND_HEX[band] : '#94a3b8'} fontSize="15" fontWeight="700" textAnchor="middle">
+        {determinable ? `${paeTotal.toFixed(1)}′` : '—'}
       </text>
       {showAzWarn && (
         <g>

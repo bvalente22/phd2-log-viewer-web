@@ -19,6 +19,7 @@ export interface SessionStats {
   driftRaArcsec: number;
   driftDecArcsec: number;
   paeArcMin: number;
+  paeDeterminable: boolean;
   altArcMin: number | null;
   azArcMin: number | null;
   altTrust: boolean;
@@ -109,6 +110,7 @@ export function calcStats(s: GuideSession, mask?: ExclusionMask): SessionStats {
     driftRaArcsec: driftRa * s.pixelScale,
     driftDecArcsec: driftDec * s.pixelScale,
     paeArcMin,
+    paeDeterminable: pa.paeDeterminable,
     altArcMin: pa.altArcMin,
     azArcMin: pa.azArcMin,
     altTrust: pa.altTrust,

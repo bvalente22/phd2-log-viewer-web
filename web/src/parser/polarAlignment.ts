@@ -1,5 +1,6 @@
 import type { GuideSession } from './types';
 import { starWasFound } from './tokens';
+import { SETTLING_START, SETTLING_END } from './settling';
 
 export const PAE_CONSTANT = 3.8197;
 // Below this sensitivity (|cos HA| for Az, |sin HA| for Alt) the axis is
@@ -15,6 +16,7 @@ export interface PolarAlignment {
   altTrust: boolean;
   azTrust: boolean;
   hourAngleHours: number | null;
+  paeDeterminable: boolean;
 }
 
 // Per-entry settling-exclusion flags from the parsed INFO events. Mirrors
@@ -23,13 +25,14 @@ export function settlingMask(session: GuideSession): boolean[] {
   const out = new Array<boolean>(session.entries.length).fill(false);
   let settling = false;
   let startIdx = 0;
+  // Same start/end markers as computeSettlingMask (incl. older state=1/state=0). API-window only — deliberately omits the post-DITHER frame settle, to match phdlogview's ExcludeSettlingByAPI default that the seg 8/10/15 validation relies on.
   for (const info of session.infos) {
     if (settling) {
-      if (info.info.includes('Settling complete') || info.info.includes('Settling fail')) {
+      if (SETTLING_END.has(info.info)) {
         settling = false;
         for (let i = startIdx; i < info.idx && i < out.length; i++) out[i] = true;
       }
-    } else if (info.info.includes('Settling start')) {
+    } else if (SETTLING_START.has(info.info)) {
       settling = true;
       startIdx = info.idx;
     }
@@ -100,6 +103,7 @@ export function computePolarAlignment(session: GuideSession, mask?: Uint8Array):
   const driftDecPxMin = driftDecPps * 60;
 
   const cosDec = Math.cos(session.declination);
+  const paeDeterminable = firstIdx >= 0 && lastIdx > firstIdx && Math.abs(cosDec) > 1e-6;
   const paeTotalArcMin = Math.abs(cosDec) > 1e-6
     ? (PAE_CONSTANT * Math.abs(driftDecPxMin) * session.pixelScale) / Math.abs(cosDec)
     : 0;
@@ -129,5 +133,6 @@ export function computePolarAlignment(session: GuideSession, mask?: Uint8Array):
     altTrust,
     azTrust,
     hourAngleHours: ha,
+    paeDeterminable,
   };
 }

@@ -35,8 +35,8 @@ const DITHER_SETTLE_FRAMES = 5;
  * The result is OR-merged with `base` when supplied, so callers can layer
  * this onto an existing user-edited mask.
  */
-const SETTLING_START = new Set(['Settling started', 'state=1']);
-const SETTLING_END = new Set(['Settling complete', 'Settling failed', 'state=0']);
+export const SETTLING_START = new Set(['Settling started', 'state=1']);
+export const SETTLING_END = new Set(['Settling complete', 'Settling failed', 'state=0']);
 
 export function computeSettlingMask(s: GuideSession, base?: Uint8Array): Uint8Array {
   const m = base && base.length === s.entries.length

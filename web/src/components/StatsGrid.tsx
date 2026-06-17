@@ -102,9 +102,13 @@ export function StatsGrid() {
           </div>
           {/* Line 1: total PAE, stoplight-coloured badge */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-            <span className={`rounded px-1.5 py-0.5 font-mono text-xs ${BAND_CLASSES[paBand]}`}>
-              {`${fmt(s.paeArcMin, 2)}′`}
-            </span>
+            {s.paeDeterminable ? (
+              <span className={`rounded px-1.5 py-0.5 font-mono text-xs ${BAND_CLASSES[paBand]}`}>
+                {`${fmt(s.paeArcMin, 2)}′`}
+              </span>
+            ) : (
+              <span className="font-mono text-xs text-slate-400">—</span>
+            )}
           </div>
           {/* Line 2: Alt / Az contributions with low-confidence markers */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
@@ -134,6 +138,7 @@ export function StatsGrid() {
         altTrust={s.altTrust}
         azTrust={s.azTrust}
         hasHa={hasHa}
+        determinable={s.paeDeterminable}
       />
     </div>
   );

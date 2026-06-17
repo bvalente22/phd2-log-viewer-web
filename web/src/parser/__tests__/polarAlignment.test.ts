@@ -21,8 +21,8 @@ describe('settlingMask', () => {
   it('excludes entries between Settling started and Settling complete', () => {
     const s = session([e({ dt: 0 }), e({ dt: 1 }), e({ dt: 2 }), e({ dt: 3 })]);
     s.infos = [
-      { idx: 1, repeats: 1, info: 'SETTLING STATE CHANGE, Settling started' },
-      { idx: 3, repeats: 1, info: 'SETTLING STATE CHANGE, Settling complete' },
+      { idx: 1, repeats: 1, info: 'Settling started' },
+      { idx: 3, repeats: 1, info: 'Settling complete' },
     ];
     expect(settlingMask(s)).toEqual([false, true, true, false]);
   });
@@ -121,6 +121,7 @@ describe('computePolarAlignment PAE + decomposition', () => {
     expect(pa.altTrust).toBe(true);
     expect(pa.azTrust).toBe(true);
     expect(Math.hypot(pa.altArcMin!, pa.azArcMin!)).toBeCloseTo(pa.paeTotalArcMin, 4);
+    expect(pa.paeDeterminable).toBe(true);
   });
 
   it('null hour angle leaves Alt/Az null and untrusted', () => {
@@ -136,5 +137,17 @@ describe('computePolarAlignment PAE + decomposition', () => {
     const s = ramp();
     s.declination = Math.PI / 2; // cos ≈ 0 → guarded
     expect(computePolarAlignment(s).paeTotalArcMin).toBe(0);
+    expect(computePolarAlignment(s).paeDeterminable).toBe(false);
+  });
+
+  it('paeDeterminable = false when fewer than 2 included frames', () => {
+    // Only one included entry → firstIdx === lastIdx, so lastIdx > firstIdx is false.
+    const s = session([
+      e({ dt: 0, decraw: 0, included: false }),
+      e({ dt: 60, decraw: 1, included: true }),
+      e({ dt: 120, decraw: 2, included: false }),
+    ]);
+    s.pixelScale = 2;
+    expect(computePolarAlignment(s).paeDeterminable).toBe(false);
   });
 });
