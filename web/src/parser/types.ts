@@ -67,6 +67,8 @@ export interface GuideSession {
   duration: number;
   pixelScale: number;
   declination: number;
+  hourAngleHours: number | null;
+  pierSide: string | null;
   entries: GuideEntry[];
   infos: InfoEntry[];
   ao: Mount;
@@ -80,6 +82,8 @@ export const newGuideSession = (date: string): GuideSession => ({
   duration: 0,
   pixelScale: 1,
   declination: 0,
+  hourAngleHours: null,
+  pierSide: null,
   entries: [],
   infos: [],
   ao: newMount(),

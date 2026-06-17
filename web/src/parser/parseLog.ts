@@ -125,6 +125,15 @@ export function parseLog(text: string): GuideLog {
       } else if (startsWith(ln, 'RA = ')) {
         const decDeg = getDbl(ln, ' hr, Dec = ', 0);
         s.declination = (decDeg * Math.PI) / 180;
+        // Hour angle (hours) — presence-checked because 0h is a valid value
+        // (the meridian), so a missing field must stay null, not default to 0.
+        if (ln.indexOf('Hour angle = ') >= 0) {
+          s.hourAngleHours = getDbl(ln, 'Hour angle = ', 0);
+        }
+        const pi = ln.indexOf('Pier side = ');
+        if (pi >= 0) {
+          s.pierSide = ln.slice(pi + 'Pier side = '.length).split(',')[0].trim();
+        }
       }
       s.hdr.push(ln);
       continue;
