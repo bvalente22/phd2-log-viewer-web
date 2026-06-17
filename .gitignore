@@ -12,6 +12,17 @@ sample data/
 # Editor settings (local).
 .vscode/
 
+# Local-only prototype/reference for the imaging-estimator feature (a
+# dependency-free ChatGPT-drafted eccentricity calculator). Kept on disk as a
+# design reference but never committed. Scoped to the repo root.
+/imagingEstimator/
+
+# Local-only copy of the upstream phdlogview C++ desktop app, brought in as a
+# reference for feature work. The C++ sources were scrubbed from this repo's
+# history (see CLAUDE.md) and must never be reintroduced; this large zip plus
+# the unpacked tree stay on disk only.
+/CPP Source/
+
 # Stray empty node_modules occasionally created at repo root by tooling;
 # the app's real deps live under web/ (ignored by web/.gitignore).
 /node_modules/
