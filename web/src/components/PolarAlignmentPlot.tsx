@@ -69,16 +69,16 @@ export default function PolarAlignmentPlot({ paeTotal, altArcMin, azArcMin, altT
       </text>
       {showAzWarn && (
         <g>
+          <title>{t('pa.azLowConf')}</title>
           <circle cx={CX + R * 0.62} cy={CY - 9} r="8" fill="#facc15" />
           <text x={CX + R * 0.62} y={CY - 5} fontSize="12" fontWeight="800" fill="#1f2937" textAnchor="middle">!</text>
-          <title>{t('pa.azLowConf')}</title>
         </g>
       )}
       {showAltWarn && (
         <g>
+          <title>{t('pa.altLowConf')}</title>
           <circle cx={CX + 9} cy={CY - R * 0.62} r="8" fill="#facc15" />
           <text x={CX + 9} y={CY - R * 0.62 + 4} fontSize="12" fontWeight="800" fill="#1f2937" textAnchor="middle">!</text>
-          <title>{t('pa.altLowConf')}</title>
         </g>
       )}
     </svg>
