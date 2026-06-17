@@ -65,7 +65,7 @@ export function computePolarAlignment(session: GuideSession, mask?: Uint8Array):
   if (firstIdx >= 0 && lastIdx > firstIdx) {
     // RA: (raraw_last − raraw_first − Σ RA corrections) / elapsed.
     let sum = 0;
-    for (let i = firstIdx; i < entries.length; i++) {
+    for (let i = firstIdx; i <= lastIdx; i++) {
       if (included(i) && entries[i].radur !== 0) sum += entries[i].raguide;
     }
     const dtSpan = entries[lastIdx].dt - entries[firstIdx].dt;
