@@ -1,0 +1,79 @@
+import { describe, it, expect } from 'vitest';
+import { computePolarAlignment, settlingMask } from '../polarAlignment';
+import { newGuideSession } from '../types';
+import type { GuideEntry, GuideSession } from '../types';
+
+// Full entry builder (mkE in stats.test only sets ra/dec).
+const e = (o: Partial<GuideEntry>): GuideEntry => ({
+  frame: 0, dt: 0, mount: 'MOUNT', included: true, guiding: true,
+  dx: 0, dy: 0, raraw: 0, decraw: 0, raguide: 0, decguide: 0,
+  radur: 0, decdur: 0, mass: 0, snr: 0, err: 0, info: '', ...o,
+});
+
+const session = (entries: GuideEntry[], extra: Partial<GuideSession> = {}): GuideSession => {
+  const s = newGuideSession('x');
+  s.entries = entries; s.pixelScale = 1; s.declination = 0; s.hourAngleHours = 0;
+  Object.assign(s, extra);
+  return s;
+};
+
+describe('settlingMask', () => {
+  it('excludes entries between Settling started and Settling complete', () => {
+    const s = session([e({ dt: 0 }), e({ dt: 1 }), e({ dt: 2 }), e({ dt: 3 })]);
+    s.infos = [
+      { idx: 1, repeats: 1, info: 'SETTLING STATE CHANGE, Settling started' },
+      { idx: 3, repeats: 1, info: 'SETTLING STATE CHANGE, Settling complete' },
+    ];
+    expect(settlingMask(s)).toEqual([false, true, true, false]);
+  });
+});
+
+describe('computePolarAlignment drift', () => {
+  it('RA drift backs out corrections via the endpoint formula', () => {
+    // raraw ramps 0..3 over 180s, but 1.0 px of correction was applied total.
+    // Uncorrected displacement = (3 - 0) - (-1) ... here raguide sums to 1 on a
+    // pulsed frame, so endpoint = (3 - 0 - 1)/180 px/s = 2/180; *60 = 0.6667 px/min.
+    const s = session([
+      e({ dt: 0, raraw: 0 }),
+      e({ dt: 60, raraw: 1, raguide: 1, radur: 50 }),
+      e({ dt: 120, raraw: 2 }),
+      e({ dt: 180, raraw: 3 }),
+    ]);
+    const pa = computePolarAlignment(s);
+    expect(pa.driftRaPxMin).toBeCloseTo((3 - 0 - 1) / 180 * 60, 4);
+  });
+
+  it('Dec drift is the cumulative-uncorrected slope', () => {
+    // All frames un-pulsed & adjacent: cumulative = raw decraw ramp 0..3 over 180s.
+    const s = session([
+      e({ dt: 0, decraw: 0 }),
+      e({ dt: 60, decraw: 1 }),
+      e({ dt: 120, decraw: 2 }),
+      e({ dt: 180, decraw: 3 }),
+    ]);
+    const pa = computePolarAlignment(s);
+    expect(pa.driftDecPxMin).toBeCloseTo(1, 4); // 1 px/min
+  });
+
+  it('Dec drift does NOT accumulate across a settling gap (skip-gaps)', () => {
+    // decraw jumps from 0.1 to 5.0 across a settling gap (lock moved). Without
+    // skip-gaps the slope would be huge; with it, the gap delta is ignored so
+    // the trend stays ~0.
+    const s = session([
+      e({ dt: 0, decraw: 0.0 }),
+      e({ dt: 60, decraw: 0.1 }),  // last before gap
+      e({ dt: 120, decraw: 5.0 }), // first after gap (excluded-neighbor → skip delta)
+      e({ dt: 180, decraw: 5.1 }),
+    ]);
+    s.infos = [
+      { idx: 2, repeats: 1, info: 'Settling started' },
+      { idx: 2, repeats: 1, info: 'Settling complete' }, // excludes nothing here…
+    ];
+    // Force a gap by excluding index 2 via the mask (simulates a dropped/settling frame).
+    const mask = new Uint8Array([0, 0, 1, 0]);
+    const pa = computePolarAlignment(s, mask);
+    // Included indices: 0,1,3. Pair (1->3) is non-adjacent (idx 2 excluded) → its
+    // delta is skipped. Pair (0->1) delta = +0.1. So cumulative is tiny, slope small.
+    expect(Math.abs(pa.driftDecPxMin)).toBeLessThan(0.5);
+  });
+});
