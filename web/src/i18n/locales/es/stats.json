@@ -1,6 +1,7 @@
 {
   "rows": {
-    "total": "Total"
+    "total": "Total",
+    "polarAlign": "Alineación polar"
   },
   "guide": {
     "duration": "Duración",
@@ -98,6 +99,11 @@
   "eccentricityTooltip": "Excentricidad {{value}} — elongación de la dispersión RA/Dec (0 = redonda, 1 = una línea). RA {{ra}} / Dec {{dec}}",
   "aspectRatioTooltip": "Relación de aspecto {{value}} — Máx/Mín del RMS de RA y Dec (1.00 = redonda, mayor = alargada). RA {{ra}} / Dec {{dec}}",
   "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}. Clic para copiar.",
+  "pa": {
+    "tooltip": "Error estimado de alineación polar de esta sección, a partir de la deriva en Dec. La Altitud y el Acimut se separan según el ángulo horario; una sola sección no puede separarlos del todo — \"!\" marca un eje de baja confianza.",
+    "altLowConf": "La Altitud es de baja confianza con este ángulo horario: cerca del meridiano apenas afecta a la deriva en Dec, así que este valor no es fiable.",
+    "azLowConf": "El Acimut es de baja confianza con este ángulo horario: cerca de ±6h apenas afecta a la deriva en Dec, así que este valor no es fiable."
+  },
   "ga": {
     "summary": "Guiding Assistant ({{count}})",
     "summaryTooltip": "Ejecuciones del PHD2 Guiding Assistant detectadas en esta sesión — clic para expandir o contraer el panel de recomendaciones",
