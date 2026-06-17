@@ -4,7 +4,7 @@ import { paePlotDot } from '../PolarAlignmentPlot';
 describe('paePlotDot', () => {
   const perMin = 70 / 6; // radius 70 spans 6′
   it('places the dot at distance = total PAE from center', () => {
-    const d = paePlotDot(3, 3, 0, perMin, 80, 80); // all azimuth → on +x axis
+    const d = paePlotDot(3, 0, 3, perMin, 80, 80); // all azimuth → on +x axis
     expect(Math.hypot(d.x - 80, d.y - 80)).toBeCloseTo(3 * perMin, 4);
     expect(d.x).toBeGreaterThan(80); // azimuth → right
     expect(d.y).toBeCloseTo(80, 4);

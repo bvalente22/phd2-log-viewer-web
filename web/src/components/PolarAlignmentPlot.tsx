@@ -23,7 +23,7 @@ export function paePlotDot(
   if (altArcMin === null || azArcMin === null || paeTotal <= 0) {
     return { x: cx, y: cy, r };
   }
-  const ang = Math.atan2(azArcMin, altArcMin); // az → X-right, alt → Y-up; both ≥ 0 → first quadrant
+  const ang = Math.atan2(altArcMin, azArcMin); // alt → Y-up, az → X-right; both ≥ 0 → first quadrant
   return { x: cx + Math.cos(ang) * r, y: cy - Math.sin(ang) * r, r };
 }
 
