@@ -117,14 +117,18 @@ describe('computePolarAlignment PAE + decomposition', () => {
     expect(pa.azTrust).toBe(false);
   });
 
-  it('at HA 3h (45 deg): both axes trusted, Pythagoras equals total', () => {
+  it('at HA 3h (45 deg): both axes trusted, split matches effective-HA sin/cos', () => {
     const s = ramp(); s.hourAngleHours = 3; // near 45 deg
     const pa = computePolarAlignment(s);
-    // effectiveHa ≈ 3.025h; both axes are substantial and trusted; Pythagoras = total
+    // ramp() has dt=[0,60,120,180], all 4 frames included; mean dt = (0+60+120+180)/4 = 90s
+    const meanDt = (0 + 60 + 120 + 180) / 4; // 90s
+    const effectiveHa = 3 + (meanDt / 3600) * 1.0027379;
+    const haRad = (effectiveHa * 15 * Math.PI) / 180;
     expect(pa.altTrust).toBe(true);
     expect(pa.azTrust).toBe(true);
-    expect(Math.hypot(pa.altArcMin!, pa.azArcMin!)).toBeCloseTo(pa.paeTotalArcMin, 3);
     expect(pa.paeDeterminable).toBe(true);
+    expect(pa.altArcMin!).toBeCloseTo(pa.paeTotalArcMin * Math.sin(haRad), 2);
+    expect(pa.azArcMin!).toBeCloseTo(pa.paeTotalArcMin * Math.cos(haRad), 2);
   });
 
   it('null hour angle leaves Alt/Az null and untrusted', () => {
