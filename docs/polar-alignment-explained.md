@@ -117,8 +117,12 @@ azArcMin  = paeTotalArcMin × azSens
 altArcMin = paeTotalArcMin × altSens
 ```
 
-Note: `√(azArcMin² + altArcMin²) = paeTotalArcMin` only at H = 45° / 135°.
-In general the min-norm split is a projection, not a Pythagorean decomposition.
+Note: by construction `√(azArcMin² + altArcMin²) = paeTotalArcMin` for **every**
+hour angle (`az = PAE·|cos H|`, `alt = PAE·|sin H|` ⇒ `az² + alt² = PAE²`). The
+split is a *projection of the PAE magnitude* onto the two axes by their
+hour-angle sensitivity — it is **not** a measurement of how the true misalignment
+actually divides between Alt and Az, which a single section cannot determine
+(see §4.1). At H = 45°/135° the split is symmetric (`azArcMin = altArcMin`).
 
 **Trust flags:**
 
@@ -236,17 +240,24 @@ separated by the available data.
 ### 3.1 What the web app reproduces
 
 The web app reproduces `phdlogview`'s `RA Drift`, `Dec Drift`, and
-`Polar Alignment Error` for each guiding section. Validation against sample log
-`PHD2_GuideLog_2026-06-09_210610.txt` (pixel scale 5.04″/px, Dec 56.5°):
-
-| Segment | C++ RA drift | Web RA drift | C++ Dec drift | Web Dec drift | C++ PAE | Web PAE |
-|---|---|---|---|---|---|---|
-| 8  | −0.22″/min | −0.22″/min (exact) | −0.57″/min | −0.58″/min | 3.9′ | 4.0′ |
-| 10 | −0.08″/min | −0.08″/min (exact) | −0.44″/min | −0.45″/min | 3.1′ | 3.1′ |
-| 15 | −0.02″/min | −0.02″/min (exact) | −0.17″/min | −0.17″/min | 1.2′ | 1.2′ |
+`Polar Alignment Error` for each guiding section. Validation used sample log
+`PHD2_GuideLog_2026-06-09_210610.txt` (pixel scale 5.04″/px, Dec 56.5°),
+guiding segments 8, 10, and 15.
 
 RA drift matches exactly. Dec drift is within ≈ ±0.01″/min. PAE is within
 ≈ 0.1′ on all three segments.
+
+PAE comparison (desktop vs web):
+
+| Segment | Desktop PAE | Web PAE |
+|---|---|---|
+| 8  | 3.9′ | 4.0′ |
+| 10 | 3.1′ | 3.1′ |
+| 15 | 1.2′ | 1.2′ |
+
+Segment 10 drift anchor: RA ≈ −0.08″/min (web exact match), Dec ≈ −0.44″/min
+desktop / −0.45″/min web. Segment 15 Dec drift: −0.17″/min (web matches
+desktop; see §3.3 for the earlier discrepancy).
 
 The algorithms used:
 
@@ -254,10 +265,9 @@ The algorithms used:
   this is the same intent as the desktop; the web implementation uses exact
   pixel-space arithmetic.
 - **Dec drift:** cumulative uncorrected slope with skip-gaps (Section 1.3) —
-  the desktop binary also uses skip-gaps. (The desktop C++ source text appears
-  to accumulate across gaps, which is a latent source bug that the binary does
-  not exhibit; the web implementation matches the binary behavior, which is also
-  physically correct.)
+  the web's skip-gaps rule matches the desktop binary's observed behavior, which
+  is physically correct (gaps caused by dithers or settling shifts must not
+  contaminate the slope).
 - **PAE formula:** `3.8197 × |driftDecPxMin| × pixelScale / cos(dec)` —
   identical to the desktop.
 
