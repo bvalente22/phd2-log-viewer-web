@@ -10,6 +10,7 @@ import {
   SEEING_PRESETS, type ImageImpactResult,
 } from '../parser/imageImpact';
 import { fmtNumber, wrapTip } from '../i18n/format';
+import { raDecColors } from '../themes';
 
 const f2 = (n: number) => fmtNumber(n, 2);
 const IMAGING_SCALE_CALC_URL = 'https://astronomy.tools/calculators/field_of_view/';
@@ -46,13 +47,13 @@ function DecimalInput({ value, onChange, className, title, ariaLabel }: {
   );
 }
 
-function Axes() {
+function Axes({ raColor = '#94a3b8', decColor = '#94a3b8' }: { raColor?: string; decColor?: string } = {}) {
   return (
     <>
       <line x1={14} y1={CY} x2={W - 14} y2={CY} stroke="rgba(255,255,255,.12)" />
       <line x1={CX} y1={12} x2={CX} y2={H - 12} stroke="rgba(255,255,255,.12)" />
-      <text x={W - 16} y={CY - 4} fontSize={10} fill="#94a3b8" textAnchor="end">RA</text>
-      <text x={CX + 3} y={22} fontSize={10} fill="#94a3b8">Dec</text>
+      <text x={W - 16} y={CY - 4} fontSize={10} fill={raColor} textAnchor="end">RA</text>
+      <text x={CX + 3} y={22} fontSize={10} fill={decColor}>Dec</text>
     </>
   );
 }
@@ -108,7 +109,9 @@ function GuideEllipse({ r, title }: { r: ImageImpactResult; title: string }) {
   );
 }
 
-function FinalEllipse({ r, title }: { r: ImageImpactResult; title: string }) {
+function FinalEllipse({ r, title, raColor, decColor }: {
+  r: ImageImpactResult; title: string; raColor: string; decColor: string;
+}) {
   const { t } = useTranslation('stats');
   const scale = MAX_R / Math.max(r.finalFwhmMajorArcsec, 1e-6);
   const { rx, ry } = axisRadii(r.finalFwhmMajorArcsec * scale, r.finalFwhmMinorArcsec * scale, r.dominantAxis);
@@ -116,9 +119,12 @@ function FinalEllipse({ r, title }: { r: ImageImpactResult; title: string }) {
   return (
     <div title={title}>
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('imageImpact.finalStar')}>
-        <Axes />
+        <Axes raColor={raColor} decColor={decColor} />
         <circle cx={CX} cy={CY} r={baseR} fill="none" stroke="rgba(52,211,153,.5)" strokeWidth={2} strokeDasharray="4 4" />
-        <ellipse cx={CX} cy={CY} rx={rx} ry={ry} fill="rgba(143,180,255,.18)" stroke="rgba(143,180,255,.95)" strokeWidth={2} />
+        {/* The final star's RA and Dec extents drawn as their own circles,
+            each in the global RA/Dec preference color (rx = RA, ry = Dec). */}
+        <circle cx={CX} cy={CY} r={ry} fill="none" stroke={decColor} strokeWidth={2} />
+        <circle cx={CX} cy={CY} r={rx} fill="none" stroke={raColor} strokeWidth={2} />
       </svg>
       <div className="mt-0.5 text-center text-[10px] text-slate-400">
         {t('imageImpact.finalStar')} — {t('imageImpact.finalFwhm', {
@@ -142,6 +148,9 @@ export function ImageImpact() {
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const hash = useLogStore((s) => s.meta?.hash);
   const exclusions = useViewStore((s) => s.exclusions);
+
+  const swapRaDec = useViewStore((s) => s.swapRaDec);
+  const { ra: raColor, dec: decColor } = raDecColors(swapRaDec);
 
   const remember = useViewStore((s) => s.rememberImaging);
   const setRemember = useViewStore((s) => s.setRememberImaging);
@@ -237,7 +246,7 @@ export function ImageImpact() {
       {result ? (
         <div className="flex flex-wrap gap-4">
           <GuideEllipse r={result} title={guideTooltip(result, t)} />
-          <FinalEllipse r={result} title={finalTooltip(result, scale, ctx.guideScale, fwhm, t)} />
+          <FinalEllipse r={result} title={finalTooltip(result, scale, ctx.guideScale, fwhm, t)} raColor={raColor} decColor={decColor} />
         </div>
       ) : (
         <div className="text-xs text-slate-500">{t('imageImpact.noData')}</div>
