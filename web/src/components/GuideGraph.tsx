@@ -12,7 +12,6 @@ import { useDebugLogStore } from '../state/debugLogStore';
 import type { GuideSession } from '../parser';
 import { useChartGestures } from './useChartGestures';
 import { layoutInlineEvents } from './eventLayout';
-import { computeSettlingMask } from '../parser/settling';
 import { themeOf, raDecColors } from '../themes';
 
 const PULSE_RA = '#3b82f6';
@@ -542,7 +541,7 @@ export function GuideGraph() {
   const log = useLogStore((s) => s.log);
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const exclusions = useViewStore((s) => s.exclusions);
-  const setMask = useViewStore((s) => s.setMask);
+  const applySettlingPolicy = useViewStore((s) => s.applySettlingPolicy);
   const scaleMode = useViewStore((s) => s.scaleMode);
   const traces = useViewStore((s) => s.traces);
   const coordMode = useViewStore((s) => s.coordMode);
@@ -748,24 +747,20 @@ export function GuideGraph() {
       : null;
   }, [data]);
 
-  // First-time-viewing default: auto-exclude dithers and settling windows so
-  // routine guiding stats aren't dominated by post-dither recovery frames.
-  // Only applies when no mask exists yet for this section — once the user
-  // touches the exclusions (Include all, manual ranges, etc.) an entry is
-  // recorded and we leave it alone.
+  // First-time-viewing default: apply the DESKTOP settling policy (API settling
+  // windows only) so the section's stats (RMS, drift, PAE) and greyed frames
+  // match the desktop PHD2 Log Viewer. Only when no mask exists yet for this
+  // section — once the user touches the exclusions (Include all, manual ranges,
+  // a menu policy, etc.) we leave it alone.
   useEffect(() => {
     if (!data) return;
     // Length-aware guard (not just `.has`): a stale mask left under this
     // sessionIdx by a previously-loaded log can have the wrong length. Only
-    // skip auto-masking when a mask of the CURRENT session's size already
-    // exists — otherwise recompute so the settling overlay matches this log.
+    // skip when a mask of the CURRENT session's size already exists.
     const existing = exclusions.get(data.sessionIdx);
     if (existing && existing.length === data.session.entries.length) return;
-    const mask = computeSettlingMask(data.session);
-    let any = false;
-    for (let i = 0; i < mask.length; i++) if (mask[i]) { any = true; break; }
-    setMask(data.sessionIdx, any ? mask : new Uint8Array(data.session.entries.length));
-  }, [data, exclusions, setMask]);
+    applySettlingPolicy(data.sessionIdx, data.session, 'desktop');
+  }, [data, exclusions, applySettlingPolicy]);
 
   const initialAnnotations = useMemo<Partial<Annotations>[]>(() => {
     if (!data) return [];
