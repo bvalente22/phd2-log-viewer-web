@@ -102,7 +102,20 @@
   "pa": {
     "tooltip": "Estimated polar-alignment error for this section, from the Dec drift. Altitude and Azimuth are split by hour angle; one section can't fully separate them — \"!\" marks a low-confidence axis.",
     "altLowConf": "Altitude is low-confidence at this hour angle — near the meridian, altitude barely affects Dec drift, so this value can't be measured reliably.",
-    "azLowConf": "Azimuth is low-confidence at this hour angle — near ±6h, azimuth barely affects Dec drift, so this value can't be measured reliably."
+    "azLowConf": "Azimuth is low-confidence at this hour angle — near ±6h, azimuth barely affects Dec drift, so this value can't be measured reliably.",
+    "modeSection": "Section",
+    "modeAll": "All Sections",
+    "confidence": "Confidence",
+    "confHigh": "High",
+    "confMedium": "Medium",
+    "confLow": "Low",
+    "confInsufficient": "—",
+    "confTipHigh": "High confidence: sections span {{spread}}h of hour angle with a low residual, so Alt and Az are well separated.",
+    "confTipMedium": "Medium confidence: limited hour-angle spread ({{spread}}h) or some residual; Alt/Az separation is fair.",
+    "confTipLow": "Low confidence: narrow hour-angle spread or a large residual — Alt/Az are weakly separated (a mid-session re-align would also cause this).",
+    "confTipInsufficient": "Not enough sections at different hour angles to solve Alt vs Az across the log.",
+    "effectiveHaTip": "Alt/Az split uses this section's mean hour angle (~{{ha}}h), advanced at the sidereal rate over the included frames.",
+    "allTip": "Whole-log polar alignment from a least-squares fit across {{count}} sections at different hour angles."
   },
   "ga": {
     "summary": "Guiding Assistant ({{count}})",

@@ -102,7 +102,20 @@
   "pa": {
     "tooltip": "本区段根据 Dec 漂移估算的极轴校准误差。高度与方位按时角拆分；单个区段无法完全分离二者——“!”表示该轴可信度低。",
     "altLowConf": "在此时角下高度方向可信度低——靠近子午线时它对 Dec 漂移几乎没有影响，因此该数值不可靠。",
-    "azLowConf": "在此时角下方位方向可信度低——靠近 ±6 小时时它对 Dec 漂移几乎没有影响，因此该数值不可靠。"
+    "azLowConf": "在此时角下方位方向可信度低——靠近 ±6 小时时它对 Dec 漂移几乎没有影响，因此该数值不可靠。",
+    "modeSection": "区段",
+    "modeAll": "所有区段",
+    "confidence": "可信度",
+    "confHigh": "高",
+    "confMedium": "中",
+    "confLow": "低",
+    "confInsufficient": "—",
+    "confTipHigh": "高可信度:各区段跨越 {{spread}} 小时时角且残差很小,高度与方位分离良好。",
+    "confTipMedium": "中可信度:时角跨度有限({{spread}} 小时)或存在一些残差;高度/方位分离尚可。",
+    "confTipLow": "低可信度:时角跨度窄或残差大——高度/方位分离不佳(会话中途重新校准也会导致此情况)。",
+    "confTipInsufficient": "不同时角的区段不足,无法在该日志中分离高度与方位。",
+    "effectiveHaTip": "高度/方位拆分使用本区段的平均时角(约 {{ha}} 小时),按恒星速率在所含帧上推进。",
+    "allTip": "由对 {{count}} 个不同时角区段的最小二乘拟合得到的整个日志极轴校准。"
   },
   "ga": {
     "summary": "Guiding Assistant ({{count}})",

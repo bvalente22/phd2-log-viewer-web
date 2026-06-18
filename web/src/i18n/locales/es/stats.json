@@ -102,7 +102,20 @@
   "pa": {
     "tooltip": "Error estimado de alineación polar de esta sección, a partir de la deriva en Dec. La Altitud y el Acimut se separan según el ángulo horario; una sola sección no puede separarlos del todo — \"!\" marca un eje de baja confianza.",
     "altLowConf": "La Altitud es de baja confianza con este ángulo horario: cerca del meridiano apenas afecta a la deriva en Dec, así que este valor no es fiable.",
-    "azLowConf": "El Acimut es de baja confianza con este ángulo horario: cerca de ±6h apenas afecta a la deriva en Dec, así que este valor no es fiable."
+    "azLowConf": "El Acimut es de baja confianza con este ángulo horario: cerca de ±6h apenas afecta a la deriva en Dec, así que este valor no es fiable.",
+    "modeSection": "Sección",
+    "modeAll": "Todas las secciones",
+    "confidence": "Confianza",
+    "confHigh": "Alta",
+    "confMedium": "Media",
+    "confLow": "Baja",
+    "confInsufficient": "—",
+    "confTipHigh": "Confianza alta: las secciones abarcan {{spread}}h de ángulo horario con bajo residual; Alt y Az están bien separados.",
+    "confTipMedium": "Confianza media: poco rango de ángulo horario ({{spread}}h) o algún residual; la separación Alt/Az es aceptable.",
+    "confTipLow": "Confianza baja: rango de ángulo horario estrecho o residual grande — Alt/Az se separan mal (un reajuste a mitad de sesión también lo causaría).",
+    "confTipInsufficient": "No hay suficientes secciones a distintos ángulos horarios para separar Alt y Az en el registro.",
+    "effectiveHaTip": "La división Alt/Az usa el ángulo horario medio de esta sección (~{{ha}}h), avanzado a ritmo sidéreo sobre los frames incluidos.",
+    "allTip": "Alineación polar de todo el registro mediante un ajuste por mínimos cuadrados sobre {{count}} secciones a distintos ángulos horarios."
   },
   "ga": {
     "summary": "Guiding Assistant ({{count}})",

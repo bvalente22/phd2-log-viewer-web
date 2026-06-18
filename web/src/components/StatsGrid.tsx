@@ -1,11 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { calcStats } from '../parser';
-import { fmtNumber, fmtInteger, fmtRoundedInt } from '../i18n/format';
+import { fmtNumber, fmtInteger, fmtRoundedInt, wrapTip } from '../i18n/format';
 import { guidingMetric, polarAlignmentBand, BAND_CLASSES } from './guidingMetric';
 import PolarAlignmentPlot from './PolarAlignmentPlot';
+import { computeGlobalPolarAlignment } from '../parser/globalPolarAlignment';
 
 const fmt = (n: number, d = 3) => fmtNumber(n, d);
 
@@ -24,6 +25,12 @@ export function StatsGrid() {
     const mask = exclusions.get(sec.idx);
     return { stats: calcStats(session, mask), pixelScale: session.pixelScale };
   }, [log, sectionIdx, exclusions]);
+
+  const global = useMemo(
+    () => (log ? computeGlobalPolarAlignment(log, exclusions) : null),
+    [log, exclusions],
+  );
+  const [paView, setPaView] = useState<'section' | 'all'>('section');
 
   if (!stats) return null;
   const s = stats.stats;
@@ -61,11 +68,6 @@ export function StatsGrid() {
   ];
 
   const hasHa = s.hourAngleHours !== null;
-  const paBand = polarAlignmentBand(s.paeArcMin);
-  // "!" marker shown on a low-confidence axis (only meaningful when HA exists).
-  const altWarn = hasHa && !s.altTrust;
-  const azWarn = hasHa && !s.azTrust;
-  const fmtPa = (n: number | null) => (n === null ? '—' : `${fmt(n, 2)}′`);
 
   const copy = (val: string) => navigator.clipboard?.writeText(val);
 
@@ -87,6 +89,21 @@ export function StatsGrid() {
     </div>
   );
 
+  const isAll = paView === 'all';
+  const g = global;
+  const confKey = g ? `pa.conf${g.confidence[0].toUpperCase()}${g.confidence.slice(1)}` : 'pa.confInsufficient';
+  const confColor = g?.confidence === 'high' ? 'text-emerald-400'
+    : g?.confidence === 'medium' ? 'text-amber-300'
+    : g?.confidence === 'low' ? 'text-rose-400' : 'text-slate-400';
+  // values shown in the active mode
+  const total = isAll ? (g && g.confidence !== 'insufficient' ? g.totalArcMin : null) : s.paeArcMin;
+  const altV = isAll ? (g && g.confidence !== 'insufficient' ? g.altArcMin : null) : s.altArcMin;
+  const azV = isAll ? (g && g.confidence !== 'insufficient' ? g.azArcMin : null) : s.azArcMin;
+  const bandVal = total ?? 0;
+  const determinable = isAll ? !!(g && g.confidence !== 'insufficient') : s.paeDeterminable;
+  const haTip = s.effectiveHaHours !== null ? wrapTip(t('pa.effectiveHaTip', { ha: fmt(s.effectiveHaHours, 1) })) : undefined;
+  const toggle = () => setPaView((v) => (v === 'section' ? 'all' : 'section'));
+
   // RA / Dec are PHD2 jargon — kept in English across all locales.
   return (
     <div className="flex flex-wrap items-start gap-4 px-4 py-2 text-sm">
@@ -95,51 +112,73 @@ export function StatsGrid() {
         <Row label="RA" color="text-sky-400" items={raRow} />
         <Row label="Dec" color="text-rose-400" items={decRow} />
 
-        {/* Polar Alignment — its own subtitled area beneath total/ra/dec. */}
+        {/* Polar Alignment — one toggling area (Section ⟷ All Sections) */}
         <div className="mt-1 border-t border-slate-700/60 pt-1">
-          <div className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-violet-400" title={t('pa.tooltip')}>
+          <button
+            type="button"
+            onClick={toggle}
+            className="mb-0.5 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-violet-400 hover:opacity-80"
+            title={wrapTip(isAll ? t('pa.allTip', { count: g?.sectionCount ?? 0 }) : t('pa.tooltip'))}
+          >
             {t('rows.polarAlign')}
-          </div>
-          {/* Line 1: total PAE, stoplight-coloured badge */}
+            <span className="rounded-full bg-slate-700 px-2 py-0.5 text-[10px] text-slate-100">
+              {isAll ? t('pa.modeAll') : t('pa.modeSection')}
+            </span>
+            <span className="text-[10px] text-slate-500">⟳</span>
+          </button>
+
+          {/* Line 1: total */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-            {s.paeDeterminable ? (
-              <span className={`rounded px-1.5 py-0.5 font-mono text-xs ${BAND_CLASSES[paBand]}`}>
-                {`${fmt(s.paeArcMin, 2)}′`}
-              </span>
-            ) : (
-              <span className="font-mono text-xs text-slate-400">—</span>
-            )}
+            {determinable
+              ? <span className={`rounded px-1.5 py-0.5 font-mono text-xs ${BAND_CLASSES[polarAlignmentBand(bandVal)]}`}>{`${fmt(bandVal, 2)}′`}</span>
+              : <span className="font-mono text-xs text-slate-400">—</span>}
           </div>
-          {/* Line 2: Alt / Az contributions with low-confidence markers */}
+
+          {/* Line 2: Alt / Az (section shows "!" markers; All Sections does not) */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
             <span className="flex items-baseline gap-2">
               <span className="text-xs text-slate-400">Alt</span>
-              <span className="font-mono text-slate-100">{fmtPa(s.altArcMin)}</span>
-              {altWarn && <span className="cursor-help font-bold text-amber-400" title={t('pa.altLowConf')}>!</span>}
+              <span className="font-mono text-slate-100">{altV === null ? '—' : `${fmt(altV, 2)}′`}</span>
+              {!isAll && hasHa && !s.altTrust && <span className="cursor-help font-bold text-amber-400" title={wrapTip(t('pa.altLowConf'))}>!</span>}
             </span>
             <span className="flex items-baseline gap-2">
               <span className="text-xs text-slate-400">Az</span>
-              <span className="font-mono text-slate-100">{fmtPa(s.azArcMin)}</span>
-              {azWarn && <span className="cursor-help font-bold text-amber-400" title={t('pa.azLowConf')}>!</span>}
+              <span className="font-mono text-slate-100">{azV === null ? '—' : `${fmt(azV, 2)}′`}</span>
+              {!isAll && hasHa && !s.azTrust && <span className="cursor-help font-bold text-amber-400" title={wrapTip(t('pa.azLowConf'))}>!</span>}
             </span>
           </div>
-          {/* Line 3: RA / Dec drift (input to the calculation) */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-            <Cell k="RA Drift" v={drift(s.driftRa)} />
-            <Cell k="Dec Drift" v={drift(s.driftDec)} />
-          </div>
+
+          {/* Line 3: Section → drift; All Sections → confidence */}
+          {isAll ? (
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm" title={wrapTip(t(`pa.confTip${(g?.confidence ?? 'insufficient')[0].toUpperCase()}${(g?.confidence ?? 'insufficient').slice(1)}`, { spread: fmt(g?.haSpreadHours ?? 0, 1) }))}>
+              <span className="flex items-baseline gap-2">
+                <span className="text-xs text-slate-400">{t('pa.confidence')}</span>
+                <span className={`font-mono font-semibold ${confColor}`}>{t(confKey)}</span>
+              </span>
+              <span className="text-xs text-slate-500">· {g?.sectionCount ?? 0} sections</span>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+              <Cell k="RA Drift" v={drift(s.driftRa)} />
+              <Cell k="Dec Drift" v={drift(s.driftDec)} />
+            </div>
+          )}
         </div>
       </div>
 
-      <PolarAlignmentPlot
-        paeTotal={s.paeArcMin}
-        altArcMin={s.altArcMin}
-        azArcMin={s.azArcMin}
-        altTrust={s.altTrust}
-        azTrust={s.azTrust}
-        hasHa={hasHa}
-        determinable={s.paeDeterminable}
-      />
+      {/* The bullseye toggles with the area */}
+      <button type="button" onClick={toggle} className="shrink-0" title={wrapTip(isAll ? t('pa.allTip', { count: g?.sectionCount ?? 0 }) : t('pa.tooltip'))}>
+        <PolarAlignmentPlot
+          paeTotal={bandVal}
+          altArcMin={altV}
+          azArcMin={azV}
+          altTrust={isAll ? true : s.altTrust}
+          azTrust={isAll ? true : s.azTrust}
+          hasHa={isAll ? false : hasHa}
+          determinable={determinable}
+          titleText={isAll ? t('pa.allTip', { count: g?.sectionCount ?? 0 }) : (haTip ? t('pa.effectiveHaTip', { ha: fmt(s.effectiveHaHours ?? 0, 1) }) : t('pa.tooltip'))}
+        />
+      </button>
     </div>
   );
 }

@@ -25,6 +25,7 @@ export interface SessionStats {
   altTrust: boolean;
   azTrust: boolean;
   hourAngleHours: number | null;
+  effectiveHaHours: number | null;
   ellipse: { theta: number; lx: number; ly: number; elongation: number };
   durationSec: number;
   includedCount: number;
@@ -116,6 +117,7 @@ export function calcStats(s: GuideSession, mask?: ExclusionMask): SessionStats {
     altTrust: pa.altTrust,
     azTrust: pa.azTrust,
     hourAngleHours: pa.hourAngleHours,
+    effectiveHaHours: pa.effectiveHaHours,
     ellipse,
     durationSec: s.duration,
     includedCount: included,
