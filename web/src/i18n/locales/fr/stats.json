@@ -102,7 +102,20 @@
   "pa": {
     "tooltip": "Erreur d'alignement polaire estimée pour cette section, d'après la dérive en Dec. L'Altitude et l'Azimut sont séparés selon l'angle horaire ; une seule section ne peut pas les séparer entièrement — « ! » indique un axe peu fiable.",
     "altLowConf": "L'Altitude est peu fiable à cet angle horaire — près du méridien, elle n'affecte presque pas la dérive en Dec, donc cette valeur n'est pas fiable.",
-    "azLowConf": "L'Azimut est peu fiable à cet angle horaire — près de ±6h, il n'affecte presque pas la dérive en Dec, donc cette valeur n'est pas fiable."
+    "azLowConf": "L'Azimut est peu fiable à cet angle horaire — près de ±6h, il n'affecte presque pas la dérive en Dec, donc cette valeur n'est pas fiable.",
+    "modeSection": "Section",
+    "modeAll": "Toutes les sections",
+    "confidence": "Confiance",
+    "confHigh": "Élevée",
+    "confMedium": "Moyenne",
+    "confLow": "Faible",
+    "confInsufficient": "—",
+    "confTipHigh": "Confiance élevée : les sections couvrent {{spread}}h d'angle horaire avec un faible résidu ; Alt et Az sont bien séparés.",
+    "confTipMedium": "Confiance moyenne : faible plage d'angle horaire ({{spread}}h) ou un peu de résidu ; la séparation Alt/Az est correcte.",
+    "confTipLow": "Confiance faible : plage d'angle horaire étroite ou résidu important — Alt/Az mal séparés (un réalignement en cours de session le causerait aussi).",
+    "confTipInsufficient": "Pas assez de sections à différents angles horaires pour séparer Alt et Az sur le journal.",
+    "effectiveHaTip": "La répartition Alt/Az utilise l'angle horaire moyen de cette section (~{{ha}}h), avancé au taux sidéral sur les frames inclus.",
+    "allTip": "Alignement polaire de tout le journal par moindres carrés sur {{count}} sections à différents angles horaires."
   },
   "ga": {
     "summary": "Guiding Assistant ({{count}})",
