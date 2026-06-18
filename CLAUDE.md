@@ -61,3 +61,7 @@ This repo is often checked out on a NAS SMB share (`\\UGREEN-DXP6800P\PROJECTS`,
 - On a normal local clone none of this applies and `preserveSymlinks` is a harmless no-op.
 
 More detail mirrored in `.claude/memory/nas-vitest-toolchain.md`.
+
+### UI conventions — tooltips
+
+Keep native `title` tooltips **narrow** — wrapped to ~44 chars/line (narrow-and-tall), matching the Image Impact ("estimated imaging impact" ellipse) tooltips. `ImageImpact.tsx` has a `wrap(text, max=52)` helper that inserts newlines; that is the reference pattern. Wide single-line tooltips (e.g. the polar-alignment bullseye / "!" tooltips) are too wide — wrap them. Applies to new and existing tooltips, now and going forward. More in `.claude/memory/ui-tooltips.md`.
