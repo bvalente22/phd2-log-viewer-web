@@ -64,4 +64,10 @@ More detail mirrored in `.claude/memory/nas-vitest-toolchain.md`.
 
 ### UI conventions — tooltips
 
-Keep native `title` tooltips **narrow** — wrapped to ~44 chars/line (narrow-and-tall), matching the Image Impact ("estimated imaging impact" ellipse) tooltips. `ImageImpact.tsx` has a `wrap(text, max=52)` helper that inserts newlines; that is the reference pattern. Wide single-line tooltips (e.g. the polar-alignment bullseye / "!" tooltips) are too wide — wrap them. Applies to new and existing tooltips, now and going forward. More in `.claude/memory/ui-tooltips.md`.
+Keep native `title` tooltips **narrow** — wrapped to ~44 chars/line (narrow-and-tall), matching the Image Impact ("estimated imaging impact" ellipse) tooltips. Run tooltip text through the shared `wrapTip(text, max=44)` helper in `web/src/i18n/format.ts` (extracted from ImageImpact's former private `wrap`). Wide single-line tooltips (e.g. the polar-alignment bullseye / "!" tooltips) are too wide — wrap them. Applies to new and existing tooltips, now and going forward. More in `.claude/memory/ui-tooltips.md`.
+
+### Polar alignment — status & open follow-ups
+
+The polar-alignment **accuracy phase** (effective mean hour angle for the per-section Alt/Az split; whole-log least-squares "All Sections" solve with High/Medium/Low/— confidence; one toggling Section⟷All-Sections footer area; narrow `wrapTip` tooltips) is complete and merged to `main` (PR #109, `945acf6`). Developer explainer: `docs/polar-alignment-explained.md`; spec + plan under `docs/superpowers/`. Prior phases: the per-section Polar Alignment Error feature; the desktop-default settling policy (#106).
+
+Open follow-ups (non-blocking): (1) optional — add a residual-driven Low/Medium confidence test to `web/src/parser/__tests__/globalPolarAlignment.test.ts` (the final review's one recommendation); (2) the user wants a short-email summary of the PA approach for another developer — a draft was provided in chat, pending a decision on shortening it and/or adding it as an abstract to the explainer doc. More in `.claude/memory/pa-accuracy-status.md`.
