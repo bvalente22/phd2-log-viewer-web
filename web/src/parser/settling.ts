@@ -38,7 +38,11 @@ const DITHER_SETTLE_FRAMES = 5;
 export const SETTLING_START = new Set(['Settling started', 'state=1']);
 export const SETTLING_END = new Set(['Settling complete', 'Settling failed', 'state=0']);
 
-export function computeSettlingMask(s: GuideSession, base?: Uint8Array): Uint8Array {
+export function computeSettlingMask(
+  s: GuideSession,
+  base?: Uint8Array,
+  opts?: { includeDithers?: boolean },
+): Uint8Array {
   const m = base && base.length === s.entries.length
     ? new Uint8Array(base)
     : new Uint8Array(s.entries.length);
@@ -58,10 +62,12 @@ export function computeSettlingMask(s: GuideSession, base?: Uint8Array): Uint8Ar
     for (let i = startEntryIdx; i < s.entries.length; i++) m[i] = 1;
   }
 
-  for (const info of s.infos) {
-    if (info.info.startsWith('DITHER')) {
-      const stop = Math.min(s.entries.length, info.idx + DITHER_SETTLE_FRAMES);
-      for (let i = info.idx; i < stop; i++) m[i] = 1;
+  if (opts?.includeDithers ?? true) {
+    for (const info of s.infos) {
+      if (info.info.startsWith('DITHER')) {
+        const stop = Math.min(s.entries.length, info.idx + DITHER_SETTLE_FRAMES);
+        for (let i = info.idx; i < stop; i++) m[i] = 1;
+      }
     }
   }
 
