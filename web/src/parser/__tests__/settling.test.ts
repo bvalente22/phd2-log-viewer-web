@@ -62,3 +62,26 @@ describe('computeSettlingMask', () => {
     expect(out).not.toContain(210);
   });
 });
+
+describe('computeSettlingMask includeDithers option', () => {
+  // DITHER @50 (excludes [50,55)) and a settling window [50,53).
+  const dithered = () => sessionWith(100, [
+    [50, 'DITHER 1.0, 1.0'],
+    [50, 'Settling started'],
+    [53, 'Settling complete'],
+  ]);
+
+  it('default (includeDithers true) excludes settling window + 5 post-dither frames', () => {
+    const m = computeSettlingMask(dithered());
+    expect(m[52]).toBe(1); // settling window
+    expect(m[54]).toBe(1); // post-dither frame beyond the window
+    expect(m[55]).toBe(0);
+  });
+
+  it('includeDithers:false excludes ONLY the settling window (desktop policy)', () => {
+    const m = computeSettlingMask(dithered(), undefined, { includeDithers: false });
+    expect(m[52]).toBe(1); // settling window still excluded
+    expect(m[53]).toBe(0); // post-dither frames NOT excluded
+    expect(m[54]).toBe(0);
+  });
+});

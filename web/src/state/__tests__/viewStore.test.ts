@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { clampSidebarWidth, SIDEBAR_MIN, SIDEBAR_MAX, SIDEBAR_DEFAULT, useViewStore } from '../viewStore';
+import { newGuideSession, type GuideSession, type InfoEntry } from '../../parser/types';
 
 /** frames[i] === i so a frame number doubles as its entry index. */
 const seqFrames = (n: number) => Array.from({ length: n }, (_, i) => i);
@@ -68,5 +69,63 @@ describe('clampSidebarWidth', () => {
   it('exposes a default within bounds', () => {
     expect(SIDEBAR_DEFAULT).toBeGreaterThanOrEqual(SIDEBAR_MIN);
     expect(SIDEBAR_DEFAULT).toBeLessThanOrEqual(SIDEBAR_MAX);
+  });
+});
+
+function sessionWith(n: number, infos: Array<[number, string]>): GuideSession {
+  const s = newGuideSession('2026-06-09');
+  s.entries = Array.from({ length: n }, (_, i) => ({
+    frame: i + 1, dt: i, mount: 'MOUNT' as const, included: true, guiding: true,
+    dx: 0, dy: 0, raraw: 0, decraw: 0, raguide: 0, decguide: 0,
+    radur: 0, decdur: 0, mass: 0, snr: 0, err: 0, info: '',
+  }));
+  s.infos = infos.map(([idx, info]): InfoEntry => ({ idx, repeats: 1, info }));
+  return s;
+}
+
+describe('applySettlingPolicy', () => {
+  beforeEach(() => useViewStore.getState().clearExclusions());
+
+  it('desktop = API only; web adds post-dither; manual excludes survive switches', () => {
+    // DITHER @50 -> [50,55); settling window [50,53).
+    const s = sessionWith(100, [
+      [50, 'DITHER 1.0, 1.0'], [50, 'Settling started'], [53, 'Settling complete'],
+    ]);
+    const st = () => useViewStore.getState();
+
+    st().applySettlingPolicy(0, s, 'desktop');
+    let m = st().exclusions.get(0)!;
+    expect(m[52]).toBe(1);            // settling window excluded
+    expect(m[54]).toBe(0);            // post-dither NOT excluded (desktop)
+    expect(st().settlingPolicy.get(0)).toBe('desktop');
+
+    // user hand-excludes frame 10
+    const withManual = new Uint8Array(m); withManual[10] = 1;
+    st().setMask(0, withManual);
+
+    st().applySettlingPolicy(0, s, 'web');
+    m = st().exclusions.get(0)!;
+    expect(m[54]).toBe(1);            // post-dither now excluded (web)
+    expect(m[10]).toBe(1);            // manual exclude survived
+    expect(st().settlingPolicy.get(0)).toBe('web');
+
+    st().applySettlingPolicy(0, s, 'desktop');
+    m = st().exclusions.get(0)!;
+    expect(m[54]).toBe(0);            // post-dither dropped again
+    expect(m[52]).toBe(1);            // settling window still excluded
+    expect(m[10]).toBe(1);            // manual exclude still there
+  });
+
+  it('includeAll / excludeAll clear the section settling policy', () => {
+    const s = sessionWith(10, []);
+    const st = () => useViewStore.getState();
+    st().applySettlingPolicy(0, s, 'web');
+    expect(st().settlingPolicy.get(0)).toBe('web');
+    st().includeAll(0, 10);
+    expect(st().settlingPolicy.get(0)).toBeUndefined();
+    st().applySettlingPolicy(0, s, 'desktop');
+    expect(st().settlingPolicy.get(0)).toBe('desktop');
+    st().excludeAll(0, 10);
+    expect(st().settlingPolicy.get(0)).toBeUndefined();
   });
 });
