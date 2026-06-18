@@ -30,6 +30,14 @@ export default defineConfig({
   // virtualhost).
   base: process.env.VITE_BASE_PATH ?? '/phd2-log-viewer-web/',
   plugins: [react()],
+  // On Windows, a mapped network drive (e.g. G: -> \\\\NAS\\share) is canonicalized
+  // back to its UNC target by fs.realpathSync.native, which Vite's resolver uses by
+  // default. That turns every resolved module path into a UNC path that vite-node
+  // then mangles ("Cannot find module G:\\...\\UGREEN-...\\spy.js"), breaking vitest
+  // when the repo lives on a NAS share. preserveSymlinks skips that realpath call so
+  // resolved paths stay on the drive letter. Harmless for this project (no symlinked
+  // workspace deps).
+  resolve: { preserveSymlinks: true },
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __APP_GITHASH__: JSON.stringify(gitHash),

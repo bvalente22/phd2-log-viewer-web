@@ -52,3 +52,15 @@ describe('active metric', () => {
     expect(guidingMetric.labelKey).toBe('guide.aspectRatio');
   });
 });
+
+import { polarAlignmentBand } from '../guidingMetric';
+
+describe('polarAlignmentBand', () => {
+  it('bands by 2′ and 5′ thresholds', () => {
+    expect(polarAlignmentBand(0)).toBe('green');
+    expect(polarAlignmentBand(2)).toBe('green');
+    expect(polarAlignmentBand(2.01)).toBe('yellow');
+    expect(polarAlignmentBand(5)).toBe('yellow');
+    expect(polarAlignmentBand(5.01)).toBe('red');
+  });
+});

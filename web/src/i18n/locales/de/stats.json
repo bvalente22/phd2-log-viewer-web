@@ -1,6 +1,7 @@
 {
   "rows": {
-    "total": "Gesamt"
+    "total": "Gesamt",
+    "polarAlign": "Polausrichtung"
   },
   "guide": {
     "duration": "Dauer",
@@ -98,6 +99,11 @@
   "eccentricityTooltip": "Exzentrizität {{value}} — Elongation der RA/Dec-Streuung (0 = rund, 1 = eine Linie). RA {{ra}} / Dec {{dec}}",
   "aspectRatioTooltip": "Seitenverhältnis {{value}} — Max/Min des RA- und Dec-RMS (1.00 = rund, höher = länglich). RA {{ra}} / Dec {{dec}}",
   "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}. Klick zum Kopieren.",
+  "pa": {
+    "tooltip": "Geschätzter Polausrichtungsfehler dieses Abschnitts aus der Dek-Drift. Höhe und Azimut werden über den Stundenwinkel aufgeteilt; ein einzelner Abschnitt kann sie nicht vollständig trennen — \"!\" kennzeichnet eine Achse mit geringer Zuverlässigkeit.",
+    "altLowConf": "Die Höhe ist bei diesem Stundenwinkel wenig zuverlässig — nahe dem Meridian beeinflusst sie die Dek-Drift kaum, daher ist dieser Wert unzuverlässig.",
+    "azLowConf": "Der Azimut ist bei diesem Stundenwinkel wenig zuverlässig — nahe ±6h beeinflusst er die Dek-Drift kaum, daher ist dieser Wert unzuverlässig."
+  },
   "ga": {
     "summary": "Guiding Assistant ({{count}})",
     "summaryTooltip": "PHD2-Guiding-Assistant-Durchläufe in dieser Sitzung — klicken zum Aus-/Einklappen des Empfehlungsbereichs",
