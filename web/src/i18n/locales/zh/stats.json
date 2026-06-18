@@ -1,7 +1,7 @@
 {
   "rows": {
     "total": "总计",
-    "polarAlign": "极轴校准"
+    "polarAlign": "极轴校准误差"
   },
   "guide": {
     "duration": "时长",

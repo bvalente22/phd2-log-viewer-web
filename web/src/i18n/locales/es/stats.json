@@ -1,7 +1,7 @@
 {
   "rows": {
     "total": "Total",
-    "polarAlign": "Alineación polar"
+    "polarAlign": "Error de alineación polar"
   },
   "guide": {
     "duration": "Duración",
