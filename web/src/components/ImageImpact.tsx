@@ -47,13 +47,13 @@ function DecimalInput({ value, onChange, className, title, ariaLabel }: {
   );
 }
 
-function Axes() {
+function Axes({ raColor = '#94a3b8', decColor = '#94a3b8' }: { raColor?: string; decColor?: string } = {}) {
   return (
     <>
       <line x1={14} y1={CY} x2={W - 14} y2={CY} stroke="rgba(255,255,255,.12)" />
       <line x1={CX} y1={12} x2={CX} y2={H - 12} stroke="rgba(255,255,255,.12)" />
-      <text x={W - 16} y={CY - 4} fontSize={10} fill="#94a3b8" textAnchor="end">RA</text>
-      <text x={CX + 3} y={22} fontSize={10} fill="#94a3b8">Dec</text>
+      <text x={W - 16} y={CY - 4} fontSize={10} fill={raColor} textAnchor="end">RA</text>
+      <text x={CX + 3} y={22} fontSize={10} fill={decColor}>Dec</text>
     </>
   );
 }
@@ -119,7 +119,7 @@ function FinalEllipse({ r, title, raColor, decColor }: {
   return (
     <div title={title}>
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('imageImpact.finalStar')}>
-        <Axes />
+        <Axes raColor={raColor} decColor={decColor} />
         <circle cx={CX} cy={CY} r={baseR} fill="none" stroke="rgba(52,211,153,.5)" strokeWidth={2} strokeDasharray="4 4" />
         {/* The final star's RA and Dec extents drawn as their own circles,
             each in the global RA/Dec preference color (rx = RA, ry = Dec). */}
