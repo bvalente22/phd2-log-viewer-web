@@ -9,27 +9,10 @@ import {
   computeImageImpact, presetForFwhm, elongationRating, samplingRelation,
   SEEING_PRESETS, type ImageImpactResult,
 } from '../parser/imageImpact';
-import { fmtNumber } from '../i18n/format';
+import { fmtNumber, wrapTip } from '../i18n/format';
 
 const f2 = (n: number) => fmtNumber(n, 2);
 const IMAGING_SCALE_CALC_URL = 'https://astronomy.tools/calculators/field_of_view/';
-
-// Word-wrap to a max line width by inserting newlines so the native `title`
-// tooltip renders narrow-and-tall instead of one very long line. Hard-breaks a
-// single token longer than max (e.g. CJK runs with no spaces).
-function wrap(text: string, max = 52): string {
-  const out: string[] = [];
-  let line = '';
-  const push = () => { if (line) { out.push(line); line = ''; } };
-  for (const w of text.split(' ')) {
-    let word = w;
-    while (word.length > max) { push(); out.push(word.slice(0, max)); word = word.slice(max); }
-    if (line && line.length + 1 + word.length > max) push();
-    line = line ? `${line} ${word}` : word;
-  }
-  push();
-  return out.join('\n');
-}
 
 // Shared SVG geometry (RA horizontal, Dec vertical). Conceptual, not measured.
 const W = 150, H = 104, CX = 75, CY = 52, MAX_R = 46, MIN_R = 8;
@@ -88,7 +71,7 @@ function guideTooltip(r: ImageImpactResult, t: TFunction): string {
   const interp = r.axesEffectivelyEqual
     ? t('imageImpact.interpEqual', { ecc: f2(r.guidingOnlyEccentricity) })
     : t('imageImpact.interpGuide', { axis: r.dominantAxis, orient, ecc: f2(r.guidingOnlyEccentricity) });
-  return wrap(`${interp} ${t('imageImpact.disclaimer')}`);
+  return wrapTip(`${interp} ${t('imageImpact.disclaimer')}`, 52);
 }
 
 function finalTooltip(r: ImageImpactResult, imagingScale: number, guideScale: number, fwhm: number, t: TFunction): string {
@@ -99,7 +82,7 @@ function finalTooltip(r: ImageImpactResult, imagingScale: number, guideScale: nu
     : t('imageImpact.interpFinalPreset', { preset: t(`imageImpact.preset_${preset}`), fwhm: f2(fwhm), ecc: f2(r.estimatedEccentricity), rating });
   const sr = samplingRelation(guideScale, imagingScale);
   const samp = t(SAMPLING_KEY[sr.relation], { ratio: sr.ratio.toFixed(1) });
-  return wrap(`${interp} ${samp} ${t('imageImpact.disclaimer')}`);
+  return wrapTip(`${interp} ${samp} ${t('imageImpact.disclaimer')}`, 52);
 }
 
 function GuideEllipse({ r, title }: { r: ImageImpactResult; title: string }) {

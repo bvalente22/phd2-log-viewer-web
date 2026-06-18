@@ -46,3 +46,23 @@ export function fmtDuration(seconds: number): string {
   parts.push(`${s}s`);
   return parts.join(' ');
 }
+
+/**
+ * Word-wrap to a max line width by inserting newlines so a native `title`
+ * tooltip renders narrow-and-tall instead of one very long line. Hard-breaks a
+ * single token longer than max (e.g. CJK runs with no spaces). Keep tooltips
+ * narrow across the app (≈44 chars) — see CLAUDE.md "UI conventions — tooltips".
+ */
+export function wrapTip(text: string, max = 44): string {
+  const out: string[] = [];
+  let line = '';
+  const push = () => { if (line) { out.push(line); line = ''; } };
+  for (const w of text.split(' ')) {
+    let word = w;
+    while (word.length > max) { push(); out.push(word.slice(0, max)); word = word.slice(max); }
+    if (line && line.length + 1 + word.length > max) push();
+    line = line ? `${line} ${word}` : word;
+  }
+  push();
+  return out.join('\n');
+}
