@@ -111,6 +111,13 @@ export function StatsGrid() {
         <Row label="RA" color="text-sky-400" items={raRow} />
         <Row label="Dec" color="text-rose-400" items={decRow} />
 
+        {/* Frame counts sit just below the RMS rows, smaller and de-emphasized,
+            above the polar-alignment divider. */}
+        <div className="flex flex-wrap gap-x-4 text-[10px] text-slate-500">
+          <span>{t('guide.included')}: {fmtInteger(s.includedCount)}</span>
+          <span>{t('guide.excluded')}: {fmtInteger(s.excludedCount)}</span>
+        </div>
+
         {/* Polar Alignment — one toggling area (Section ⟷ All Sections) */}
         <div className="mt-1 border-t border-slate-700/60 pt-1">
           <button
@@ -162,12 +169,6 @@ export function StatsGrid() {
               <Cell k="Dec Drift" v={drift(s.driftDec)} />
             </div>
           )}
-        </div>
-
-        {/* Frame counts trail at the bottom, smaller and de-emphasized */}
-        <div className="mt-1 flex flex-wrap gap-x-4 text-[10px] text-slate-500">
-          <span>{t('guide.included')}: {fmtInteger(s.includedCount)}</span>
-          <span>{t('guide.excluded')}: {fmtInteger(s.excludedCount)}</span>
         </div>
       </div>
 

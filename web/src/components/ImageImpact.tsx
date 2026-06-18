@@ -10,6 +10,7 @@ import {
   SEEING_PRESETS, type ImageImpactResult,
 } from '../parser/imageImpact';
 import { fmtNumber, wrapTip } from '../i18n/format';
+import { raDecColors } from '../themes';
 
 const f2 = (n: number) => fmtNumber(n, 2);
 const IMAGING_SCALE_CALC_URL = 'https://astronomy.tools/calculators/field_of_view/';
@@ -63,6 +64,37 @@ function axisRadii(major: number, minor: number, dominant: 'RA' | 'Dec') {
   return dominant === 'Dec' ? { rx: minR, ry: majR } : { rx: majR, ry: minR };
 }
 
+// An ellipse outline split into four 90° arcs so that the horizontal
+// extremes (left/right) read in the RA hue and the vertical extremes
+// (top/bottom) read in the Dec hue — the colors follow the global RA/Dec
+// preference instead of a single flat stroke. The faint fill keeps a tint
+// using whichever axis dominates.
+function TwoColorEllipse({
+  rx, ry, raColor, decColor, dominant,
+}: { rx: number; ry: number; raColor: string; decColor: string; dominant: 'RA' | 'Dec' }) {
+  const pt = (deg: number) => {
+    const a = (deg * Math.PI) / 180;
+    return `${(CX + rx * Math.cos(a)).toFixed(2)} ${(CY + ry * Math.sin(a)).toFixed(2)}`;
+  };
+  const arc = `${rx.toFixed(2)} ${ry.toFixed(2)} 0 0 1`;
+  // RA arcs hug the horizontal vertices (around 0° / 180°); Dec arcs hug the
+  // vertical vertices (around 90° / 270°). Boundaries at the 45° diagonals.
+  const raRight = `M ${pt(315)} A ${arc} ${pt(45)}`;
+  const raLeft = `M ${pt(135)} A ${arc} ${pt(225)}`;
+  const decBottom = `M ${pt(45)} A ${arc} ${pt(135)}`;
+  const decTop = `M ${pt(225)} A ${arc} ${pt(315)}`;
+  const tint = `${dominant === 'RA' ? raColor : decColor}22`; // #rrggbb + alpha
+  return (
+    <>
+      <ellipse cx={CX} cy={CY} rx={rx} ry={ry} fill={tint} stroke="none" />
+      <path d={raLeft} fill="none" stroke={raColor} strokeWidth={2} strokeLinecap="round" />
+      <path d={raRight} fill="none" stroke={raColor} strokeWidth={2} strokeLinecap="round" />
+      <path d={decTop} fill="none" stroke={decColor} strokeWidth={2} strokeLinecap="round" />
+      <path d={decBottom} fill="none" stroke={decColor} strokeWidth={2} strokeLinecap="round" />
+    </>
+  );
+}
+
 const RATING_KEY = { low: 'imageImpact.ratingLow', moderate: 'imageImpact.ratingModerate', high: 'imageImpact.ratingHigh' } as const;
 const SAMPLING_KEY = { same: 'imageImpact.samplingSame', coarser: 'imageImpact.samplingCoarser', finer: 'imageImpact.samplingFiner' } as const;
 
@@ -85,7 +117,9 @@ function finalTooltip(r: ImageImpactResult, imagingScale: number, guideScale: nu
   return wrapTip(`${interp} ${samp} ${t('imageImpact.disclaimer')}`, 52);
 }
 
-function GuideEllipse({ r, title }: { r: ImageImpactResult; title: string }) {
+function GuideEllipse({ r, title, raColor, decColor }: {
+  r: ImageImpactResult; title: string; raColor: string; decColor: string;
+}) {
   const { t } = useTranslation('stats');
   const scale = MAX_R / Math.max(r.majorRmsArcsec, r.minorRmsArcsec, 1e-6);
   const { rx, ry } = axisRadii(r.majorRmsArcsec * scale, r.minorRmsArcsec * scale, r.dominantAxis);
@@ -95,9 +129,9 @@ function GuideEllipse({ r, title }: { r: ImageImpactResult; title: string }) {
     <div title={title}>
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('imageImpact.guidingError')}>
         <Axes />
-        <ellipse cx={CX} cy={CY} rx={rx} ry={ry} fill="rgba(245,158,11,.18)" stroke="rgba(245,158,11,.9)" strokeWidth={2} />
-        <text x={8} y={16} fontSize={10} fill="#94a3b8">RA {f2(raVal)}″</text>
-        <text x={8} y={30} fontSize={10} fill="#94a3b8">Dec {f2(decVal)}″</text>
+        <TwoColorEllipse rx={rx} ry={ry} raColor={raColor} decColor={decColor} dominant={r.dominantAxis} />
+        <text x={8} y={16} fontSize={10} fill={raColor}>RA {f2(raVal)}″</text>
+        <text x={8} y={30} fontSize={10} fill={decColor}>Dec {f2(decVal)}″</text>
       </svg>
       <div className="mt-0.5 text-center text-[10px] text-slate-400">
         {t('imageImpact.guidingError')} · {r.axesEffectivelyEqual
@@ -108,7 +142,9 @@ function GuideEllipse({ r, title }: { r: ImageImpactResult; title: string }) {
   );
 }
 
-function FinalEllipse({ r, title }: { r: ImageImpactResult; title: string }) {
+function FinalEllipse({ r, title, raColor, decColor }: {
+  r: ImageImpactResult; title: string; raColor: string; decColor: string;
+}) {
   const { t } = useTranslation('stats');
   const scale = MAX_R / Math.max(r.finalFwhmMajorArcsec, 1e-6);
   const { rx, ry } = axisRadii(r.finalFwhmMajorArcsec * scale, r.finalFwhmMinorArcsec * scale, r.dominantAxis);
@@ -118,7 +154,7 @@ function FinalEllipse({ r, title }: { r: ImageImpactResult; title: string }) {
       <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('imageImpact.finalStar')}>
         <Axes />
         <circle cx={CX} cy={CY} r={baseR} fill="none" stroke="rgba(52,211,153,.5)" strokeWidth={2} strokeDasharray="4 4" />
-        <ellipse cx={CX} cy={CY} rx={rx} ry={ry} fill="rgba(143,180,255,.18)" stroke="rgba(143,180,255,.95)" strokeWidth={2} />
+        <TwoColorEllipse rx={rx} ry={ry} raColor={raColor} decColor={decColor} dominant={r.dominantAxis} />
       </svg>
       <div className="mt-0.5 text-center text-[10px] text-slate-400">
         {t('imageImpact.finalStar')} — {t('imageImpact.finalFwhm', {
@@ -142,6 +178,9 @@ export function ImageImpact() {
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const hash = useLogStore((s) => s.meta?.hash);
   const exclusions = useViewStore((s) => s.exclusions);
+
+  const swapRaDec = useViewStore((s) => s.swapRaDec);
+  const { ra: raColor, dec: decColor } = raDecColors(swapRaDec);
 
   const remember = useViewStore((s) => s.rememberImaging);
   const setRemember = useViewStore((s) => s.setRememberImaging);
@@ -236,8 +275,8 @@ export function ImageImpact() {
 
       {result ? (
         <div className="flex flex-wrap gap-4">
-          <GuideEllipse r={result} title={guideTooltip(result, t)} />
-          <FinalEllipse r={result} title={finalTooltip(result, scale, ctx.guideScale, fwhm, t)} />
+          <GuideEllipse r={result} title={guideTooltip(result, t)} raColor={raColor} decColor={decColor} />
+          <FinalEllipse r={result} title={finalTooltip(result, scale, ctx.guideScale, fwhm, t)} raColor={raColor} decColor={decColor} />
         </div>
       ) : (
         <div className="text-xs text-slate-500">{t('imageImpact.noData')}</div>
