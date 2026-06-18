@@ -1,6 +1,7 @@
 {
   "rows": {
-    "total": "Total"
+    "total": "Total",
+    "polarAlign": "Polar Alignment"
   },
   "guide": {
     "duration": "Duration",
@@ -98,6 +99,11 @@
   "eccentricityTooltip": "Eccentricity {{value}} — elongation of the RA/Dec scatter (0 = round, 1 = a line). RA {{ra}} / Dec {{dec}}",
   "aspectRatioTooltip": "Aspect ratio {{value}} — Max/Min of the RA & Dec RMS (1.00 = round, higher = elongated). RA {{ra}} / Dec {{dec}}",
   "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}. Click to copy.",
+  "pa": {
+    "tooltip": "Estimated polar-alignment error for this section, from the Dec drift. Altitude and Azimuth are split by hour angle; one section can't fully separate them — \"!\" marks a low-confidence axis.",
+    "altLowConf": "Altitude is low-confidence at this hour angle — near the meridian, altitude barely affects Dec drift, so this value can't be measured reliably.",
+    "azLowConf": "Azimuth is low-confidence at this hour angle — near ±6h, azimuth barely affects Dec drift, so this value can't be measured reliably."
+  },
   "ga": {
     "summary": "Guiding Assistant ({{count}})",
     "summaryTooltip": "PHD2 Guiding Assistant runs detected in this session — click to expand or collapse the recommendation panel",

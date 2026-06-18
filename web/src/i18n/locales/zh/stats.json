@@ -1,6 +1,7 @@
 {
   "rows": {
-    "total": "总计"
+    "total": "总计",
+    "polarAlign": "极轴校准"
   },
   "guide": {
     "duration": "时长",
@@ -98,6 +99,11 @@
   "eccentricityTooltip": "偏心率 {{value}} — RA/Dec 散布的拉长程度（0 = 圆形，1 = 直线）。RA {{ra}} / Dec {{dec}}",
   "aspectRatioTooltip": "纵横比 {{value}} — RA 与 Dec RMS 的最大/最小值（1.00 = 圆形，越大越拉长）。RA {{ra}} / Dec {{dec}}",
   "copyTooltipDetailed": "{{label}}: {{value}} — {{tip}}。点击复制。",
+  "pa": {
+    "tooltip": "本区段根据 Dec 漂移估算的极轴校准误差。高度与方位按时角拆分；单个区段无法完全分离二者——“!”表示该轴可信度低。",
+    "altLowConf": "在此时角下高度方向可信度低——靠近子午线时它对 Dec 漂移几乎没有影响，因此该数值不可靠。",
+    "azLowConf": "在此时角下方位方向可信度低——靠近 ±6 小时时它对 Dec 漂移几乎没有影响，因此该数值不可靠。"
+  },
   "ga": {
     "summary": "Guiding Assistant ({{count}})",
     "summaryTooltip": "本会话中检测到的 PHD2 Guiding Assistant 执行 — 点击展开或收起建议面板",

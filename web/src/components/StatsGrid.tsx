@@ -4,7 +4,8 @@ import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { calcStats } from '../parser';
 import { fmtNumber, fmtInteger, fmtRoundedInt } from '../i18n/format';
-import { guidingMetric } from './guidingMetric';
+import { guidingMetric, polarAlignmentBand, BAND_CLASSES } from './guidingMetric';
+import PolarAlignmentPlot from './PolarAlignmentPlot';
 
 const fmt = (n: number, d = 3) => fmtNumber(n, d);
 
@@ -46,21 +47,25 @@ export function StatsGrid() {
     [t('guide.duration'), `${fmtRoundedInt(s.durationSec)} ${t('guide.secondsSuffix')}`],
     [t('guide.included'), fmtInteger(s.includedCount)],
     [t('guide.excluded'), fmtInteger(s.excludedCount)],
-    [t('guide.pae'), `${fmt(s.paeArcMin, 2)}′`],
     [t(guidingMetric.labelKey), arVal === null ? '—' : fmt(arVal, 2)],
   ];
   const raRow: [string, string][] = [
     [t('guide.rms'), v(s.rmsRa)],
     [t('guide.peak'), v(s.peakRa)],
     [t('guide.mean'), v(s.meanRa)],
-    [t('guide.drift'), drift(s.driftRa)],
   ];
   const decRow: [string, string][] = [
     [t('guide.rms'), v(s.rmsDec)],
     [t('guide.peak'), v(s.peakDec)],
     [t('guide.mean'), v(s.meanDec)],
-    [t('guide.drift'), drift(s.driftDec)],
   ];
+
+  const hasHa = s.hourAngleHours !== null;
+  const paBand = polarAlignmentBand(s.paeArcMin);
+  // "!" marker shown on a low-confidence axis (only meaningful when HA exists).
+  const altWarn = hasHa && !s.altTrust;
+  const azWarn = hasHa && !s.azTrust;
+  const fmtPa = (n: number | null) => (n === null ? '—' : `${fmt(n, 2)}′`);
 
   const copy = (val: string) => navigator.clipboard?.writeText(val);
 
@@ -84,10 +89,57 @@ export function StatsGrid() {
 
   // RA / Dec are PHD2 jargon — kept in English across all locales.
   return (
-    <div className="flex flex-col gap-1 px-4 py-2 text-sm">
-      <Row label={t('rows.total')} items={common} />
-      <Row label="RA" color="text-sky-400" items={raRow} />
-      <Row label="Dec" color="text-rose-400" items={decRow} />
+    <div className="flex flex-wrap items-start gap-4 px-4 py-2 text-sm">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <Row label={t('rows.total')} items={common} />
+        <Row label="RA" color="text-sky-400" items={raRow} />
+        <Row label="Dec" color="text-rose-400" items={decRow} />
+
+        {/* Polar Alignment — its own subtitled area beneath total/ra/dec. */}
+        <div className="mt-1 border-t border-slate-700/60 pt-1">
+          <div className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-violet-400" title={t('pa.tooltip')}>
+            {t('rows.polarAlign')}
+          </div>
+          {/* Line 1: total PAE, stoplight-coloured badge */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+            {s.paeDeterminable ? (
+              <span className={`rounded px-1.5 py-0.5 font-mono text-xs ${BAND_CLASSES[paBand]}`}>
+                {`${fmt(s.paeArcMin, 2)}′`}
+              </span>
+            ) : (
+              <span className="font-mono text-xs text-slate-400">—</span>
+            )}
+          </div>
+          {/* Line 2: Alt / Az contributions with low-confidence markers */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+            <span className="flex items-baseline gap-2">
+              <span className="text-xs text-slate-400">Alt</span>
+              <span className="font-mono text-slate-100">{fmtPa(s.altArcMin)}</span>
+              {altWarn && <span className="cursor-help font-bold text-amber-400" title={t('pa.altLowConf')}>!</span>}
+            </span>
+            <span className="flex items-baseline gap-2">
+              <span className="text-xs text-slate-400">Az</span>
+              <span className="font-mono text-slate-100">{fmtPa(s.azArcMin)}</span>
+              {azWarn && <span className="cursor-help font-bold text-amber-400" title={t('pa.azLowConf')}>!</span>}
+            </span>
+          </div>
+          {/* Line 3: RA / Dec drift (input to the calculation) */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
+            <Cell k="RA" v={drift(s.driftRa)} />
+            <Cell k="Dec" v={drift(s.driftDec)} />
+          </div>
+        </div>
+      </div>
+
+      <PolarAlignmentPlot
+        paeTotal={s.paeArcMin}
+        altArcMin={s.altArcMin}
+        azArcMin={s.azArcMin}
+        altTrust={s.altTrust}
+        azTrust={s.azTrust}
+        hasHa={hasHa}
+        determinable={s.paeDeterminable}
+      />
     </div>
   );
 }

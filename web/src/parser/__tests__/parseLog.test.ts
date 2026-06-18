@@ -81,3 +81,40 @@ describe('parseLog', () => {
     }
   });
 });
+
+const HEADER = [
+  'Frame,Time,mount,dx,dy,RARawDistance,DECRawDistance,RAGuideDistance,DECGuideDistance,RADuration,RADirection,DECDuration,DECDirection,XStep,YStep,StarMass,SNR,ErrorCode',
+  '1,1.000,"Mount",0,0,0,0,0,0,0,,0,,,,1000,50,0',
+  'Guiding Ends at 2026-06-09 22:26:10',
+].join('\n');
+
+const withHa = [
+  'Guiding Begins at 2026-06-09 22:26:06',
+  'Pixel scale = 5.04 arc-sec/px, Binning = 1, Focal length = 240 mm',
+  'RA = 21.64 hr, Dec = 56.5 deg, Hour angle = -7.54 hr, Pier side = West, Rotator pos = N/A, Alt = 19.8 deg, Az = 32.7 deg',
+  HEADER,
+].join('\n');
+
+const noHa = [
+  'Guiding Begins at 2026-06-09 22:26:06',
+  'Pixel scale = 5.04 arc-sec/px, Binning = 1, Focal length = 240 mm',
+  'RA = 21.64 hr, Dec = 56.5 deg',
+  HEADER,
+].join('\n');
+
+describe('parseLog hour angle / pier side', () => {
+  it('parses hour angle and pier side from the header', () => {
+    const log = parseLog(withHa);
+    const s = log.sessions[0];
+    expect(s.hourAngleHours).toBeCloseTo(-7.54, 2);
+    expect(s.pierSide).toBe('West');
+    expect(s.declination).toBeCloseTo((56.5 * Math.PI) / 180, 5);
+  });
+
+  it('leaves hour angle / pier side null when absent', () => {
+    const log = parseLog(noHa);
+    const s = log.sessions[0];
+    expect(s.hourAngleHours).toBeNull();
+    expect(s.pierSide).toBeNull();
+  });
+});
