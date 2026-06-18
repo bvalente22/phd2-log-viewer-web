@@ -125,8 +125,8 @@ export function StatsGrid() {
           </div>
           {/* Line 3: RA / Dec drift (input to the calculation) */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-            <Cell k="RA" v={drift(s.driftRa)} />
-            <Cell k="Dec" v={drift(s.driftDec)} />
+            <Cell k="RA Drift" v={drift(s.driftRa)} />
+            <Cell k="Dec Drift" v={drift(s.driftDec)} />
           </div>
         </div>
       </div>

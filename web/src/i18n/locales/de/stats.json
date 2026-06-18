@@ -1,7 +1,7 @@
 {
   "rows": {
     "total": "Gesamt",
-    "polarAlign": "Polausrichtung"
+    "polarAlign": "Polausrichtungsfehler"
   },
   "guide": {
     "duration": "Dauer",
