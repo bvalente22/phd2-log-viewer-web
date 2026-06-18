@@ -48,3 +48,16 @@ If a PR sits at the boundary between coding and policy ("this also bumps a dep" 
 - Anything in the "no history rewrites" list above
 - Deleting branches that have unmerged commits the user may want
 - Merging a PR that touches `CLAUDE.md`, memory files, or licensing
+
+## Cross-session context
+
+### Toolchain on the NAS / `G:`-mapped checkout (machine-specific)
+
+This repo is often checked out on a NAS SMB share (`\\UGREEN-DXP6800P\PROJECTS`, also mapped to drive **`G:`**). When it is:
+
+- **Run `tsc`/`vitest` from the `G:` drive via `node` — not `npx`, and not from the UNC path.** E.g. `cd /g/HomeLab-Repos/PHDLogViewer/web && node node_modules/vitest/vitest.mjs run [files]` and `… && node node_modules/typescript/bin/tsc --noEmit`. From the UNC path, `vite-node` builds an invalid regex (it assumes `process.cwd()[0]` is a drive letter) and `cmd`/`npx` reject a UNC working directory; even from `G:`, Windows native realpath canonicalizes the mapped drive back to its UNC target and `vite-node` mangles the module path. The Bash tool's cwd resets to the UNC primary dir between calls, so include the `cd /g/...` every time. File edits and `git` work fine from the UNC path — only the Vite/vitest toolchain needs `G:`.
+- `web/vite.config.ts` sets `resolve: { preserveSymlinks: true }` specifically to fix this (it skips the realpath call). It is a **no-op for the production build** (no symlinked workspace deps).
+- Git auto-maintenance can't write packs on the share (`geometric-repack` permission denied) — keep `gc.auto=0`, `maintenance.auto=false`, `fetch.writeCommitGraph=false` in `.git/config`, and add `safe.directory` entries for **both** the UNC and `G:` path forms.
+- On a normal local clone none of this applies and `preserveSymlinks` is a harmless no-op.
+
+More detail mirrored in `.claude/memory/nas-vitest-toolchain.md`.
