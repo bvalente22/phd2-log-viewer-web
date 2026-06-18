@@ -45,7 +45,10 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
   const sec = log && sectionIdx >= 0 ? log.sections[sectionIdx] : null;
   const session = sec && sec.type === 'GUIDING' ? log!.sessions[sec.idx] : null;
   const sessionIdx = sec && sec.type === 'GUIDING' ? sec.idx : -1;
-  const activePolicy = sessionIdx >= 0 ? (settlingPolicy.get(sessionIdx) ?? 'desktop') : 'desktop';
+  // The ✓ reflects an explicitly-applied policy. After "Include all" / "Exclude
+  // all" the policy is cleared, so neither item shows a check (the mask no
+  // longer corresponds to a settling policy).
+  const activePolicy = sessionIdx >= 0 ? settlingPolicy.get(sessionIdx) : undefined;
 
   const openAnalysis = useAnalysisStore((s) => s.open);
   const scaleModeForAnalysis = useViewStore((s) => s.scaleMode);
@@ -178,7 +181,7 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
           <RCM.Separator className="my-1 h-px bg-slate-700" />
           <Item
             disabled={!session}
-            onSelect={() => session && includeAll(sessionIdx, session.entries.length)}
+            onSelect={() => session && applySettlingPolicy(sessionIdx, session, 'desktop')}
             title={t('contextMenu.resetSectionTooltip')}
           >
             {t('contextMenu.resetSection')}

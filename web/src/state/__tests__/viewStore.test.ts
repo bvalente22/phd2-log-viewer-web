@@ -115,4 +115,17 @@ describe('applySettlingPolicy', () => {
     expect(m[52]).toBe(1);            // settling window still excluded
     expect(m[10]).toBe(1);            // manual exclude still there
   });
+
+  it('includeAll / excludeAll clear the section settling policy', () => {
+    const s = sessionWith(10, []);
+    const st = () => useViewStore.getState();
+    st().applySettlingPolicy(0, s, 'web');
+    expect(st().settlingPolicy.get(0)).toBe('web');
+    st().includeAll(0, 10);
+    expect(st().settlingPolicy.get(0)).toBeUndefined();
+    st().applySettlingPolicy(0, s, 'desktop');
+    expect(st().settlingPolicy.get(0)).toBe('desktop');
+    st().excludeAll(0, 10);
+    expect(st().settlingPolicy.get(0)).toBeUndefined();
+  });
 });

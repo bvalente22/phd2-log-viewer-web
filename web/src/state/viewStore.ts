@@ -331,7 +331,10 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
     const fresh = new Uint8Array(entryCount);
     const next = new Map(get().exclusions);
     next.set(sessionIdx, fresh);
-    set({ exclusions: next });
+    // Clearing all exclusions means no settling policy is in force any more.
+    const nextPol = new Map(get().settlingPolicy);
+    nextPol.delete(sessionIdx);
+    set({ exclusions: next, settlingPolicy: nextPol });
   },
 
   excludeAll: (sessionIdx, entryCount) => {
@@ -339,7 +342,9 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
     m.fill(1);
     const next = new Map(get().exclusions);
     next.set(sessionIdx, m);
-    set({ exclusions: next });
+    const nextPol = new Map(get().settlingPolicy);
+    nextPol.delete(sessionIdx);
+    set({ exclusions: next, settlingPolicy: nextPol });
   },
 
   excludeRange: (sessionIdx, entryCount, fromFrame, toFrame, frames) => {
