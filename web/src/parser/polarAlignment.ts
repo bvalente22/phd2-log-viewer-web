@@ -6,6 +6,8 @@ export const PAE_CONSTANT = 3.8197;
 // Below this sensitivity (|cos HA| for Az, |sin HA| for Alt) the axis is
 // essentially unobservable from this section's Dec drift — flagged low-confidence.
 export const TRUST_THRESHOLD = 0.30;
+// HA advances at the sidereal rate (HA hours per solar hour).
+export const SIDEREAL_RATE = 1.0027379;
 
 export interface PolarAlignment {
   driftRaPxMin: number;
@@ -16,6 +18,8 @@ export interface PolarAlignment {
   altTrust: boolean;
   azTrust: boolean;
   hourAngleHours: number | null;
+  effectiveHaHours: number | null;
+  includedCount: number;
   paeDeterminable: boolean;
 }
 
@@ -59,9 +63,9 @@ export function computePolarAlignment(session: GuideSession, mask?: Uint8Array):
     entries[i].included && starWasFound(entries[i].err) &&
     !(mask && mask[i] === 1) && !settle[i];
 
-  let firstIdx = -1, lastIdx = -1;
+  let firstIdx = -1, lastIdx = -1, includedCount = 0, dtSum = 0;
   for (let i = 0; i < entries.length; i++) {
-    if (included(i)) { if (firstIdx < 0) firstIdx = i; lastIdx = i; }
+    if (included(i)) { if (firstIdx < 0) firstIdx = i; lastIdx = i; includedCount += 1; dtSum += entries[i].dt; }
   }
 
   let driftRaPps = 0, driftDecPps = 0;
@@ -108,16 +112,20 @@ export function computePolarAlignment(session: GuideSession, mask?: Uint8Array):
     ? (PAE_CONSTANT * Math.abs(driftDecPxMin) * session.pixelScale) / Math.abs(cosDec)
     : 0;
 
-  // Alt/Az hour-angle projection (min-norm). Needs the section hour angle.
+  // Alt/Az hour-angle projection (min-norm), using the section's drift-weighted
+  // mean (effective) hour angle rather than the start HA.
   const ha = session.hourAngleHours;
+  let effectiveHaHours: number | null = null;
   let altArcMin: number | null = null;
   let azArcMin: number | null = null;
   let altTrust = false;
   let azTrust = false;
-  if (ha !== null) {
-    const haRad = (ha * 15 * Math.PI) / 180;
-    const azSens = Math.abs(Math.cos(haRad)); // azimuth sensitivity (max at meridian)
-    const altSens = Math.abs(Math.sin(haRad)); // altitude sensitivity (max at ±6h)
+  if (ha !== null && includedCount > 0) {
+    const meanDt = dtSum / includedCount;
+    effectiveHaHours = ha + (meanDt / 3600) * SIDEREAL_RATE;
+    const haRad = (effectiveHaHours * 15 * Math.PI) / 180;
+    const azSens = Math.abs(Math.cos(haRad));
+    const altSens = Math.abs(Math.sin(haRad));
     azArcMin = paeTotalArcMin * azSens;
     altArcMin = paeTotalArcMin * altSens;
     azTrust = azSens >= TRUST_THRESHOLD;
@@ -133,6 +141,8 @@ export function computePolarAlignment(session: GuideSession, mask?: Uint8Array):
     altTrust,
     azTrust,
     hourAngleHours: ha,
+    effectiveHaHours,
+    includedCount,
     paeDeterminable,
   };
 }

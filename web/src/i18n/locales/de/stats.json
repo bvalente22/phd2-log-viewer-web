@@ -102,7 +102,20 @@
   "pa": {
     "tooltip": "Geschätzter Polausrichtungsfehler dieses Abschnitts aus der Dek-Drift. Höhe und Azimut werden über den Stundenwinkel aufgeteilt; ein einzelner Abschnitt kann sie nicht vollständig trennen — \"!\" kennzeichnet eine Achse mit geringer Zuverlässigkeit.",
     "altLowConf": "Die Höhe ist bei diesem Stundenwinkel wenig zuverlässig — nahe dem Meridian beeinflusst sie die Dek-Drift kaum, daher ist dieser Wert unzuverlässig.",
-    "azLowConf": "Der Azimut ist bei diesem Stundenwinkel wenig zuverlässig — nahe ±6h beeinflusst er die Dek-Drift kaum, daher ist dieser Wert unzuverlässig."
+    "azLowConf": "Der Azimut ist bei diesem Stundenwinkel wenig zuverlässig — nahe ±6h beeinflusst er die Dek-Drift kaum, daher ist dieser Wert unzuverlässig.",
+    "modeSection": "Abschnitt",
+    "modeAll": "Alle Abschnitte",
+    "confidence": "Konfidenz",
+    "confHigh": "Hoch",
+    "confMedium": "Mittel",
+    "confLow": "Niedrig",
+    "confInsufficient": "—",
+    "confTipHigh": "Hohe Konfidenz: die Abschnitte überspannen {{spread}}h Stundenwinkel mit geringem Residuum; Höhe und Azimut sind gut getrennt.",
+    "confTipMedium": "Mittlere Konfidenz: geringe Stundenwinkel-Spanne ({{spread}}h) oder etwas Residuum; die Alt/Az-Trennung ist brauchbar.",
+    "confTipLow": "Niedrige Konfidenz: schmale Stundenwinkel-Spanne oder großes Residuum — Alt/Az schlecht getrennt (auch eine Neujustage mitten in der Sitzung verursacht das).",
+    "confTipInsufficient": "Nicht genug Abschnitte bei verschiedenen Stundenwinkeln, um Alt und Az im Log zu trennen.",
+    "effectiveHaTip": "Die Alt/Az-Aufteilung nutzt den mittleren Stundenwinkel dieses Abschnitts (~{{ha}}h), siderisch über die einbezogenen Frames fortgeführt.",
+    "allTip": "Polausrichtung des gesamten Logs aus einer Ausgleichsrechnung über {{count}} Abschnitte bei verschiedenen Stundenwinkeln."
   },
   "ga": {
     "summary": "Guiding Assistant ({{count}})",

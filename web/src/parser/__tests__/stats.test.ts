@@ -83,4 +83,12 @@ describe('calcStats polar-alignment fields', () => {
     expect(st.azTrust).toBe(true);
     expect(st.hourAngleHours).toBe(3);
   });
+
+  it('exposes effectiveHaHours from computePolarAlignment', () => {
+    const s = newGuideSession('x');
+    s.entries = [mkE(1, 0, 0, 0), mkE(2, 600, 0, 1)];
+    s.hourAngleHours = -3;
+    const st = calcStats(s);
+    expect(st.effectiveHaHours).not.toBeNull();
+  });
 });

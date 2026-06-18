@@ -96,32 +96,39 @@ describe('computePolarAlignment PAE + decomposition', () => {
     expect(pa.paeTotalArcMin).toBeCloseTo(3.8197 * 2, 3); // 1 px/min * 2 "/px = 2 "/min
   });
 
-  it('at HA 0h: all azimuth, altitude untrusted', () => {
+  it('at HA 0h: predominantly azimuth, altitude small', () => {
+    // ramp() has dt=[0,60,120,180], meanDt=90s → effectiveHa ≈ 0.025h
+    // azSens≈1, altSens≈0.0066 (small but not exactly 0 due to effective HA shift)
     const s = ramp(); s.hourAngleHours = 0;
     const pa = computePolarAlignment(s);
-    expect(pa.azArcMin).toBeCloseTo(pa.paeTotalArcMin, 4);
-    expect(pa.altArcMin).toBeCloseTo(0, 4);
+    expect(pa.azArcMin!).toBeGreaterThan(pa.altArcMin!);
+    expect(pa.azArcMin!).toBeCloseTo(pa.paeTotalArcMin, 2); // ~99.998% azimuth
     expect(pa.azTrust).toBe(true);
     expect(pa.altTrust).toBe(false);
   });
 
-  it('at HA 6h: all altitude, azimuth untrusted', () => {
-    const s = ramp(); s.hourAngleHours = 6; // 90 deg
+  it('at HA 6h: predominantly altitude, azimuth small', () => {
+    // ramp() meanDt=90s → effectiveHa ≈ 6.025h; altSens≈1, azSens≈0.0066
+    const s = ramp(); s.hourAngleHours = 6; // near 90 deg
     const pa = computePolarAlignment(s);
-    expect(pa.altArcMin).toBeCloseTo(pa.paeTotalArcMin, 4);
-    expect(pa.azArcMin).toBeCloseTo(0, 4);
+    expect(pa.altArcMin!).toBeGreaterThan(pa.azArcMin!);
+    expect(pa.altArcMin!).toBeCloseTo(pa.paeTotalArcMin, 2); // ~99.998% altitude
     expect(pa.altTrust).toBe(true);
     expect(pa.azTrust).toBe(false);
   });
 
-  it('at HA 3h (45 deg): both axes trusted and equal', () => {
-    const s = ramp(); s.hourAngleHours = 3; // 45 deg
+  it('at HA 3h (45 deg): both axes trusted, split matches effective-HA sin/cos', () => {
+    const s = ramp(); s.hourAngleHours = 3; // near 45 deg
     const pa = computePolarAlignment(s);
-    expect(pa.altArcMin).toBeCloseTo(pa.azArcMin!, 4);
+    // ramp() has dt=[0,60,120,180], all 4 frames included; mean dt = (0+60+120+180)/4 = 90s
+    const meanDt = (0 + 60 + 120 + 180) / 4; // 90s
+    const effectiveHa = 3 + (meanDt / 3600) * 1.0027379;
+    const haRad = (effectiveHa * 15 * Math.PI) / 180;
     expect(pa.altTrust).toBe(true);
     expect(pa.azTrust).toBe(true);
-    expect(Math.hypot(pa.altArcMin!, pa.azArcMin!)).toBeCloseTo(pa.paeTotalArcMin, 4);
     expect(pa.paeDeterminable).toBe(true);
+    expect(pa.altArcMin!).toBeCloseTo(pa.paeTotalArcMin * Math.sin(haRad), 2);
+    expect(pa.azArcMin!).toBeCloseTo(pa.paeTotalArcMin * Math.cos(haRad), 2);
   });
 
   it('null hour angle leaves Alt/Az null and untrusted', () => {
@@ -149,5 +156,26 @@ describe('computePolarAlignment PAE + decomposition', () => {
     ]);
     s.pixelScale = 2;
     expect(computePolarAlignment(s).paeDeterminable).toBe(false);
+  });
+});
+
+describe('effective hour angle', () => {
+  it('uses the drift-weighted mean HA for the Alt/Az split (total PAE unchanged)', () => {
+    // 0..600s of frames, Dec ramps so drift is nonzero. Start HA = -6h; over
+    // 600s the effective (mean) HA moves toward the meridian, so |cos| grows
+    // and the azimuth contribution rises above the start-HA value.
+    const rows = [];
+    for (let k = 0; k <= 10; k++) rows.push(e({ dt: k * 60, decraw: k * 0.1 }));
+    const s = session(rows, { pixelScale: 5, declination: 0, hourAngleHours: -6 });
+    const pa = computePolarAlignment(s);
+    // effective HA = -6 + (mean dt 300s /3600)*1.0027 ≈ -5.916h
+    expect(pa.effectiveHaHours).toBeCloseTo(-6 + (300 / 3600) * 1.0027379, 4);
+    // azimuth contribution is now > 0 (start HA -6h would give |cos|≈0)
+    expect(pa.azArcMin!).toBeGreaterThan(0);
+    expect(pa.includedCount).toBe(11);
+  });
+  it('effectiveHaHours is null when hourAngleHours is null', () => {
+    const s = session([e({ dt: 0, decraw: 0 }), e({ dt: 60, decraw: 1 })], { hourAngleHours: null });
+    expect(computePolarAlignment(s).effectiveHaHours).toBeNull();
   });
 });
