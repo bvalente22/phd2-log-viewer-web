@@ -49,11 +49,10 @@ export function StatsGrid() {
   // duration / included / excluded / pae trail behind in their
   // previous order.
   const arVal = guidingMetric.compute(s.rmsRa, s.rmsDec);
+  // included / excluded moved to a small footer line beneath the RMS rows
   const common: [string, string][] = [
     [t('guide.rms'), v(s.rmsTotal)],
     [t('guide.duration'), `${fmtRoundedInt(s.durationSec)} ${t('guide.secondsSuffix')}`],
-    [t('guide.included'), fmtInteger(s.includedCount)],
-    [t('guide.excluded'), fmtInteger(s.excludedCount)],
     [t(guidingMetric.labelKey), arVal === null ? '—' : fmt(arVal, 2)],
   ];
   const raRow: [string, string][] = [
@@ -121,10 +120,10 @@ export function StatsGrid() {
             title={wrapTip(isAll ? t('pa.allTip', { count: g?.sectionCount ?? 0 }) : t('pa.tooltip'))}
           >
             {t('rows.polarAlign')}
-            <span className="rounded-full bg-slate-700 px-2 py-0.5 text-[10px] text-slate-100">
+            <span className="inline-flex items-center gap-1 rounded border border-slate-500 bg-slate-700 px-2 py-0.5 text-[10px] font-medium text-slate-100 shadow-sm hover:bg-slate-600">
               {isAll ? t('pa.modeAll') : t('pa.modeSection')}
+              <span className="text-slate-400">⟳</span>
             </span>
-            <span className="text-[10px] text-slate-500">⟳</span>
           </button>
 
           {/* Line 1: total */}
@@ -163,6 +162,12 @@ export function StatsGrid() {
               <Cell k="Dec Drift" v={drift(s.driftDec)} />
             </div>
           )}
+        </div>
+
+        {/* Frame counts trail at the bottom, smaller and de-emphasized */}
+        <div className="mt-1 flex flex-wrap gap-x-4 text-[10px] text-slate-500">
+          <span>{t('guide.included')}: {fmtInteger(s.includedCount)}</span>
+          <span>{t('guide.excluded')}: {fmtInteger(s.excludedCount)}</span>
         </div>
       </div>
 
