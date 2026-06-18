@@ -1,5 +1,5 @@
 {
-  "appName": "PHD2 Log Viewer",
+  "appName": "PHD2 Log Viewer Web",
   "buildTooltip": "构建 {{hash}}",
   "phdVersion": "PHD2 v{{version}}",
   "openAnother": "打开另一个",
