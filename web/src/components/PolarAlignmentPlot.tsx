@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { polarAlignmentBand } from './guidingMetric';
+import { wrapTip } from '../i18n/format';
 
 // Geometry: viewBox 160×190, target centered at (CX,CY), radius R spans 6′.
 const CX = 80, CY = 80, R = 70;
@@ -40,9 +41,10 @@ interface Props {
   azTrust: boolean;
   hasHa: boolean;
   determinable: boolean;
+  titleText?: string;
 }
 
-export default function PolarAlignmentPlot({ paeTotal, altArcMin, azArcMin, altTrust, azTrust, hasHa, determinable }: Props) {
+export default function PolarAlignmentPlot({ paeTotal, altArcMin, azArcMin, altTrust, azTrust, hasHa, determinable, titleText }: Props) {
   const { t } = useTranslation('stats');
   const band = polarAlignmentBand(paeTotal);
   const dot = paePlotDot(paeTotal, altArcMin, azArcMin, PER_MIN, CX, CY);
@@ -50,8 +52,8 @@ export default function PolarAlignmentPlot({ paeTotal, altArcMin, azArcMin, altT
   const showAltWarn = hasHa && !altTrust;
 
   return (
-    <svg viewBox="0 0 160 190" width="150" height="178" role="img" aria-label={t('pa.tooltip')}>
-      <title>{t('pa.tooltip')}</title>
+    <svg viewBox="0 0 160 190" width="150" height="178" role="img" aria-label={wrapTip(titleText ?? t('pa.tooltip'))}>
+      <title>{wrapTip(titleText ?? t('pa.tooltip'))}</title>
       <path fillRule="evenodd" fill={BAND_HEX.red} fillOpacity="0.18" d={donut(R, YELLOW_R)} />
       <path fillRule="evenodd" fill={BAND_HEX.yellow} fillOpacity="0.22" d={donut(YELLOW_R, GREEN_R)} />
       <circle cx={CX} cy={CY} r={GREEN_R} fill={BAND_HEX.green} fillOpacity="0.24" />
@@ -70,14 +72,14 @@ export default function PolarAlignmentPlot({ paeTotal, altArcMin, azArcMin, altT
       </text>
       {showAzWarn && (
         <g>
-          <title>{t('pa.azLowConf')}</title>
+          <title>{wrapTip(t('pa.azLowConf'))}</title>
           <circle cx={CX + R * 0.62} cy={CY - 9} r="8" fill="#facc15" />
           <text x={CX + R * 0.62} y={CY - 5} fontSize="12" fontWeight="800" fill="#1f2937" textAnchor="middle">!</text>
         </g>
       )}
       {showAltWarn && (
         <g>
-          <title>{t('pa.altLowConf')}</title>
+          <title>{wrapTip(t('pa.altLowConf'))}</title>
           <circle cx={CX + 9} cy={CY - R * 0.62} r="8" fill="#facc15" />
           <text x={CX + 9} y={CY - R * 0.62 + 4} fontSize="12" fontWeight="800" fill="#1f2937" textAnchor="middle">!</text>
         </g>
