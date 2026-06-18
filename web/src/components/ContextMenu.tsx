@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
 import { useViewStore } from '../state/viewStore';
 import { canAnalyze, analyze, findUnguidedWindow, findUnguidedWindowAtTime } from '../parser/analyze';
-import { computeSettlingMask } from '../parser/settling';
 import type { AnalysisKind } from '../state/analysisStore';
 import { useAnalysisStore } from '../state/analysisStore';
 
@@ -39,12 +38,17 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const includeAll = useViewStore((s) => s.includeAll);
   const excludeAll = useViewStore((s) => s.excludeAll);
-  const setMask = useViewStore((s) => s.setMask);
   const exclusions = useViewStore((s) => s.exclusions);
+  const settlingPolicy = useViewStore((s) => s.settlingPolicy);
+  const applySettlingPolicy = useViewStore((s) => s.applySettlingPolicy);
 
   const sec = log && sectionIdx >= 0 ? log.sections[sectionIdx] : null;
   const session = sec && sec.type === 'GUIDING' ? log!.sessions[sec.idx] : null;
   const sessionIdx = sec && sec.type === 'GUIDING' ? sec.idx : -1;
+  // The ✓ reflects an explicitly-applied policy. After "Include all" / "Exclude
+  // all" the policy is cleared, so neither item shows a check (the mask no
+  // longer corresponds to a settling policy).
+  const activePolicy = sessionIdx >= 0 ? settlingPolicy.get(sessionIdx) : undefined;
 
   const openAnalysis = useAnalysisStore((s) => s.open);
   const scaleModeForAnalysis = useViewStore((s) => s.scaleMode);
@@ -154,22 +158,30 @@ export function GraphContextMenu({ children }: { children: ReactNode }) {
           >
             {t('contextMenu.excludeAll')}
           </Item>
+          <RCM.Separator className="my-1 h-px bg-slate-700" />
+          <div className="px-2 py-1 text-[11px] uppercase tracking-wide text-slate-500">
+            {t('contextMenu.settlingCaption')}
+          </div>
           <Item
             disabled={!session}
-            onSelect={() => {
-              if (!session) return;
-              // OR with whatever the user has already excluded by hand.
-              const current = exclusions.get(sessionIdx);
-              setMask(sessionIdx, computeSettlingMask(session, current));
-            }}
-            title={t('contextMenu.excludeDithersTooltip')}
+            onSelect={() => session && applySettlingPolicy(sessionIdx, session, 'desktop')}
+            title={t('contextMenu.excludeSettlingTooltip')}
           >
-            {t('contextMenu.excludeDithers')}
+            <span className="me-1 inline-block w-4 text-emerald-400">{activePolicy === 'desktop' ? '✓' : ''}</span>
+            {t('contextMenu.excludeSettling')}
+          </Item>
+          <Item
+            disabled={!session}
+            onSelect={() => session && applySettlingPolicy(sessionIdx, session, 'web')}
+            title={t('contextMenu.excludeSettlingDithersTooltip')}
+          >
+            <span className="me-1 inline-block w-4 text-emerald-400">{activePolicy === 'web' ? '✓' : ''}</span>
+            {t('contextMenu.excludeSettlingDithers')}
           </Item>
           <RCM.Separator className="my-1 h-px bg-slate-700" />
           <Item
             disabled={!session}
-            onSelect={() => session && includeAll(sessionIdx, session.entries.length)}
+            onSelect={() => session && applySettlingPolicy(sessionIdx, session, 'desktop')}
             title={t('contextMenu.resetSectionTooltip')}
           >
             {t('contextMenu.resetSection')}

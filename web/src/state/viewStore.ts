@@ -1,12 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { DEFAULT_THEME, type ThemeId } from '../themes';
+import { computeSettlingMask } from '../parser/settling';
+import type { GuideSession } from '../parser/types';
 
 export type CoordMode = 'RA_DEC' | 'DX_DY';
 export type Device = 'MOUNT' | 'AO';
 export type VerticalMode = 'PAN' | 'ZOOM';
 export type ScaleMode = 'PIXELS' | 'ARCSEC';
 export type GraphMode = 'TIME' | 'SCATTER';
+export type SettlingPolicy = 'desktop' | 'web';
 
 /** Sidebar width bounds (px). Drag-resize is clamped to this range. */
 export const SIDEBAR_MIN = 180;
@@ -68,6 +71,7 @@ interface ViewState {
   lockedYRange: [number, number] | null;
   traces: TraceVisibility;
   exclusions: Map<number, Uint8Array>;
+  settlingPolicy: Map<number, SettlingPolicy>;
   /**
    * Show the Plotly range-slider strip beneath the chart. Defaults to off
    * because the slider noticeably slows large-trace drag interactions
@@ -165,6 +169,7 @@ interface ViewState {
 
   ensureMask: (sessionIdx: number, entryCount: number) => Uint8Array;
   setMask: (sessionIdx: number, mask: Uint8Array) => void;
+  applySettlingPolicy: (sessionIdx: number, session: GuideSession, policy: SettlingPolicy) => void;
   includeAll: (sessionIdx: number, entryCount: number) => void;
   excludeAll: (sessionIdx: number, entryCount: number) => void;
   excludeRange: (sessionIdx: number, entryCount: number, fromFrame: number, toFrame: number, frames: number[]) => void;
@@ -189,6 +194,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   lockedYRange: null,
   traces: { ra: true, dec: true, raPulses: true, decPulses: true, raLimits: false, decLimits: false, mass: false, snr: false, events: false },
   exclusions: new Map(),
+  settlingPolicy: new Map(),
   showRangeSlider: false,
   flipRaPulses: false,
   flipDecPulses: false,
@@ -299,11 +305,36 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
     set({ exclusions: next });
   },
 
+  applySettlingPolicy: (sessionIdx, session, policy) => {
+    const entryCount = session.entries.length;
+    const oldPolicy = get().settlingPolicy.get(sessionIdx) ?? 'desktop';
+    const cur = get().exclusions.get(sessionIdx);
+    const hasCur = cur != null && cur.length === entryCount;
+    const settleFor = (p: SettlingPolicy) =>
+      computeSettlingMask(session, undefined, { includeDithers: p === 'web' });
+    const oldSettle = settleFor(oldPolicy);
+    const newSettle = settleFor(policy);
+    const next = new Uint8Array(entryCount);
+    for (let i = 0; i < entryCount; i++) {
+      // manual = a hand-excluded bit that wasn't part of the old policy's settling
+      const manual = hasCur && cur![i] === 1 && oldSettle[i] === 0;
+      next[i] = newSettle[i] === 1 || manual ? 1 : 0;
+    }
+    const nextEx = new Map(get().exclusions);
+    nextEx.set(sessionIdx, next);
+    const nextPol = new Map(get().settlingPolicy);
+    nextPol.set(sessionIdx, policy);
+    set({ exclusions: nextEx, settlingPolicy: nextPol });
+  },
+
   includeAll: (sessionIdx, entryCount) => {
     const fresh = new Uint8Array(entryCount);
     const next = new Map(get().exclusions);
     next.set(sessionIdx, fresh);
-    set({ exclusions: next });
+    // Clearing all exclusions means no settling policy is in force any more.
+    const nextPol = new Map(get().settlingPolicy);
+    nextPol.delete(sessionIdx);
+    set({ exclusions: next, settlingPolicy: nextPol });
   },
 
   excludeAll: (sessionIdx, entryCount) => {
@@ -311,7 +342,9 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
     m.fill(1);
     const next = new Map(get().exclusions);
     next.set(sessionIdx, m);
-    set({ exclusions: next });
+    const nextPol = new Map(get().settlingPolicy);
+    nextPol.delete(sessionIdx);
+    set({ exclusions: next, settlingPolicy: nextPol });
   },
 
   excludeRange: (sessionIdx, entryCount, fromFrame, toFrame, frames) => {
@@ -338,7 +371,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
     set({ exclusions: next });
   },
 
-  clearExclusions: () => set({ exclusions: new Map() }),
+  clearExclusions: () => set({ exclusions: new Map(), settlingPolicy: new Map() }),
 }), {
   name: 'phd-view-settings',
   // Persist UI preferences only; exclusion masks and lockedYRange are
