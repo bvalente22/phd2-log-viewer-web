@@ -31,3 +31,5 @@ sample data/
 # manual testing sessions. Kept on disk but never committed. Scoped to the
 # root (/*.png) so genuine image assets under web/ are unaffected.
 /*.png
+
+.dev-server.log
