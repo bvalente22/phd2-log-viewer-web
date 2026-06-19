@@ -4,7 +4,7 @@ The polar-alignment **accuracy phase** is COMPLETE and merged to `main` (PR #109
 
 - **Effective (drift-weighted mean) hour angle** for the per-section Alt/Az split — total PAE is unchanged (hour-angle-independent); only the split + trust flags sharpen.
 - **Whole-log least-squares "All Sections" solve** (`web/src/parser/globalPolarAlignment.ts`): combines guiding sections at different hour angles to solve azimuth & altitude uniquely (`e_i = A·cosH_i + E·sinH_i`), pier-side normalized, with a **High / Medium / Low / —** confidence rating from HA spread + fit residual.
-- **Toggling UI:** the "Polar Alignment Error" footer is one area that switches **Section ⟷ All Sections** (stats + bullseye together) on click.
+- **Toggling UI:** the "Polar Alignment Error" readout switches **Section ⟷ All Sections** (stats + bullseye together) on click. As of PR #113 it lives in `PolarAlignmentPanel`, now the **Polar Alignment** tab of the tabbed guiding footer (`StatsTabs`), and the All-Sections **confidence is computed but no longer displayed** — only the section count is shown. See `tabbed-stats-footer.md`.
 - **Narrow tooltips:** shared `wrapTip` helper in `web/src/i18n/format.ts` (extracted from `ImageImpact`).
 - **Developer explainer:** `docs/polar-alignment-explained.md`. Spec + plan under `docs/superpowers/`.
 - Tests: 44 files / 325 passing from the G: drive; tsc clean.

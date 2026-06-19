@@ -68,6 +68,15 @@ Keep native `title` tooltips **narrow** — wrapped to ~44 chars/line (narrow-an
 
 ### Polar alignment — status & open follow-ups
 
-The polar-alignment **accuracy phase** (effective mean hour angle for the per-section Alt/Az split; whole-log least-squares "All Sections" solve with High/Medium/Low/— confidence; one toggling Section⟷All-Sections footer area; narrow `wrapTip` tooltips) is complete and merged to `main` (PR #109, `945acf6`). Developer explainer: `docs/polar-alignment-explained.md`; spec + plan under `docs/superpowers/`. Prior phases: the per-section Polar Alignment Error feature; the desktop-default settling policy (#106).
+The polar-alignment **accuracy phase** (effective mean hour angle for the per-section Alt/Az split; whole-log least-squares "All Sections" solve with High/Medium/Low/— confidence; one toggling Section⟷All-Sections area (now the Polar Alignment tab — see *Guiding stats footer* below); narrow `wrapTip` tooltips) is complete and merged to `main` (PR #109, `945acf6`). Developer explainer: `docs/polar-alignment-explained.md`; spec + plan under `docs/superpowers/`. Prior phases: the per-section Polar Alignment Error feature; the desktop-default settling policy (#106).
 
 Open follow-ups (non-blocking): (1) optional — add a residual-driven Low/Medium confidence test to `web/src/parser/__tests__/globalPolarAlignment.test.ts` (the final review's one recommendation); (2) the user wants a short-email summary of the PA approach for another developer — a draft was provided in chat, pending a decision on shortening it and/or adding it as an abstract to the explainer doc. More in `.claude/memory/pa-accuracy-status.md`.
+
+### Guiding stats footer — tabbed (`StatsTabs`)
+
+The guiding-section footer band (under the chart) is a **three-tab strip** — `web/src/components/StatsTabs.tsx`, mirroring `CalibrationTabs`: **Stats** (default) | **Estimated Imaging Impact** | **Polar Alignment**. Only the active panel renders; tab state is component-local and resets to Stats on each section switch.
+
+- `StatsGrid` is now **stats-only** (Total / RA / Dec rows + included/excluded counts). The PA readout + bullseye + whole-log "All Sections" solve were extracted into `PolarAlignmentPanel`. `ImageImpact` is unchanged except its header.
+- **The All-Sections PA confidence (High/Medium/Low) is computed but intentionally NOT shown in the UI** — the All-Sections line shows only the section count. The confidence still gates whether the solve resolves (insufficient → "—"), so don't treat its absence as a bug.
+- The Imaging Impact and Polar Alignment tab headers carry an **"EXPERIMENTAL"** suffix by design ("Estimated Imaging Impact: EXPERIMENTAL", "Polar Alignment Error: EXPERIMENTAL").
+- Shipped in PR #113 (squash `339570a`). Spec: `docs/superpowers/specs/2026-06-19-tabbed-stats-footer-design.md`. More in `.claude/memory/tabbed-stats-footer.md`.
