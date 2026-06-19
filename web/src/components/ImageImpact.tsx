@@ -193,66 +193,71 @@ export function ImageImpact() {
           font-semibold); each tab keeps its own accent color. */}
       <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-sky-300/80">{t('imageImpact.title')}</div>
 
-      <div className="mb-2 flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-0.5">
-          <a
-            href={IMAGING_SCALE_CALC_URL} target="_blank" rel="noopener noreferrer"
-            title={t('imageImpact.imagingScaleLinkTitle')}
-            className="text-[10px] text-sky-400 hover:text-sky-300 hover:underline"
-          >
-            {t('imageImpact.imagingScale')} ↗
-          </a>
-          <span className="flex items-center gap-1 rounded border border-slate-700 bg-slate-950 px-1.5 py-1">
-            <DecimalInput
-              value={scale} onChange={setScale}
-              ariaLabel={t('imageImpact.imagingScale')}
-              className="w-14 bg-transparent font-mono text-xs text-slate-100 focus:outline-none"
-            />
-            <span className="text-[10px] text-slate-500">″/px</span>
-          </span>
-        </label>
-
-        <label className="flex flex-col gap-0.5">
-          <span className="text-[10px] text-slate-400">{t('imageImpact.estimatedSeeing')}</span>
-          <span className="flex items-center gap-1">
-            <select
-              value={preset}
-              onChange={(e) => {
-                const p = SEEING_PRESETS.find((x) => x.key === e.target.value);
-                if (p) setFwhm(p.fwhm);
-              }}
-              className="rounded border border-slate-700 bg-slate-950 px-1.5 py-1 text-xs text-slate-100 focus:outline-none"
+      {/* Settings on the left, ellipse graphics on the right (mirrors the
+          Polar Alignment tab's text-left / plot-right layout) so the tab stays
+          short instead of stacking the graphics below the controls. */}
+      <div className="flex flex-wrap items-start gap-6">
+        <div className="flex flex-col gap-2">
+          <label className="flex flex-col gap-0.5">
+            <a
+              href={IMAGING_SCALE_CALC_URL} target="_blank" rel="noopener noreferrer"
+              title={t('imageImpact.imagingScaleLinkTitle')}
+              className="text-[10px] text-sky-400 hover:text-sky-300 hover:underline"
             >
-              {SEEING_PRESETS.map((p) => (
-                <option key={p.key} value={p.key}>{t(`imageImpact.preset_${p.key}`)}</option>
-              ))}
-              <option value="custom">{t('imageImpact.preset_custom')}</option>
-            </select>
+              {t('imageImpact.imagingScale')} ↗
+            </a>
             <span className="flex items-center gap-1 rounded border border-slate-700 bg-slate-950 px-1.5 py-1">
               <DecimalInput
-                value={fwhm} onChange={setFwhm}
-                title={t('imageImpact.seeingValueTitle')} ariaLabel={t('imageImpact.seeingValueTitle')}
-                className="w-12 bg-transparent font-mono text-xs text-slate-100 focus:outline-none"
+                value={scale} onChange={setScale}
+                ariaLabel={t('imageImpact.imagingScale')}
+                className="w-14 bg-transparent font-mono text-xs text-slate-100 focus:outline-none"
               />
-              <span className="text-[10px] text-slate-500">″</span>
+              <span className="text-[10px] text-slate-500">″/px</span>
             </span>
-          </span>
-        </label>
+          </label>
 
-        <label className="flex items-center gap-1.5 text-[10px] text-slate-400" title={t('imageImpact.rememberTooltip')}>
-          <input type="checkbox" checked={remember} onChange={(e) => onToggleRemember(e.target.checked)} className="accent-sky-500" />
-          {t('imageImpact.remember')}
-        </label>
-      </div>
+          <label className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-slate-400">{t('imageImpact.estimatedSeeing')}</span>
+            <span className="flex items-center gap-1">
+              <select
+                value={preset}
+                onChange={(e) => {
+                  const p = SEEING_PRESETS.find((x) => x.key === e.target.value);
+                  if (p) setFwhm(p.fwhm);
+                }}
+                className="rounded border border-slate-700 bg-slate-950 px-1.5 py-1 text-xs text-slate-100 focus:outline-none"
+              >
+                {SEEING_PRESETS.map((p) => (
+                  <option key={p.key} value={p.key}>{t(`imageImpact.preset_${p.key}`)}</option>
+                ))}
+                <option value="custom">{t('imageImpact.preset_custom')}</option>
+              </select>
+              <span className="flex items-center gap-1 rounded border border-slate-700 bg-slate-950 px-1.5 py-1">
+                <DecimalInput
+                  value={fwhm} onChange={setFwhm}
+                  title={t('imageImpact.seeingValueTitle')} ariaLabel={t('imageImpact.seeingValueTitle')}
+                  className="w-12 bg-transparent font-mono text-xs text-slate-100 focus:outline-none"
+                />
+                <span className="text-[10px] text-slate-500">″</span>
+              </span>
+            </span>
+          </label>
 
-      {result ? (
-        <div className="flex flex-wrap gap-4">
-          <GuideEllipse r={result} title={guideTooltip(result, t)} />
-          <FinalEllipse r={result} title={finalTooltip(result, scale, ctx.guideScale, fwhm, t)} raColor={raColor} decColor={decColor} />
+          <label className="flex items-center gap-1.5 text-[10px] text-slate-400" title={t('imageImpact.rememberTooltip')}>
+            <input type="checkbox" checked={remember} onChange={(e) => onToggleRemember(e.target.checked)} className="accent-sky-500" />
+            {t('imageImpact.remember')}
+          </label>
         </div>
-      ) : (
-        <div className="text-xs text-slate-500">{t('imageImpact.noData')}</div>
-      )}
+
+        {result ? (
+          <div className="flex flex-wrap gap-4">
+            <GuideEllipse r={result} title={guideTooltip(result, t)} />
+            <FinalEllipse r={result} title={finalTooltip(result, scale, ctx.guideScale, fwhm, t)} raColor={raColor} decColor={decColor} />
+          </div>
+        ) : (
+          <div className="text-xs text-slate-500">{t('imageImpact.noData')}</div>
+        )}
+      </div>
     </div>
   );
 }
