@@ -39,10 +39,14 @@ Wraps every view, from `ViewerPage.tsx`.
 | **Guiding Assistant panel** (GA results) | Guiding-Assistant run summary | `GAResultsPanel` |
 | **Guiding dashboard** | Tile strip: Pier side, Exposure, Hour angle, Altitude, Rotator, AO Unit, Backlash comp, RA/Dec algorithm | `GuidingDashboard` |
 | **Guide graph** (Time view) / **Scatter view** | The main chart (toggled by View) | `GuideGraph` / `ScatterView` |
-| **Stats grid** (guiding stats footer) | Total row (RMS, Duration, **Aspect-Ratio** metric badge) + RA / Dec rows (RMS, Peak, Mean), then a small **included / excluded** frame-count line | `StatsGrid` |
-| ↳ **Polar Alignment area** | "Polar Alignment Error" block at the bottom-left of the stats, with a header pill that toggles **This Section ⟷ All Sections**. Below the pill: total **PAE** band badge (green ≤2′ / yellow ≤5′ / red), the **Alt / Az** split, then a third line that is **RA / Dec drift** in This-Section mode or **Confidence** (High / Medium / Low / —) + section count in All-Sections mode | within `StatsGrid` |
-| ↳ **PA bullseye** (target plot) | The 6′ dartboard SVG to the right of the stats text; dot sits at the total PAE distance and the Alt/Az angle, colored by band, with "!" low-confidence markers on the weak axis (This-Section mode). Clicking it toggles the area too | `PolarAlignmentPlot` |
-| **Estimated Imaging Impact panel** | Guide-error → star-elongation estimator, far right of the stats footer | `ImageImpact` |
+| **Stats footer** (tabbed) | The footer band under the chart. A tab strip (active = amber) switches between three panels; default is **Stats**. Only the active panel renders | `StatsTabs` |
+| ↳ **Stats tab** | Total row (RMS, Duration, **Aspect-Ratio** metric) + RA / Dec rows (RMS, Peak, Mean), then a small **included / excluded** frame-count line | `StatsGrid` |
+| ↳ **Estimated Imaging Impact tab** | Guide-error → star-elongation estimator; header "Estimated Imaging Impact: EXPERIMENTAL" | `ImageImpact` |
+| ↳ **Polar Alignment tab** | Header "Polar Alignment Error: EXPERIMENTAL" with a pill that toggles **This Section ⟷ All Sections**. Below it: total **PAE** band badge (green ≤2′ / yellow ≤5′ / red), the **Alt / Az** split, then a third line that is **RA / Dec drift** (This Section) or just the **section count** (All Sections). Plus the bullseye on the right | `PolarAlignmentPanel` |
+| ↳ **PA bullseye** (target plot) | The 6′ dartboard SVG on the right of the Polar Alignment tab; dot sits at the total PAE distance and the Alt/Az angle, colored by band, with "!" low-confidence markers on the weak axis (This-Section mode). Clicking it toggles the mode too | `PolarAlignmentPlot` |
+
+*Confidence (High/Medium/Low) is still computed for the All-Sections solve — it
+gates whether the result resolves — but is no longer shown in the UI.*
 
 *Polar-alignment math lives in the parser, not the components: per-section split in
 [`polarAlignment.ts`](../web/src/parser/polarAlignment.ts), the whole-log least-squares

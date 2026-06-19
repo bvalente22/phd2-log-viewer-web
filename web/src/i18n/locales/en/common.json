@@ -45,6 +45,14 @@
     "backlashAnalysis": "Backlash Analysis",
     "backlashAnalysisTooltip": "Drop a paired PHD2 DEBUG log to extract the Dec-axis Backlash Test results. Reports backlash in pixels and milliseconds plus per-step diagnostics."
   },
+  "statsTabs": {
+    "stats": "Stats",
+    "statsTooltip": "Guiding error statistics: Total / RA / Dec RMS, peak and mean, plus the included / excluded frame counts.",
+    "imagingImpact": "Imaging Impact",
+    "imagingImpactTooltip": "Estimate of how the RA/Dec guide-error asymmetry may elongate stars in the imaging scope after combining with seeing. Experimental.",
+    "polarAlignment": "Polar Alignment",
+    "polarAlignmentTooltip": "Polar alignment error from declination drift — this section, or solved across all sections. Experimental."
+  },
   "sidebar": {
     "title": "Logs & Sessions",
     "hide": "Hide",
