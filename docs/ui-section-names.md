@@ -39,8 +39,18 @@ Wraps every view, from `ViewerPage.tsx`.
 | **Guiding Assistant panel** (GA results) | Guiding-Assistant run summary | `GAResultsPanel` |
 | **Guiding dashboard** | Tile strip: Pier side, Exposure, Hour angle, Altitude, Rotator, AO Unit, Backlash comp, RA/Dec algorithm | `GuidingDashboard` |
 | **Guide graph** (Time view) / **Scatter view** | The main chart (toggled by View) | `GuideGraph` / `ScatterView` |
-| **Stats grid** (guiding stats footer) | Total / RA / Dec rows: RMS, Peak, Mean, Drift, Aspect Ratio, PAE | `StatsGrid` |
-| **Estimated Imaging Impact panel** | Guide-error → star-elongation estimator, right of the stats | `ImageImpact` |
+| **Stats grid** (guiding stats footer) | Total row (RMS, Duration, **Aspect-Ratio** metric badge) + RA / Dec rows (RMS, Peak, Mean), then a small **included / excluded** frame-count line | `StatsGrid` |
+| ↳ **Polar Alignment area** | "Polar Alignment Error" block at the bottom-left of the stats, with a header pill that toggles **This Section ⟷ All Sections**. Below the pill: total **PAE** band badge (green ≤2′ / yellow ≤5′ / red), the **Alt / Az** split, then a third line that is **RA / Dec drift** in This-Section mode or **Confidence** (High / Medium / Low / —) + section count in All-Sections mode | within `StatsGrid` |
+| ↳ **PA bullseye** (target plot) | The 6′ dartboard SVG to the right of the stats text; dot sits at the total PAE distance and the Alt/Az angle, colored by band, with "!" low-confidence markers on the weak axis (This-Section mode). Clicking it toggles the area too | `PolarAlignmentPlot` |
+| **Estimated Imaging Impact panel** | Guide-error → star-elongation estimator, far right of the stats footer | `ImageImpact` |
+
+*Polar-alignment math lives in the parser, not the components: per-section split in
+[`polarAlignment.ts`](../web/src/parser/polarAlignment.ts), the whole-log least-squares
+"All Sections" solve + confidence in
+[`globalPolarAlignment.ts`](../web/src/parser/globalPolarAlignment.ts), and the
+green/yellow/red band thresholds in
+[`guidingMetric.ts`](../web/src/components/guidingMetric.ts). Background:
+[`docs/polar-alignment-explained.md`](polar-alignment-explained.md).*
 
 ---
 
