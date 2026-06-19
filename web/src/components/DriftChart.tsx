@@ -66,6 +66,15 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
     s.state === 'open' ? s.driftXRangeView : null,
   );
   const setDriftXRange = useAnalysisStore((s) => s.setDriftXRange);
+  // Y range tracking — the mirror of the X tracking above. The gesture handler
+  // (useChartGestures) drag-zooms Y by relayout, but the same drag's X-range
+  // store update forces a re-render that would snap Y back to the data-derived
+  // `yRange`. Persisting the user's Y zoom here lets the layout feed it back so
+  // it sticks (this is what made "drag zooms Y" appear broken before).
+  const driftYRangeView = useAnalysisStore((s) =>
+    s.state === 'open' ? s.driftYRangeView : null,
+  );
+  const setDriftYRange = useAnalysisStore((s) => s.setDriftYRange);
 
   const k = scaleMode === 'ARCSEC' ? garun.pixelScale : 1;
   const unit = scaleMode === 'ARCSEC' ? '″' : 'px';
@@ -194,7 +203,25 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
     } else if (ev['xaxis.autorange'] === true) {
       setDriftXRange(null);
     }
-  }, [setDriftXRange]);
+    // Same capture for the Y axis (linear values — never date strings) so the
+    // gesture handler's drag-zoom of Y persists across re-renders.
+    const y0 = toMs(ev['yaxis.range[0]']);
+    const y1 = toMs(ev['yaxis.range[1]']);
+    const yrange = ev['yaxis.range'];
+    let ylo: number | undefined;
+    let yhi: number | undefined;
+    if (y0 !== null && y1 !== null) {
+      ylo = y0; yhi = y1;
+    } else if (Array.isArray(yrange) && yrange.length >= 2) {
+      const a = toMs(yrange[0]); const b = toMs(yrange[1]);
+      if (a !== null && b !== null) { ylo = a; yhi = b; }
+    }
+    if (ylo !== undefined && yhi !== undefined && Number.isFinite(ylo) && Number.isFinite(yhi)) {
+      setDriftYRange([ylo, yhi]);
+    } else if (ev['yaxis.autorange'] === true) {
+      setDriftYRange(null);
+    }
+  }, [setDriftXRange, setDriftYRange]);
 
   const onHover = useCallback((ev: PlotlyHoverEvent) => {
     const pt = ev.points?.[0];
@@ -282,7 +309,7 @@ export function DriftChart({ garun, showRa, showDec, scaleMode }: DriftChartProp
       spikecolor: tc.hoverSpike,
       spikesnap: 'cursor',
     },
-    yaxis: { title: { text: unit }, gridcolor: tc.grid, zerolinecolor: tc.zerolineStrong, zerolinewidth: 1, fixedrange: true, range: yRange },
+    yaxis: { title: { text: unit }, gridcolor: tc.grid, zerolinecolor: tc.zerolineStrong, zerolinewidth: 1, fixedrange: true, range: driftYRangeView ?? yRange },
     showlegend: true,
     legend: { orientation: 'h', y: 1.1 },
     dragmode: false,

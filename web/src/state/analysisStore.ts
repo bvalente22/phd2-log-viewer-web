@@ -85,6 +85,14 @@ interface OpenState {
    */
   driftXRangeView: [number, number] | null;
   /**
+   * Drift chart's current Y-axis range (value units — px or arcsec). Tracked
+   * for the same reason as the X range: the gesture handler drag-zooms Y via
+   * Plotly.relayout, but the re-render that the X-range update triggers on the
+   * same drag would otherwise snap Y back to the data-derived `yRange`. Null =
+   * fall back to the data-derived default.
+   */
+  driftYRangeView: [number, number] | null;
+  /**
    * Periodogram's current X-axis range in **log10 space** (Plotly's
    * native unit for log-scale axes). Tracked for the same reason the
    * drift X is tracked — hover re-renders must not snap pan back to the
@@ -266,6 +274,7 @@ interface Actions {
   resetYZoom: () => void;
   /** Update the drift chart's tracked X range (seconds). */
   setDriftXRange: (range: [number, number] | null) => void;
+  setDriftYRange: (range: [number, number] | null) => void;
   /** Update the periodogram's tracked X range (log10 space). */
   setPeriodXRangeLog: (range: [number, number] | null) => void;
   /**
@@ -359,6 +368,7 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
       yMaxLockPx: null,
       yMaxViewPx: null,
       driftXRangeView: null,
+      driftYRangeView: null,
       periodXRangeViewLog: null,
       maxPeriodSec: DEFAULT_MAX_PERIOD_SEC,
       // Default OFF (auto-mask): the modal opens with the section's
@@ -513,6 +523,11 @@ export const useAnalysisStore = create<AnalysisStateUnion & Actions>((set, get) 
     const cur = get();
     if (cur.state !== 'open') return;
     set({ ...cur, driftXRangeView: range });
+  },
+  setDriftYRange: (range) => {
+    const cur = get();
+    if (cur.state !== 'open') return;
+    set({ ...cur, driftYRangeView: range });
   },
   setPeriodXRangeLog: (range) => {
     const cur = get();
