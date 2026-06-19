@@ -1,7 +1,7 @@
 {
   "rows": {
     "total": "Total",
-    "polarAlign": "Error de alineación polar"
+    "polarAlign": "Error de alineación polar: EXPERIMENTAL"
   },
   "guide": {
     "duration": "Duración",
@@ -19,7 +19,7 @@
     "perMinSuffix": "/min"
   },
   "imageImpact": {
-    "title": "Impacto estimado en la imagen",
+    "title": "Impacto estimado en la imagen: EXPERIMENTAL",
     "tooltip": "Estimación de cómo la asimetría del error de guiado RA/Dec puede alargar las estrellas en el telescopio de imagen al combinarse con el seeing. Solo una estimación: la forma real también depende de óptica, enfoque, flexión, viento y procesado.",
     "imagingScale": "Escala de imagen",
     "estimatedSeeing": "Condiciones de seeing (FWHM)",

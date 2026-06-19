@@ -188,8 +188,10 @@ export function ImageImpact() {
   const preset = presetForFwhm(fwhm);
 
   return (
-    <div className="border-s border-slate-700 px-4 py-2 text-sm" title={t('imageImpact.tooltip')}>
-      <div className="mb-2 text-[10px] font-medium uppercase tracking-wide text-sky-300/80">{t('imageImpact.title')}</div>
+    <div className="px-4 py-2 text-sm" title={t('imageImpact.tooltip')}>
+      {/* Header typography matches the Polar Alignment tab header (text-xs /
+          font-semibold); each tab keeps its own accent color. */}
+      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-sky-300/80">{t('imageImpact.title')}</div>
 
       <div className="mb-2 flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-0.5">

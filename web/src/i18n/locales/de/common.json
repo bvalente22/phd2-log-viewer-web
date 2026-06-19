@@ -23,6 +23,14 @@
     "backlashAnalysis": "Backlash-Analyse",
     "backlashAnalysisTooltip": "Lege ein zugehöriges PHD2-DEBUG-Log ab, um die Dec-Achsen-Backlash-Test-Ergebnisse zu extrahieren. Berichtet Backlash in Pixeln und Millisekunden plus Diagnosen pro Schritt."
   },
+  "statsTabs": {
+    "stats": "Stats",
+    "statsTooltip": "Statistik der Guiding-Fehler: Total / RA / Dec RMS, Peak und Mittel, plus die Anzahl der einbezogenen / ausgeschlossenen frames.",
+    "imagingImpact": "Bildauswirkung",
+    "imagingImpactTooltip": "Schätzung, wie die Asymmetrie des RA/Dec-Guiding-Fehlers Sterne im Aufnahmeteleskop in Kombination mit dem seeing verlängern kann. Experimentell.",
+    "polarAlignment": "Polausrichtung",
+    "polarAlignmentTooltip": "Polausrichtungsfehler aus der Dec-drift — dieser Abschnitt oder über alle Abschnitte gelöst. Experimentell."
+  },
   "sidebar": {
     "title": "Logs & Sitzungen",
     "hide": "Ausblenden",

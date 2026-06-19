@@ -1,7 +1,7 @@
 {
   "rows": {
     "total": "Gesamt",
-    "polarAlign": "Polausrichtungsfehler"
+    "polarAlign": "Polausrichtungsfehler: EXPERIMENTAL"
   },
   "guide": {
     "duration": "Dauer",
@@ -19,7 +19,7 @@
     "perMinSuffix": "/min"
   },
   "imageImpact": {
-    "title": "Geschätzte Bildauswirkung",
+    "title": "Geschätzte Bildauswirkung: EXPERIMENTAL",
     "tooltip": "Schätzung, wie die Asymmetrie des RA/Dec-Guiding-Fehlers Sterne im Aufnahmeteleskop in Kombination mit dem Seeing verlängern kann. Nur eine Schätzung – die echte Sternform hängt auch von Optik, Fokus, Flexure, Wind und Bearbeitung ab.",
     "imagingScale": "Bildskala",
     "estimatedSeeing": "Seeing-Bedingungen (FWHM)",

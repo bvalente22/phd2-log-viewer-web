@@ -23,6 +23,14 @@
     "backlashAnalysis": "Análisis de backlash",
     "backlashAnalysisTooltip": "Suelta un log de DEBUG de PHD2 emparejado para extraer los resultados del Test de Backlash en el eje Dec. Reporta backlash en píxeles y milisegundos más diagnósticos por paso."
   },
+  "statsTabs": {
+    "stats": "Estadísticas",
+    "statsTooltip": "Estadísticas del error de guiado: RMS Total / RA / Dec, pico y media, además del número de frames incluidos / excluidos.",
+    "imagingImpact": "Impacto en imagen",
+    "imagingImpactTooltip": "Estimación de cómo la asimetría del error de guiado RA/Dec puede alargar las estrellas en el telescopio de imagen al combinarse con el seeing. Experimental.",
+    "polarAlignment": "Alineación polar",
+    "polarAlignmentTooltip": "Error de alineación polar a partir de la deriva en Dec — esta sección, o resuelto sobre todas las secciones. Experimental."
+  },
   "sidebar": {
     "title": "Logs y sesiones",
     "hide": "Ocultar",
