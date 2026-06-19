@@ -1,7 +1,7 @@
 {
   "rows": {
     "total": "总计",
-    "polarAlign": "极轴校准误差"
+    "polarAlign": "极轴校准误差：EXPERIMENTAL"
   },
   "guide": {
     "duration": "时长",
@@ -19,7 +19,7 @@
     "perMinSuffix": "/分"
   },
   "imageImpact": {
-    "title": "估计成像影响",
+    "title": "估计成像影响：EXPERIMENTAL",
     "tooltip": "估算 RA/Dec 导星误差的不对称在与视宁度结合后，可能使成像镜中的星点拉长的程度。仅为估算——真实星形还取决于光学、对焦、挠曲、风和后期处理。",
     "imagingScale": "成像比例",
     "estimatedSeeing": "视宁度条件 (FWHM)",

@@ -23,6 +23,14 @@
     "backlashAnalysis": "Backlash 分析",
     "backlashAnalysisTooltip": "拖入配对的 PHD2 DEBUG 日志以提取 Dec 轴 Backlash Test 结果。报告以像素和毫秒计的 backlash，以及逐步诊断。"
   },
+  "statsTabs": {
+    "stats": "统计",
+    "statsTooltip": "导星误差统计:Total / RA / Dec 的 RMS、峰值与均值,以及已包含 / 已排除的 frame 数量。",
+    "imagingImpact": "成像影响",
+    "imagingImpactTooltip": "估算 RA/Dec 导星误差的不对称在与 seeing 结合后,可能使成像镜中的星点拉长的程度。实验性。",
+    "polarAlignment": "极轴校准",
+    "polarAlignmentTooltip": "根据 Dec drift 估算的极轴校准误差——本区段,或对所有区段联合求解。实验性。"
+  },
   "sidebar": {
     "title": "日志与会话",
     "hide": "隐藏",

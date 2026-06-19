@@ -1,7 +1,7 @@
 {
   "rows": {
     "total": "Totale",
-    "polarAlign": "Errore di allineamento polare"
+    "polarAlign": "Errore di allineamento polare: EXPERIMENTAL"
   },
   "guide": {
     "duration": "Durata",
@@ -19,7 +19,7 @@
     "perMinSuffix": "/min"
   },
   "imageImpact": {
-    "title": "Impatto stimato sull'immagine",
+    "title": "Impatto stimato sull'immagine: EXPERIMENTAL",
     "tooltip": "Stima di quanto l'asimmetria dell'errore di guida RA/Dec possa allungare le stelle nel telescopio di ripresa, combinata con il seeing. Solo una stima — la forma reale dipende anche da ottica, fuoco, flessione, vento ed elaborazione.",
     "imagingScale": "Scala immagine",
     "estimatedSeeing": "Condizioni di seeing (FWHM)",
