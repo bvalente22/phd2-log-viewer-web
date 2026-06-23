@@ -74,13 +74,25 @@ export function RecentsDropdown() {
   };
 
   return (
-    <div ref={ref} className="relative border-b border-slate-800">
+    // Distinct from the section list below: this is a self-contained "open a
+    // different log" control, not part of the current log's section listing.
+    // A heavier top/bottom border, a tinted background, and a leading history
+    // icon set it apart so the two groups don't read as one continuous list.
+    <div ref={ref} className="relative border-y-2 border-slate-700 bg-slate-900/50">
       <button
-        className="flex w-full items-center justify-between px-3 py-2 text-start text-xs uppercase tracking-wide text-slate-400 hover:bg-slate-800"
+        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-start text-xs uppercase tracking-wide text-slate-300 hover:bg-slate-800"
         onClick={() => setOpen((v) => !v)}
         title={open ? t('recents.hideTooltip') : t('recents.showTooltip')}
       >
-        <span>{t('recents.dropdownLabel', { count: items.length })}</span>
+        <span className="flex items-center gap-2">
+          {/* History/clock glyph marks this as the "recently opened" picker. */}
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-slate-400" aria-hidden>
+            <path d="M3 3v5h5" />
+            <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" />
+            <path d="M12 7v5l3 2" />
+          </svg>
+          <span>{t('recents.dropdownLabel', { count: items.length })}</span>
+        </span>
         <span className="text-slate-500">{open ? '▴' : '▾'}</span>
       </button>
       {open && (

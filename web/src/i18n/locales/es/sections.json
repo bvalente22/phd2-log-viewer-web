@@ -1,6 +1,8 @@
 {
   "list": {
     "noSections": "Sin secciones.",
+    "heading": "Secciones de este registro",
+    "headingTooltip": "Secciones de guiado y calibración del registro abierto. Elige una para verla.",
     "guideLabel": "Guía · {{date}}",
     "calLabel": "Cal · {{date}}",
     "framesSummary": "{{frames}} frames · {{duration}}",
