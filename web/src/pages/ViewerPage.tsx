@@ -33,6 +33,10 @@ export function ViewerPage() {
   const log = useLogStore((s) => s.log);
   const meta = useLogStore((s) => s.meta);
   const openEditor = useAnnotationStore((s) => s.openEditor);
+  // Friendly name for the open log, when the user has set one — the header
+  // shows it in place of the verbose PHD2 filename (which stays in the hover
+  // title and the SectionSummary strip). Falls back to the filename.
+  const annotation = useAnnotationStore((s) => s.current);
   const sectionIdx = useLogStore((s) => s.selectedSection);
   const graphMode = useViewStore((s) => s.graphMode);
   const theme = useViewStore((s) => s.theme);
@@ -87,12 +91,13 @@ export function ViewerPage() {
           {log && (
             <>
               <span className="mx-2 text-slate-700">|</span>
-              {/* Filename can be 30+ chars on real PHD2 logs; the
-                  smaller text-xs + lighter slate-400 keeps it readable
-                  without forcing the header to wrap on narrow viewports.
-                  The full name also lives in the SectionSummary strip. */}
+              {/* Friendly name when one is set, else the filename. Filenames
+                  can be 30+ chars on real PHD2 logs; the smaller text-xs +
+                  lighter slate-400 keeps it readable without forcing the
+                  header to wrap on narrow viewports. The actual filename stays
+                  in the hover title and the SectionSummary strip. */}
               <span className="break-all text-xs font-normal text-slate-400" title={meta?.name}>
-                {meta?.name}
+                {annotation?.friendlyName ?? meta?.name}
               </span>
               {meta?.hash && (
                 <button
