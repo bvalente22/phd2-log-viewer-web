@@ -117,16 +117,15 @@ export function AnnotationModal() {
         </div>
 
         <div className="flex items-center gap-2 border-t border-slate-800 px-4 py-2.5">
-          <button
-            className="rounded bg-sky-600 px-3 py-1 text-xs font-medium text-white hover:bg-sky-500"
-            onClick={() => void save()}
-            title={t('annotations.save')}
-          >
-            {t('annotations.save')}
-          </button>
-
           {isFirstOpen ? (
             <>
+              <button
+                className="rounded bg-sky-600 px-3 py-1 text-xs font-medium text-white hover:bg-sky-500"
+                onClick={() => void save()}
+                title={t('annotations.save')}
+              >
+                {t('annotations.save')}
+              </button>
               <button
                 className="rounded px-3 py-1 text-xs text-slate-400 hover:text-slate-200"
                 onClick={() => void skipFirstOpen()}
@@ -143,14 +142,32 @@ export function AnnotationModal() {
               </button>
             </>
           ) : (
-            <button
-              className="ms-auto rounded border border-red-900 px-3 py-1 text-xs text-red-400 hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-40"
-              onClick={() => void clearCurrent()}
-              disabled={!hasContent}
-              title={t('annotations.delete')}
-            >
-              {t('annotations.delete')}
-            </button>
+            // Edit mode: Clear (blank the annotation) on the far left, then
+            // Cancel + Save grouped on the right with Save rightmost.
+            <>
+              <button
+                className="rounded border border-red-900 px-3 py-1 text-xs text-red-400 hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={() => void clearCurrent()}
+                disabled={!hasContent}
+                title={t('annotations.clearTooltip')}
+              >
+                {t('annotations.clear')}
+              </button>
+              <button
+                className="ms-auto rounded px-3 py-1 text-xs text-slate-400 hover:text-slate-200"
+                onClick={() => close()}
+                title={t('annotations.cancelTooltip')}
+              >
+                {t('annotations.cancel')}
+              </button>
+              <button
+                className="rounded bg-sky-600 px-3 py-1 text-xs font-medium text-white hover:bg-sky-500"
+                onClick={() => void save()}
+                title={t('annotations.save')}
+              >
+                {t('annotations.save')}
+              </button>
+            </>
           )}
         </div>
       </div>
