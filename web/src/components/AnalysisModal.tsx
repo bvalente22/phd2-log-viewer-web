@@ -444,8 +444,15 @@ export function AnalysisModal() {
             >
               <path d="M3 17l4-6 4 3 5-9 4 7" />
             </svg>
+            {/* Unguided analyses have no mode tabs, so the active mode would
+                otherwise be invisible. Surface it inline as "ANALYSIS:
+                Unguided" — the suffix opts out of the wordmark's uppercase so
+                it reads as a mode label, not part of the wordmark. */}
             <h2 className="text-xl font-extrabold uppercase leading-none tracking-wide text-amber-950">
               {t('label')}
+              {kind === 'unguided' && (
+                <span className="normal-case">: {t('mode.unguidedShort')}</span>
+              )}
             </h2>
           </div>
           {showAnyTabs && (

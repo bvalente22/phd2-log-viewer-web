@@ -13,6 +13,7 @@
     "selected": "Restfehler",
     "rawRa": "RA roh",
     "unguided": "Ungeführter Abschnitt",
+    "unguidedShort": "Ungeführt",
     "spike": "Spikes",
     "burst": "Bursts",
     "simpleSpike": "Einfach",

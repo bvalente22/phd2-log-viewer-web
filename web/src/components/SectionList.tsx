@@ -34,7 +34,16 @@ export function SectionList() {
   }
 
   return (
-    <ul>
+    <>
+      {/* Group header so the per-section list reads as the CURRENT log's
+          sections — distinct from the "Recent logs" picker above it, which
+          opens a different log entirely. */}
+      <div className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950/95 px-3 py-1.5">
+        <span className="text-[10px] uppercase tracking-widest text-slate-500" title={t('list.headingTooltip')}>
+          {t('list.heading')}
+        </span>
+      </div>
+      <ul>
       {log.sections.map((sec, i) => {
         const isCal = sec.type === 'CALIBRATION';
         const session = isCal ? null : log.sessions[sec.idx];
@@ -107,6 +116,7 @@ export function SectionList() {
           </li>
         );
       })}
-    </ul>
+      </ul>
+    </>
   );
 }

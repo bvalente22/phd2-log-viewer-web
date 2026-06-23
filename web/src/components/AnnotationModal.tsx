@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAnnotationStore, NOTES_MAXLEN } from '../state/annotationStore';
 
@@ -26,6 +26,19 @@ export function AnnotationModal() {
   // Dismiss semantics differ by mode: first-open records "seen" so it never
   // re-prompts; edit just closes without persisting.
   const dismiss = modal?.mode === 'first-open' ? skipFirstOpen : close;
+
+  // On the first-open prompt the name is pre-filled with the date parsed from
+  // the filename. Place the caret at the START of the field (rather than the
+  // browser default of end / select-all) so the user can type a prefix in
+  // front of the suggested date without first repositioning the cursor.
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+  useEffect(() => {
+    if (modal?.mode !== 'first-open') return;
+    const el = nameInputRef.current;
+    if (!el) return;
+    el.focus();
+    el.setSelectionRange(0, 0);
+  }, [modal?.mode]);
 
   useEffect(() => {
     if (!modal) return;
@@ -67,6 +80,7 @@ export function AnnotationModal() {
             {t('annotations.nameLabel')}
           </label>
           <input
+            ref={nameInputRef}
             autoFocus
             className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
             value={modal.name}

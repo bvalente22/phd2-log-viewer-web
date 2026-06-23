@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { wrapTip } from '../i18n/format';
 import { useLogStore } from '../state/logStore';
 import { useAnnotationStore } from '../state/annotationStore';
 import { useDebugPresenceStore } from '../state/debugLogPresenceStore';
@@ -31,6 +32,20 @@ export function LogsFolderPane() {
 
   const friendlyName = annotation?.friendlyName ?? null;
   const notes = annotation?.notes ?? null;
+
+  // Rich hover tooltip for the current-log strip: full friendly name (and the
+  // underlying filename when a name is set), the full notes, and a closing
+  // "click to edit" cue. Each part is wrapped narrow-and-tall (wrapTip) so the
+  // native title renders as a readable column, matching the app's tooltip
+  // convention (see CLAUDE.md "UI conventions — tooltips").
+  const stripTooltip = meta?.hash
+    ? [
+        wrapTip(friendlyName ?? meta.name),
+        friendlyName ? wrapTip(meta.name) : '',
+        notes ? wrapTip(notes) : '',
+        t('annotations.hoverEditHint'),
+      ].filter(Boolean).join('\n')
+    : '';
 
   // Does the open log have a companion debug log available? → "D" badge.
   const debugHashes = useDebugPresenceStore((s) => s.hashes);
@@ -102,43 +117,6 @@ export function LogsFolderPane() {
       </button>
       {open && (
         <div className="px-3 py-3">
-          {/* Current-log strip: friendly name (or filename + name cue) plus a
-              2-line notes preview. Whole strip is the edit affordance — clicking
-              opens the same AnnotationModal in edit mode. Lives above the drop
-              zone; only shown while a log is open. */}
-          {meta?.hash && (
-            <button
-              type="button"
-              onClick={() => void openEditor(meta.hash, meta.name)}
-              title={friendlyName ? t('annotations.editTooltip') : t('annotations.nameTooltip')}
-              className="mb-3 flex w-full items-start gap-2 rounded-md border border-slate-700 bg-slate-800/40 px-2.5 py-2 text-start hover:bg-slate-800"
-            >
-              <span className="min-w-0 flex-1">
-                {friendlyName ? (
-                  <>
-                    <span className="block truncate text-sm text-slate-200">{friendlyName}</span>
-                    <span className="block truncate text-[11px] text-slate-500">{meta.name}</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="block truncate text-sm text-slate-300">{meta.name}</span>
-                    <span className="block text-[11px] text-sky-400">✎ {t('annotations.nameThisLog')}</span>
-                  </>
-                )}
-                {notes && (
-                  // No `block` here — line-clamp-2 sets display:-webkit-box;
-                  // adding `block` would override it and defeat the clamp.
-                  <span className="mt-1 line-clamp-2 text-[11px] leading-snug text-slate-400">
-                    {notes}
-                  </span>
-                )}
-              </span>
-              {/* "D" badge: this log has a companion debug log available. */}
-              {hasDebug && <DebugBadge />}
-              {/* Blue pencil, no background of its own (the strip is the button). */}
-              <span className="text-sm text-sky-400" aria-hidden="true">✎</span>
-            </button>
-          )}
           <div
             title={t('dropZone.tooltip')}
             className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-3 text-center transition-colors ${
@@ -175,6 +153,43 @@ export function LogsFolderPane() {
             {loading && <p className="mt-2 text-xs text-slate-400">{t('dropZone.parsing')}</p>}
             {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
           </div>
+          {/* Current-log strip: friendly name (or filename + name cue) plus a
+              2-line notes preview. Whole strip is the edit affordance — clicking
+              opens the same AnnotationModal in edit mode. Lives below the drop
+              zone; only shown while a log is open. */}
+          {meta?.hash && (
+            <button
+              type="button"
+              onClick={() => void openEditor(meta.hash, meta.name)}
+              title={stripTooltip}
+              className="mt-3 flex w-full items-start gap-2 rounded-md border border-slate-700 bg-slate-800/40 px-2.5 py-2 text-start hover:bg-slate-800"
+            >
+              <span className="min-w-0 flex-1">
+                {friendlyName ? (
+                  <>
+                    <span className="block truncate text-sm text-slate-200">{friendlyName}</span>
+                    <span className="block truncate text-[11px] text-slate-500">{meta.name}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="block truncate text-sm text-slate-300">{meta.name}</span>
+                    <span className="block text-[11px] text-sky-400">✎ {t('annotations.nameThisLog')}</span>
+                  </>
+                )}
+                {notes && (
+                  // No `block` here — line-clamp-2 sets display:-webkit-box;
+                  // adding `block` would override it and defeat the clamp.
+                  <span className="mt-1 line-clamp-2 text-[11px] leading-snug text-slate-400">
+                    {notes}
+                  </span>
+                )}
+              </span>
+              {/* "D" badge: this log has a companion debug log available. */}
+              {hasDebug && <DebugBadge />}
+              {/* Blue pencil, no background of its own (the strip is the button). */}
+              <span className="text-sm text-sky-400" aria-hidden="true">✎</span>
+            </button>
+          )}
         </div>
       )}
     </div>
