@@ -13,6 +13,7 @@
     "selected": "Error residual",
     "rawRa": "RA bruto",
     "unguided": "Sección sin guiado",
+    "unguidedShort": "Sin guiado",
     "spike": "Picos",
     "burst": "Bursts",
     "simpleSpike": "Simple",

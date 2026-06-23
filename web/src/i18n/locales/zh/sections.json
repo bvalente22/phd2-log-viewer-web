@@ -1,6 +1,8 @@
 {
   "list": {
     "noSections": "无区段。",
+    "heading": "此日志中的区段",
+    "headingTooltip": "当前打开日志中的导星和校准区段。选择一个查看。",
     "guideLabel": "Guide · {{date}}",
     "calLabel": "Cal · {{date}}",
     "framesSummary": "{{frames}} frame · {{duration}}",

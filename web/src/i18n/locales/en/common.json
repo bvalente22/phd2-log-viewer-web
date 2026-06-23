@@ -16,7 +16,8 @@
     "nameTooltip": "Add a friendly name for this log",
     "nameThisLog": "Name this log",
     "notesIndicatorTooltip": "This log has notes — click to view/edit",
-    "annotateCurrentTooltip": "Name & annotate this log"
+    "annotateCurrentTooltip": "Name & annotate this log",
+    "hoverEditHint": "Click to edit name & notes"
   },
   "buildTooltip": "build {{hash}}",
   "phdVersion": "PHD2 v{{version}}",

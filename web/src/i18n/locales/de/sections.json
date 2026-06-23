@@ -1,6 +1,8 @@
 {
   "list": {
     "noSections": "Keine Abschnitte.",
+    "heading": "Abschnitte in diesem Log",
+    "headingTooltip": "Guiding- und Kalibrierungsabschnitte im aktuell geöffneten Log. Wähle einen zur Ansicht.",
     "guideLabel": "Guide · {{date}}",
     "calLabel": "Cal · {{date}}",
     "framesSummary": "{{frames}} Frames · {{duration}}",

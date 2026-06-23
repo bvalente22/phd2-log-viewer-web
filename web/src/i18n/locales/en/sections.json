@@ -1,6 +1,8 @@
 {
   "list": {
     "noSections": "No sections.",
+    "heading": "Sections in this log",
+    "headingTooltip": "Guiding and calibration sections in the currently open log. Pick one to view it.",
     "guideLabel": "Guide · {{date}}",
     "calLabel": "Cal · {{date}}",
     "framesSummary": "{{frames}} frames · {{duration}}",

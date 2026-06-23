@@ -13,6 +13,7 @@
     "selected": "残余误差",
     "rawRa": "RA 原始",
     "unguided": "未导星区段",
+    "unguidedShort": "未导星",
     "spike": "尖峰",
     "burst": "Bursts",
     "simpleSpike": "简易",

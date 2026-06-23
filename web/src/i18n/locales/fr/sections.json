@@ -1,6 +1,8 @@
 {
   "list": {
     "noSections": "Aucune section.",
+    "heading": "Sections de ce journal",
+    "headingTooltip": "Sections de guidage et de calibration du journal ouvert. Choisis-en une pour l'afficher.",
     "guideLabel": "Guide · {{date}}",
     "calLabel": "Cal · {{date}}",
     "framesSummary": "{{frames}} frames · {{duration}}",
