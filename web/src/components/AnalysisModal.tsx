@@ -5,6 +5,7 @@ import { useViewStore } from '../state/viewStore';
 import { useLogStore } from '../state/logStore';
 import { usePrimaryPeriodStore } from '../state/primaryPeriodStore';
 import { PrimaryPeriodField } from './PrimaryPeriodField';
+import { PpecPeakHint } from './PpecPeakHint';
 import { CHIP_TONE, swapTone, type ChipTone } from './chipTones';
 import { themeOf } from '../themes';
 import { DriftChart } from './DriftChart';
@@ -990,7 +991,10 @@ export function AnalysisModal() {
                   className="rounded border border-slate-700 bg-slate-900 px-3 py-1 font-mono text-slate-200"
                   title={t('peakTitle', { index: i + 1, period: fmtNumber(p.period, 1) })}
                 >
-                  <div className="text-[10px] uppercase tracking-wider text-sky-400">{t('peakIndex', { index: i + 1 })}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] uppercase tracking-wider text-sky-400">{t('peakIndex', { index: i + 1 })}</span>
+                    {kind === 'all' && <PpecPeakHint periodSec={p.period} />}
+                  </div>
                   <div>
                     {t('period')}: {fmtNumber(p.period, 1)}s
                     {primaryPeriodSec !== null && (

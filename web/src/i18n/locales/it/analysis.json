@@ -213,6 +213,13 @@
   "noPeaks": "Nessun picco del periodogramma rilevato sotto i {{seconds}}s.",
   "peakTitle": "Picco {{index}}: una componente di errore periodico con periodo di {{period}}s",
   "peakIndex": "n.{{index}}",
+  "ppec": {
+    "label": "PPEC",
+    "tooltip": "Predictive PEC — passa il mouse per vedere questo periodo nel campo Period Length di PHD2",
+    "caption": "Nell'algoritmo Predictive PEC in AR di PHD2, imposta Period Length su {{period}}s.",
+    "copyTooltip": "Copia questa grafica (con il valore del periodo) negli appunti",
+    "disable": "disattiva"
+  },
   "period": "Periodo",
   "decCorr": "Dec-corr",
   "decCorrTooltip": "Corretto per declinazione: valore × 1/cos(Dec), Dec = {{deg}}°",
