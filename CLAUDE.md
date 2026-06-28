@@ -80,3 +80,18 @@ The guiding-section footer band (under the chart) is a **three-tab strip** — `
 - **The All-Sections PA confidence (High/Medium/Low) is computed but intentionally NOT shown in the UI** — the All-Sections line shows only the section count. The confidence still gates whether the solve resolves (insufficient → "—"), so don't treat its absence as a bug.
 - The Imaging Impact and Polar Alignment tab headers carry an **"EXPERIMENTAL"** suffix by design ("Estimated Imaging Impact: EXPERIMENTAL", "Polar Alignment Error: EXPERIMENTAL").
 - Shipped in PR #113 (squash `339570a`). Spec: `docs/superpowers/specs/2026-06-19-tabbed-stats-footer-design.md`. More in `.claude/memory/tabbed-stats-footer.md`.
+
+### Analysis charts — gestures & view persistence
+
+Chart pan/zoom is custom, not Plotly's built-in drag. The shared hook `web/src/components/useChartGestures.ts` (Plotly `dragmode:false`) maps **left-drag = pan X + zoom Y** (center-anchored), **right-drag = pan Y + zoom X**, shift/ctrl-drag = include/exclude range; scroll-zoom is Plotly's built-in.
+
+- **Each chart persists its own view in a store** or hover/drag re-renders snap the range back to the data default: drift chart `driftXRangeView` + `driftYRangeView` (Y added #117) in `analysisStore`; periodogram `periodXRangeViewLog` + `yMaxViewPx`; GuideGraph `sectionViews`. The component feeds the stored view into `layout.{x,y}axis.range` each render.
+- **Gotcha:** `yaxis.fixedrange:true` does NOT block programmatic `Plotly.relayout` of the range — it only disables user scroll/drag zoom on that axis. Charts keep it `true` to constrain *scroll* to X while the custom handler still drag-zooms Y. The drift-chart Y-zoom was broken (#117) only because Y wasn't persisted, not because of fixedrange.
+- **Decision:** the drift chart X/Y view (like the periodogram) persists across the Raw RA / Residual / Manual Spike mode swaps **and** px↔arcsec scale flips — NOT auto-reset on scale flip (`setScaleMode` resets nothing). Resets only on modal (re)open. A drift-chart "Reset Y" affordance was deliberately left out (the "Reset Y" button is periodogram-only). More in `.claude/memory/analysis-chart-gestures.md`.
+
+### CI / Pages deploy — Node 24 status
+
+`.github/workflows/deploy-pages.yml` deploys on **every push to `main`** (`npm ci && npm run build` → `web/dist` → Pages; no path filter, so docs/memory merges deploy too). Live: https://bvalente22.github.io/phd2-log-viewer-web/.
+
+- **Node 20 deprecation (handled in #115):** bumped `actions/checkout@v4→v5`, `actions/setup-node@v4→v5`, build `node-version 20→22`. **Still Node 20, no fix yet:** `actions/upload-pages-artifact@v3` (→ `upload-artifact@v4`) and `actions/deploy-pages@v4` — GitHub hasn't shipped Node 24 versions of the Pages actions, so those two "Node 20 deprecated" warnings are **expected**; deploys stay green (runner force-runs them on Node 24). Bump once available, before the **Sept 16 2026** Node-20 removal.
+- **Auth gotcha:** pushing under `.github/workflows/` needs the `gh` token's **`workflow`** scope (plain `repo` is rejected). Granted on this machine via `gh auth refresh -h github.com -s workflow` — run it in an **interactive terminal** (the device-code flow doesn't complete headless). More in `.claude/memory/ci-pages-deploy.md`.

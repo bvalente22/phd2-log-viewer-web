@@ -8,3 +8,5 @@ These files mirror cross-session context for this repo so it travels across mach
 - `ui-tooltips.md` — keep native `title` tooltips narrow-and-tall via the shared `wrapTip` helper.
 - `pa-accuracy-status.md` — polar-alignment accuracy phase status + open follow-ups.
 - `tabbed-stats-footer.md` — the guiding footer is a 3-tab strip; the All-Sections PA confidence is computed but hidden from the UI.
+- `analysis-chart-gestures.md` — custom chart drag pan/zoom, per-chart view persistence, the `fixedrange:true` relayout gotcha, and the drift-chart Y-zoom/persistence decision.
+- `ci-pages-deploy.md` — Pages deploy on push to main; the Node 24 action-bump status; pushing workflow files needs the gh `workflow` scope.
