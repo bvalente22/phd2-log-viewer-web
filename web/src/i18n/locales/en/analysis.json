@@ -225,6 +225,13 @@
   "noPeaks": "No periodogram peaks under {{seconds}}s detected. Try raising the max-period filter or check the signal.",
   "peakTitle": "Peak {{index}}: a periodic-error component at {{period}}s period",
   "peakIndex": "#{{index}}",
+  "ppec": {
+    "label": "PPEC",
+    "tooltip": "Predictive PEC — hover to see this period in PHD2's Period Length field",
+    "caption": "In PHD2's Predictive PEC RA algorithm, set Period Length to {{period}}s.",
+    "copyTooltip": "Copy this graphic (with the period value) to the clipboard",
+    "disable": "disable"
+  },
   "period": "Period",
   "decCorr": "Dec-corr",
   "decCorrTooltip": "Declination-corrected: value × 1/cos(Dec), Dec = {{deg}}°",

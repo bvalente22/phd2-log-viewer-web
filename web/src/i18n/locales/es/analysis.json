@@ -213,6 +213,13 @@
   "noPeaks": "No se han detectado picos del periodograma por debajo de {{seconds}}s. Prueba a subir el filtro de periodo máximo o revisa la señal.",
   "peakTitle": "Pico {{index}}: una componente de error periódico con periodo de {{period}}s",
   "peakIndex": "#{{index}}",
+  "ppec": {
+    "label": "PPEC",
+    "tooltip": "Predictive PEC: pasa el ratón para ver este periodo en el campo Period Length de PHD2",
+    "caption": "En el algoritmo Predictive PEC de AR de PHD2, ajusta Period Length a {{period}}s.",
+    "copyTooltip": "Copiar este gráfico (con el valor del periodo) al portapapeles",
+    "disable": "desactivar"
+  },
   "period": "Periodo",
   "decCorr": "Dec-corr",
   "decCorrTooltip": "Corregido por declinación: valor × 1/cos(Dec), Dec = {{deg}}°",
