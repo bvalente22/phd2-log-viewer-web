@@ -213,6 +213,13 @@
   "noPeaks": "在 {{seconds}}s 以下未检测到 periodogram 峰。",
   "peakTitle": "Peak {{index}}：周期为 {{period}}s 的周期误差分量",
   "peakIndex": "#{{index}}",
+  "ppec": {
+    "label": "PPEC",
+    "tooltip": "Predictive PEC — 悬停查看此周期在 PHD2 的 Period Length 字段中的取值",
+    "caption": "在 PHD2 的 Predictive PEC 赤经算法中，将 Period Length 设为 {{period}}s。",
+    "copyTooltip": "将此图形（含周期值）复制到剪贴板",
+    "disable": "禁用"
+  },
   "period": "周期",
   "decCorr": "Dec-corr",
   "decCorrTooltip": "赤纬校正：数值 × 1/cos(赤纬)，赤纬 = {{deg}}°",
