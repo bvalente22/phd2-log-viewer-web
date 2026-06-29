@@ -19,8 +19,8 @@ sample data/
 
 # Local-only copy of the upstream phdlogview C++ desktop app, brought in as a
 # reference for feature work. The C++ sources were scrubbed from this repo's
-# history (see CLAUDE.md) and must never be reintroduced; this large zip plus
-# the unpacked tree stay on disk only.
+# history and must never be reintroduced; this large zip plus the unpacked
+# tree stay on disk only.
 /CPP Source/
 
 # Stray empty node_modules occasionally created at repo root by tooling;
@@ -33,3 +33,8 @@ sample data/
 /*.png
 
 .dev-server.log
+
+# Claude Code working files — operating rules and project memory. Kept on disk
+# for local AI-assisted development but intentionally not published to the repo.
+/.claude/
+/CLAUDE.md
