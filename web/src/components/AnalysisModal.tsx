@@ -210,6 +210,15 @@ export function AnalysisModal() {
     if (Math.abs(c) < 1e-6) return null;
     return { factor: 1 / c, deg };
   }, [log, selectedSection]);
+  // When the analyzed section already guides RA with Predictive PEC, the PPEC
+  // "type this period into PHD2" hint is redundant — the user is using PPEC
+  // already. Suppress the pill in that case; show it for every other RA algo.
+  const raIsPpec = useMemo<boolean>(() => {
+    if (!log || selectedSection < 0) return false;
+    const sec = log.sections[selectedSection];
+    if (!sec || sec.type !== 'GUIDING') return false;
+    return parseGuideHeader(log.sessions[sec.idx].hdr).ra?.name === 'Predictive PEC';
+  }, [log, selectedSection]);
   const primaryRecord = usePrimaryPeriodStore((p) => p.record);
   const primaryLoadedHash = usePrimaryPeriodStore((p) => p.loadedHash);
   const setAutoIfStrongerPrimary = usePrimaryPeriodStore((p) => p.setAutoIfStronger);
@@ -993,7 +1002,7 @@ export function AnalysisModal() {
                 >
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] uppercase tracking-wider text-sky-400">{t('peakIndex', { index: i + 1 })}</span>
-                    {kind === 'all' && <PpecPeakHint periodSec={p.period} />}
+                    {kind === 'all' && !raIsPpec && <PpecPeakHint periodSec={p.period} />}
                   </div>
                   <div>
                     {t('period')}: {fmtNumber(p.period, 1)}s
