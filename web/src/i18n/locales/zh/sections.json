@@ -30,7 +30,13 @@
     "reopenTooltip": "重新打开 {{name}}",
     "removeTooltip": "从最近列表中移除 {{name}}",
     "clearAll": "清空最近",
-    "clearAllTooltip": "从浏览器本地存储中永久删除所有最近打开的日志"
+    "clearAllTooltip": "从浏览器本地存储中永久删除所有最近打开的日志",
+    "more": "更多…（{{count}}）",
+    "moreTooltip": "打开包含所有历史日志的完整历史记录窗口",
+    "historyTitle": "日志历史记录（{{count}}）",
+    "historyClose": "关闭历史记录窗口",
+    "notFoundConfirm": "在本地存储中找不到“{{name}}”。是否从历史记录中移除？",
+    "clearAllConfirm": "是否从历史记录中永久删除全部 {{count}} 条日志？"
   },
   "openLog": {
     "title": "打开日志",

@@ -12,6 +12,7 @@ import { SectionSummary } from '../components/SectionSummary';
 import { GraphToolbar } from '../components/GraphToolbar';
 import { GraphContextMenu } from '../components/ContextMenu';
 import { RecentsDropdown } from '../components/RecentsDropdown';
+import { RecentLogsModal } from '../components/RecentLogsModal';
 import { LogsFolderPane } from '../components/LogsFolderPane';
 import { SidebarResizer } from '../components/SidebarResizer';
 import { AnnotationModal } from '../components/AnnotationModal';
@@ -243,6 +244,7 @@ export function ViewerPage() {
       <AnalysisModal />
       <DebugLogViewer />
       <AnnotationModal />
+      <RecentLogsModal />
     </>
   );
 }

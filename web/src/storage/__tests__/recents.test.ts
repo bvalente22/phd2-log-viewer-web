@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { set } from 'idb-keyval';
-import { listRecents, putRecent, getRecent, deleteRecent } from '../recents';
+import { listRecents, putRecent, getRecent, deleteRecent, touchRecent, MAX_STORED } from '../recents';
 
 beforeEach(async () => {
   for (const r of await listRecents()) await deleteRecent(r.id);
@@ -24,14 +24,28 @@ describe('recents', () => {
   });
 
   it('LRU-evicts beyond max', async () => {
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < MAX_STORED + 2; i++) {
       // Distinct text per entry so they don't collapse under hash-dedupe.
       await putRecent({ name: `f${i}`, size: 1, text: `x${i}` });
-      await new Promise(r => setTimeout(r, 2));
     }
     const ls = await listRecents();
-    expect(ls.length).toBe(10);
-    expect(ls[0].name).toBe('f11');
+    expect(ls.length).toBe(MAX_STORED);
+    expect(ls[0].name).toBe(`f${MAX_STORED + 1}`);
+  });
+
+  it('touchRecent moves an existing entry back to the top', async () => {
+    const a = await putRecent({ name: 'a', size: 1, text: 'aaa' });
+    await putRecent({ name: 'b', size: 1, text: 'bbb' });
+    await putRecent({ name: 'c', size: 1, text: 'ccc' });
+    // c is newest; touching a should move it above c without dropping any.
+    await touchRecent(a);
+    const ls = await listRecents();
+    expect(ls.map((r) => r.name)).toEqual(['a', 'c', 'b']);
+    // The record and its text survive the reorder.
+    expect((await getRecent(a))?.text).toBe('aaa');
+    // Touching an unknown id is a no-op.
+    await touchRecent('nope');
+    expect((await listRecents()).map((r) => r.name)).toEqual(['a', 'c', 'b']);
   });
 
   it('dedupes repeat opens of the same content', async () => {
