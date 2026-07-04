@@ -81,6 +81,16 @@ function topPeaks(garun: GARun, n: number, maxPeriodSec: number): { period: numb
 }
 
 /**
+ * How far ABOVE the primary period a summary peak may sit and still count.
+ * The residual periodogram's 1x peak is the same physical worm period as the
+ * raw-RA primary but can measure a few seconds longer, so a hard cap at the
+ * primary would clip it. 15% headroom comfortably covers that measurement slop
+ * while staying far below the ~2× a real sub-harmonic/long-period drift would
+ * need — so those remain excluded. See the `peaks` memo for the full rationale.
+ */
+const PRIMARY_CAP_TOLERANCE = 0.15;
+
+/**
  * Adapter: shape a SpikeRun so it satisfies the GARun interface used by
  * PeriodogramChart. The chart only reads .fftPeriod / .fftAmplitude /
  * .fftSpline / .pixelScale; we fill the rest with placeholders so the
@@ -251,10 +261,20 @@ export function AnalysisModal() {
   const peaks = useMemo(() => {
     if (s.state !== 'open') return [];
     if (s.kind === 'spike') return [];
-    // The top-3 peaks can never be LONGER than the primary period (the dominant
-    // PE peak), and never longer than the Max Period filter. Cap at the smaller
-    // of the two; fall back to Max Period when there's no primary.
-    const cap = primaryPeriodSec != null ? Math.min(primaryPeriodSec, s.maxPeriodSec) : s.maxPeriodSec;
+    // The top-3 peaks are capped near the primary period (the dominant PE peak)
+    // so long-period drift artefacts don't dominate the summary, and never
+    // exceed the Max Period filter. But the cap is SOFT, not hard-at-primary:
+    // the residual 1x sits at the same physical worm period as the raw-RA
+    // primary, yet the two periodograms can disagree by a few seconds, so the
+    // 1x-associated residual peak often reads slightly LONGER than the primary
+    // (e.g. residual 329.5s vs primary 314.5s) and a hard cap would clip the
+    // very peak the user is looking for. Allow `PRIMARY_CAP_TOLERANCE` headroom
+    // above the primary so that peak survives, while genuine long-period drift
+    // (and sub-harmonics at ~2× the primary) still fall well outside and stay
+    // excluded. Falls back to Max Period when there's no primary.
+    const cap = primaryPeriodSec != null
+      ? Math.min(primaryPeriodSec * (1 + PRIMARY_CAP_TOLERANCE), s.maxPeriodSec)
+      : s.maxPeriodSec;
     return topPeaks(s.garun, 3, cap);
   }, [s, primaryPeriodSec]);
 

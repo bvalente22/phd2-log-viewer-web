@@ -340,7 +340,7 @@ interface Actions {
   selectManualSpikePointsByThreshold: (thresholdArc: number) => void;
 }
 
-const DEFAULT_MAX_PERIOD_SEC = 600;
+const DEFAULT_MAX_PERIOD_SEC = 720;
 const DEFAULT_SPIKE_K = 3;
 // Default minimum period for the spike top-3 filter. 8s drops Nyquist-
 // adjacent noise (typical PHD2 cadence is 1-3s) without hiding the
