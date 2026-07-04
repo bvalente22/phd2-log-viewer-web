@@ -35,7 +35,13 @@
     "reopenTooltip": "Reopen {{name}}",
     "removeTooltip": "Remove {{name}} from the recents list",
     "clearAll": "Clear all recents",
-    "clearAllTooltip": "Permanently delete all recently-opened logs from your browser's local storage"
+    "clearAllTooltip": "Permanently delete all recently-opened logs from your browser's local storage",
+    "more": "More… ({{count}})",
+    "moreTooltip": "Open the full history window with all past logs",
+    "historyTitle": "Log history ({{count}})",
+    "historyClose": "Close the history window",
+    "notFoundConfirm": "\"{{name}}\" could not be found in local storage. Remove it from the history?",
+    "clearAllConfirm": "Permanently delete all {{count}} logs from the history?"
   },
   "openLog": {
     "title": "Open log",

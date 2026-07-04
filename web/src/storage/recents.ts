@@ -1,7 +1,15 @@
 import { get, set, del, keys } from 'idb-keyval';
 import { hashLogText } from './annotations';
 
-const MAX = 10;
+/**
+ * Total logs retained in history. The sidebar dropdown shows the newest
+ * `RECENT_VISIBLE`; the rest (up to `MAX_STORED`) are reachable through the
+ * "More…" history window. Each record keeps the full log text, so opening a
+ * stored entry never needs the original file.
+ */
+export const MAX_STORED = 200;
+/** How many of the newest recents the sidebar dropdown lists inline. */
+export const RECENT_VISIBLE = 20;
 const PREFIX = 'recent:';
 const INDEX_KEY = 'recents:index';
 
@@ -50,7 +58,7 @@ export async function putRecent(p: { name: string; size: number; text: string; h
     }
   }
   idx.ids = [id, ...survivors];
-  while (idx.ids.length > MAX) {
+  while (idx.ids.length > MAX_STORED) {
     const evict = idx.ids.pop()!;
     await del(PREFIX + evict);
   }
@@ -60,6 +68,21 @@ export async function putRecent(p: { name: string; size: number; text: string; h
 
 export async function getRecent(id: string): Promise<RecentRecord | undefined> {
   return get<RecentRecord>(PREFIX + id);
+}
+
+/**
+ * Move an existing recent to the top of the list (most-recent) and refresh its
+ * `openedAt`, WITHOUT re-storing its text. Used when a stored log is reopened
+ * from the recents dropdown / history window so it climbs back to the top the
+ * same way a fresh open would. No-op when the id isn't in the index.
+ */
+export async function touchRecent(id: string): Promise<void> {
+  const idx = await loadIndex();
+  if (!idx.ids.includes(id)) return;
+  const rec = await get<RecentRecord>(PREFIX + id);
+  if (rec) await set(PREFIX + id, { ...rec, openedAt: Date.now() });
+  idx.ids = [id, ...idx.ids.filter((x) => x !== id)];
+  await saveIndex(idx);
 }
 
 export async function listRecents(): Promise<RecentMeta[]> {

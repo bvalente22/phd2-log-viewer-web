@@ -30,7 +30,13 @@
     "reopenTooltip": "Riapri {{name}}",
     "removeTooltip": "Rimuovi {{name}} dall'elenco dei recenti",
     "clearAll": "Svuota recenti",
-    "clearAllTooltip": "Elimina definitivamente tutti i log aperti di recente dalla memoria locale del browser"
+    "clearAllTooltip": "Elimina definitivamente tutti i log aperti di recente dalla memoria locale del browser",
+    "more": "Altri… ({{count}})",
+    "moreTooltip": "Apri la finestra della cronologia completa con tutti i log passati",
+    "historyTitle": "Cronologia log ({{count}})",
+    "historyClose": "Chiudi la finestra della cronologia",
+    "notFoundConfirm": "Impossibile trovare «{{name}}» nella memoria locale. Rimuoverlo dalla cronologia?",
+    "clearAllConfirm": "Eliminare definitivamente tutti i {{count}} log dalla cronologia?"
   },
   "openLog": {
     "title": "Apri log",

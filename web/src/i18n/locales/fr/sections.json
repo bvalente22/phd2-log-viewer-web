@@ -30,7 +30,13 @@
     "reopenTooltip": "Rouvrir {{name}}",
     "removeTooltip": "Retirer {{name}} de la liste des récents",
     "clearAll": "Vider les récents",
-    "clearAllTooltip": "Supprimer définitivement tous les logs récemment ouverts du stockage local du navigateur"
+    "clearAllTooltip": "Supprimer définitivement tous les logs récemment ouverts du stockage local du navigateur",
+    "more": "Plus… ({{count}})",
+    "moreTooltip": "Ouvrir la fenêtre d'historique complète avec tous les logs passés",
+    "historyTitle": "Historique des logs ({{count}})",
+    "historyClose": "Fermer la fenêtre d'historique",
+    "notFoundConfirm": "« {{name}} » est introuvable dans le stockage local. Le retirer de l'historique ?",
+    "clearAllConfirm": "Supprimer définitivement les {{count}} logs de l'historique ?"
   },
   "openLog": {
     "title": "Ouvrir un log",

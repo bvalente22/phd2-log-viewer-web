@@ -1,42 +1,43 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { listRecents, getRecent, deleteRecent } from '../storage/recents';
+import { RECENT_VISIBLE } from '../storage/recents';
 import type { RecentMeta } from '../storage/recents';
-import { getAnnotation, type Annotation } from '../storage/annotations';
 import { useLogStore } from '../state/logStore';
+import { useRecentsStore } from '../state/recentsStore';
 import { useAnnotationStore } from '../state/annotationStore';
 import { useDebugPresenceStore } from '../state/debugLogPresenceStore';
+import { useRecentAnnotations } from './useRecentAnnotations';
 import { DebugBadge } from './DebugBadge';
 
 export function RecentsDropdown() {
   const { t } = useTranslation('sections');
   const { t: tc } = useTranslation('common');
-  const [items, setItems] = useState<RecentMeta[]>([]);
-  const [annos, setAnnos] = useState<Record<string, Annotation>>({}); // by recent id
+  const items = useRecentsStore((s) => s.items);
+  const refresh = useRecentsStore((s) => s.refresh);
+  const openRecentById = useRecentsStore((s) => s.open);
+  const removeRecentById = useRecentsStore((s) => s.remove);
+  const clearAllRecents = useRecentsStore((s) => s.clearAll);
+  const openHistory = useRecentsStore((s) => s.openHistory);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
-  const loadFromText = useLogStore((s) => s.loadFromText);
+  // Current log's name (for the "(current)" marker) and hash (so the list
+  // refreshes — and re-orders — as soon as a different log becomes current).
   const currentName = useLogStore((s) => s.meta?.name);
+  const currentHash = useLogStore((s) => s.meta?.hash);
   const openEditor = useAnnotationStore((s) => s.openEditor);
-  // Re-fetch annotations whenever any annotation is persisted.
+  // Re-fetch whenever any annotation is persisted (revision) — the friendly
+  // names shown here come from the annotation store.
   const revision = useAnnotationStore((s) => s.revision);
+  const annos = useRecentAnnotations(items);
   // Guide-log hashes with an available companion debug log → "D" badge.
   const debugHashes = useDebugPresenceStore((s) => s.hashes);
 
-  const refresh = async () => {
-    const list = await listRecents();
-    setItems(list);
-    const map: Record<string, Annotation> = {};
-    for (const r of list) {
-      if (!r.hash) continue;
-      const a = await getAnnotation(r.hash);
-      if (a) map[r.id] = a;
-    }
-    setAnnos(map);
+  // Keep the shared list current: on mount, when a different log loads, and
+  // whenever an annotation changes (a rename should re-sort by friendly name).
+  useEffect(() => {
+    void refresh();
     void useDebugPresenceStore.getState().refresh();
-  };
-
-  useEffect(() => { void refresh(); }, [revision]);
+  }, [refresh, revision, currentHash]);
 
   useEffect(() => {
     if (!open) return;
@@ -47,18 +48,21 @@ export function RecentsDropdown() {
     return () => window.removeEventListener('mousedown', onClick);
   }, [open]);
 
-  const openRecent = async (id: string) => {
-    const rec = await getRecent(id);
-    if (rec) {
-      await loadFromText(rec.text, rec.name, { persist: false });
-      setOpen(false);
+  const openRecent = async (id: string, name: string) => {
+    const res = await openRecentById(id);
+    if (res === 'missing') {
+      // Record was evicted (e.g. browser reclaimed storage). Offer to prune it.
+      if (window.confirm(t('recents.notFoundConfirm', { name }))) {
+        await removeRecentById(id);
+      }
+      return;
     }
+    setOpen(false);
   };
 
   const removeRecent = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await deleteRecent(id);
-    await refresh();
+    await removeRecentById(id);
   };
 
   const editAnno = (r: RecentMeta, e: React.MouseEvent) => {
@@ -68,10 +72,13 @@ export function RecentsDropdown() {
   };
 
   const clearAll = async () => {
-    for (const r of items) await deleteRecent(r.id);
-    await refresh();
+    if (!window.confirm(t('recents.clearAllConfirm', { count: items.length }))) return;
+    await clearAllRecents();
     setOpen(false);
   };
+
+  const visible = items.slice(0, RECENT_VISIBLE);
+  const overflow = items.length - visible.length;
 
   return (
     // Distinct from the section list below: this is a self-contained "open a
@@ -101,7 +108,7 @@ export function RecentsDropdown() {
             <div className="px-3 py-2 text-xs text-slate-500">{t('recents.empty')}</div>
           ) : (
             <ul>
-              {items.map((r) => {
+              {visible.map((r) => {
                 const isCurrent = r.name === currentName;
                 const anno = annos[r.id];
                 const hasName = !!anno?.friendlyName;
@@ -115,7 +122,7 @@ export function RecentsDropdown() {
                   >
                     <button
                       className="flex min-w-0 flex-1 flex-col items-start px-3 py-2 text-start hover:bg-slate-800"
-                      onClick={() => void openRecent(r.id)}
+                      onClick={() => void openRecent(r.id, r.name)}
                       title={t('recents.reopenTooltip', { name: r.name })}
                     >
                       {hasName ? (
@@ -162,6 +169,17 @@ export function RecentsDropdown() {
                 );
               })}
             </ul>
+          )}
+          {/* "More…" opens the full history window when there are older logs
+              beyond the inline list. */}
+          {overflow > 0 && (
+            <button
+              className="w-full border-t border-slate-700 px-3 py-2 text-start text-xs text-sky-400 hover:bg-slate-800 hover:text-sky-300"
+              onClick={() => { openHistory(); setOpen(false); }}
+              title={t('recents.moreTooltip')}
+            >
+              {t('recents.more', { count: overflow })}
+            </button>
           )}
           <button
             className="w-full border-t border-slate-700 px-3 py-2 text-start text-xs text-slate-400 hover:bg-slate-800 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"

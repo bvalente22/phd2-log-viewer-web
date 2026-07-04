@@ -30,7 +30,13 @@
     "reopenTooltip": "{{name}} erneut öffnen",
     "removeTooltip": "{{name}} aus der Liste entfernen",
     "clearAll": "Liste leeren",
-    "clearAllTooltip": "Alle zuletzt geöffneten Logs dauerhaft aus dem lokalen Browser-Speicher löschen"
+    "clearAllTooltip": "Alle zuletzt geöffneten Logs dauerhaft aus dem lokalen Browser-Speicher löschen",
+    "more": "Mehr… ({{count}})",
+    "moreTooltip": "Das vollständige Verlaufsfenster mit allen früheren Logs öffnen",
+    "historyTitle": "Log-Verlauf ({{count}})",
+    "historyClose": "Verlaufsfenster schließen",
+    "notFoundConfirm": "„{{name}}“ konnte im lokalen Speicher nicht gefunden werden. Aus dem Verlauf entfernen?",
+    "clearAllConfirm": "Alle {{count}} Logs dauerhaft aus dem Verlauf löschen?"
   },
   "openLog": {
     "title": "Log öffnen",
