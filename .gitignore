@@ -38,3 +38,12 @@ sample data/
 # for local AI-assisted development but intentionally not published to the repo.
 /.claude/
 /CLAUDE.md
+
+# Local MCP server wiring for AI-assisted development (Playwright). Machine-
+# specific tooling config in the same family as /.claude/ above — kept on disk,
+# not published. Scoped to the root so any future web/ config is unaffected.
+/.mcp.json
+
+# Reference screenshots kept beside the root /*.png verification captures —
+# same purpose, just collected in a folder. Local only.
+/images/
