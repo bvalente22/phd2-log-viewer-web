@@ -31,6 +31,14 @@ export interface Annotation {
    * written before this field existed.
    */
   wormPeriodSec?: number;
+  /**
+   * Whether the mount has high-resolution encoders. Encoder-equipped mounts
+   * suppress most periodic error, so a small residual peak on one is expected
+   * rather than a sign of a well-tuned worm. Absent on records written before
+   * this field existed, and read as `false` (the conservative default — assume
+   * no encoders unless the user says otherwise).
+   */
+  hasEncoders?: boolean;
   /** Last-seen filename, for display / recovery. */
   filename: string;
   /** Set once the log has been opened, so we never re-prompt. */
@@ -87,6 +95,7 @@ export async function putAnnotation(p: {
   notes?: string | null;
   mountType?: MountType;
   wormPeriodSec?: number;
+  hasEncoders?: boolean;
 }): Promise<Annotation> {
   const existing = await get<Annotation>(PREFIX + p.key);
   const rec: Annotation = {
@@ -102,6 +111,9 @@ export async function putAnnotation(p: {
     wormPeriodSec: p.wormPeriodSec !== undefined
       ? normalizeWormPeriod(p.wormPeriodSec)
       : normalizeWormPeriod(existing?.wormPeriodSec),
+    hasEncoders: p.hasEncoders !== undefined
+      ? p.hasEncoders === true
+      : existing?.hasEncoders === true,
     seen: true,
     updatedAt: Date.now(),
   };
@@ -130,6 +142,7 @@ export async function markSeen(key: string, filename: string): Promise<Annotatio
     notes: null,
     mountType: DEFAULT_MOUNT_TYPE,
     wormPeriodSec: 0,
+    hasEncoders: false,
     seen: true,
     updatedAt: Date.now(),
   };

@@ -91,9 +91,35 @@ describe('mount attributes', () => {
     expect(normalizeWormPeriod('600' as unknown)).toBe(0);
   });
 
+  it('defaults hasEncoders to false and round-trips it', async () => {
+    expect((await putAnnotation({ key: 'e1', filename: 'f.log' })).hasEncoders).toBe(false);
+    await putAnnotation({ key: 'e2', filename: 'f.log', hasEncoders: true });
+    expect((await getAnnotation('e2'))?.hasEncoders).toBe(true);
+    // Explicitly turning it back off must persist as false, not fall through to
+    // the existing `true` via the "undefined keeps existing" rule.
+    await putAnnotation({ key: 'e2', filename: 'f.log', hasEncoders: false });
+    expect((await getAnnotation('e2'))?.hasEncoders).toBe(false);
+  });
+
+  it('keeps hasEncoders when an unrelated field is updated', async () => {
+    await putAnnotation({ key: 'e3', filename: 'f.log', hasEncoders: true });
+    await putAnnotation({ key: 'e3', filename: 'f.log', friendlyName: 'Renamed' });
+    expect((await getAnnotation('e3'))?.hasEncoders).toBe(true);
+  });
+
+  it('reads a legacy record with no hasEncoders as false', async () => {
+    const legacy = {
+      key: 'e4', filename: 'f.log', friendlyName: null, notes: null,
+      seen: true, updatedAt: 0,
+    } as Annotation;
+    expect(legacy.hasEncoders === true).toBe(false);
+    // And a write that omits it normalizes the absent value to an explicit false.
+    expect((await putAnnotation({ key: 'e4', filename: 'f.log' })).hasEncoders).toBe(false);
+  });
+
   it('preserves mount attributes when only name/notes are updated', async () => {
     await putAnnotation({
-      key: 'm6', filename: 'f.log', mountType: 'altaz', wormPeriodSec: 240,
+      key: 'm6', filename: 'f.log', mountType: 'altaz', wormPeriodSec: 240, hasEncoders: true,
     });
     // Mirrors the "Clear" button: blanks the annotation text only. Hardware
     // config must survive — it isn't part of what Clear means.
@@ -101,6 +127,7 @@ describe('mount attributes', () => {
     const got = await getAnnotation('m6');
     expect(got?.mountType).toBe('altaz');
     expect(got?.wormPeriodSec).toBe(240);
+    expect(got?.hasEncoders).toBe(true);
   });
 
   it('reads a legacy record (no mount fields) as GEM / unknown', async () => {

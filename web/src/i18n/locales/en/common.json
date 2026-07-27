@@ -34,10 +34,12 @@
     "wormPeriodLabel": "Mount worm period",
     "wormPeriodUnit": "s",
     "wormPeriodTooltip": "The mount worm period in seconds. When set, this is used as the authoritative 1x period in Analysis instead of detecting it from the periodogram. Leave blank if unknown.",
-    "imagingScaleLabel": "Image scale",
+    "imagingScaleLabel": "Imaging System Image Scale",
     "imagingScaleUnit": "\"/px",
-    "imagingScaleTooltip": "Imaging system image scale in arcsec per pixel. Shared with the Estimated Imaging Impact panel — editing it here updates it there too. Leave blank if unknown.",
-    "unknownPlaceholder": "unknown"
+    "imagingScaleTooltip": "Image scale of the IMAGING system in arcsec per pixel — not the guide camera scale, which PHD2 records in the log itself. Shared with the Estimated Imaging Impact panel: editing it here updates it there too. Leave blank if unknown.",
+    "unknownPlaceholder": "unknown",
+    "encodersLabel": "Mount has high resolution encoders",
+    "encodersTooltip": "Tick when the mount has high-resolution encoders. Encoder-equipped mounts suppress most periodic error, so a small residual peak is expected on them rather than evidence of a well-tuned worm."
   },
   "buildTooltip": "build {{hash}}",
   "phdVersion": "PHD2 v{{version}}",

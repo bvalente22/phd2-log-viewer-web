@@ -22,7 +22,12 @@ function NumAttr({ label, unit, value, placeholder, title, onChange }: {
   const invalid = value.trim() !== '' && !(Number.isFinite(parseFloat(value)) && parseFloat(value) >= 0);
   return (
     <div className="min-w-0 flex-1">
-      <label className="mb-1 block text-[10px] uppercase tracking-wide text-slate-500">{label}</label>
+      {/* Two lines are reserved so a one-line label ("Mount worm period") and a
+          two-line one ("Imaging System Image Scale") still leave their inputs
+          aligned on the same baseline when shown side by side. */}
+      <label className="mb-1 flex min-h-[2.4em] items-end text-[10px] uppercase leading-tight tracking-wide text-slate-500">
+        {label}
+      </label>
       <div className="flex items-center gap-1">
         <input
           type="number"
@@ -59,6 +64,7 @@ export function AnnotationModal() {
   const setDraftName = useAnnotationStore((s) => s.setDraftName);
   const setDraftNotes = useAnnotationStore((s) => s.setDraftNotes);
   const setDraftMountType = useAnnotationStore((s) => s.setDraftMountType);
+  const setDraftHasEncoders = useAnnotationStore((s) => s.setDraftHasEncoders);
   const setDraftWormPeriod = useAnnotationStore((s) => s.setDraftWormPeriod);
   const setDraftImagingScale = useAnnotationStore((s) => s.setDraftImagingScale);
   const save = useAnnotationStore((s) => s.save);
@@ -188,7 +194,21 @@ export function AnnotationModal() {
                     onChange={setDraftImagingScale}
                   />
                 </div>
-                <p className="mt-1.5 text-[10px] leading-relaxed text-slate-600">
+
+                <label
+                  className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-slate-300"
+                  title={wrapTip(t('annotations.encodersTooltip'))}
+                >
+                  <input
+                    type="checkbox"
+                    className="h-3.5 w-3.5 cursor-pointer accent-sky-600"
+                    checked={modal.hasEncoders}
+                    onChange={(e) => setDraftHasEncoders(e.target.checked)}
+                  />
+                  {t('annotations.encodersLabel')}
+                </label>
+
+                <p className="mt-2 text-[10px] leading-relaxed text-slate-600">
                   {t('annotations.attrsHint')}
                 </p>
               </div>

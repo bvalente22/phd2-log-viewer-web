@@ -22,6 +22,8 @@ type Modal =
        * Draft mount type. Always a valid MountType (defaults to GEM).
        */
       mountType: MountType;
+      /** Draft "mount has high-resolution encoders" flag. */
+      hasEncoders: boolean;
       /**
        * Draft worm period and image scale are held as raw TEXT, not numbers, so
        * the user can type freely ("7.", "", "1.2") without the buffer fighting
@@ -76,6 +78,7 @@ interface AnnotationState {
   setDraftName: (s: string) => void;
   setDraftNotes: (s: string) => void;
   setDraftMountType: (m: MountType) => void;
+  setDraftHasEncoders: (b: boolean) => void;
   setDraftWormPeriod: (s: string) => void;
   setDraftImagingScale: (s: string) => void;
   /** Persist the current modal drafts. */
@@ -122,6 +125,7 @@ export const useAnnotationStore = create<AnnotationState>((set, get) => ({
           name: dateFromFilename(filename) ?? filename,
           notes: '',
           mountType: DEFAULT_MOUNT_TYPE,
+          hasEncoders: false,
           wormPeriodText: '',
           imagingScaleText: '',
           imagingScaleOriginalText: '',
@@ -146,6 +150,7 @@ export const useAnnotationStore = create<AnnotationState>((set, get) => ({
         name: existing?.friendlyName ?? '',
         notes: existing?.notes ?? '',
         mountType: toMountType(existing?.mountType),
+        hasEncoders: existing?.hasEncoders === true,
         wormPeriodText: attrText(existing?.wormPeriodSec),
         imagingScaleText: attrText(imaging?.imagingScale),
         imagingScaleOriginalText: attrText(imaging?.imagingScale),
@@ -166,6 +171,9 @@ export const useAnnotationStore = create<AnnotationState>((set, get) => ({
   setDraftMountType: (m) =>
     set((st) => (st.modal ? { modal: { ...st.modal, mountType: toMountType(m) } } : st)),
 
+  setDraftHasEncoders: (b) =>
+    set((st) => (st.modal ? { modal: { ...st.modal, hasEncoders: b === true } } : st)),
+
   setDraftWormPeriod: (s) =>
     set((st) => (st.modal ? { modal: { ...st.modal, wormPeriodText: s } } : st)),
 
@@ -183,6 +191,7 @@ export const useAnnotationStore = create<AnnotationState>((set, get) => ({
       friendlyName: name.length ? name : null,
       notes: m.notes.length ? m.notes : null,
       mountType: m.mountType,
+      hasEncoders: m.hasEncoders,
       wormPeriodSec: parseAttrNumber(m.wormPeriodText),
     });
 
