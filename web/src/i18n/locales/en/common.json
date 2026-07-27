@@ -41,8 +41,8 @@
     "encodersLabel": "Mount has high resolution encoders",
     "encodersTooltip": "Tick when the mount has high-resolution encoders. Encoder-equipped mounts suppress most periodic error, so a small residual peak is expected on them rather than evidence of a well-tuned worm.",
     "mountLookupLabel": "Look up worm period by mount",
-    "mountLookupPlaceholder": "— select a mount model —",
-    "mountLookupTooltip": "Pick your mount to fill in its published worm period. The period stays editable afterwards, so you can override it with a value measured from your own logs. Nothing is saved but the number itself."
+    "mountLookupTooltip": "Look up your mount to fill in its published worm period. The value stays editable, so you can override it with a period measured from your own logs.",
+    "mountLookupHeading": "Fill from mount model"
   },
   "buildTooltip": "build {{hash}}",
   "phdVersion": "PHD2 v{{version}}",
