@@ -30,7 +30,11 @@ interface PrimaryPeriodFieldProps {
  */
 export function PrimaryPeriodField({ value, edited, fromWorm, canReset, onCommit, onReset }: PrimaryPeriodFieldProps) {
   const { t } = useTranslation('analysis');
-  const fmt = (v: number | null) => (v == null ? '' : String(Math.round(v * 10) / 10));
+  // 2dp, matching the precision the worm-period attribute stores. At 1dp a worm
+  // period entered as 383.25 displayed as "383.3", which reads as the app having
+  // altered the number the user typed. JS drops trailing zeros, so auto-detected
+  // values don't get noisier.
+  const fmt = (v: number | null) => (v == null ? '' : String(Math.round(v * 100) / 100));
   const [text, setText] = useState(() => fmt(value));
   const inputRef = useRef<HTMLInputElement | null>(null);
 
