@@ -4,6 +4,8 @@ import { useAnalysisStore, type AnalysisKind } from '../state/analysisStore';
 import { useViewStore } from '../state/viewStore';
 import { useLogStore } from '../state/logStore';
 import { usePrimaryPeriodStore } from '../state/primaryPeriodStore';
+import { useAnnotationStore } from '../state/annotationStore';
+import { effectiveWormPeriod } from '../storage/annotations';
 import { PrimaryPeriodField } from './PrimaryPeriodField';
 import { PpecPeakHint } from './PpecPeakHint';
 import { CHIP_TONE, swapTone, type ChipTone } from './chipTones';
@@ -234,7 +236,42 @@ export function AnalysisModal() {
   const setAutoIfStrongerPrimary = usePrimaryPeriodStore((p) => p.setAutoIfStronger);
   const setEditedPrimary = usePrimaryPeriodStore((p) => p.setEdited);
   const setAutoPrimary = usePrimaryPeriodStore((p) => p.setAuto);
-  const primaryPeriodSec = primaryRecord?.value ?? autoPrimaryRaw;
+
+  // The mount's worm period, when the user recorded one in the log's attributes.
+  // This is a hardware spec, so it beats anything we infer from the data.
+  const annotation = useAnnotationStore((a) => a.current);
+  const wormPeriodSec = effectiveWormPeriod(annotation);
+
+  // Effective 1× period — precedence: explicit per-log edit > mount worm period
+  // > auto-detected peak.
+  //
+  // The worm period replaces *calculation*, not the user's own correction for
+  // this specific log: someone who typed a value here was looking at this
+  // periodogram and meant it, so silently overriding it with a mount-level
+  // default would be the more surprising behaviour. (When they edit, we offer to
+  // promote that value up to the worm period — see `pendingWormPromotion`.)
+  const primaryPeriodSec = primaryRecord?.source === 'edited'
+    ? primaryRecord.value
+    : wormPeriodSec ?? primaryRecord?.value ?? autoPrimaryRaw;
+
+  // True when the displayed 1× came from the mount attribute rather than the
+  // data — surfaced in the field so the number isn't mistaken for a measurement.
+  const primaryFromWorm =
+    primaryRecord?.source !== 'edited' && wormPeriodSec != null;
+
+  // After an inline Primary edit we ask whether to promote the value to the
+  // mount's worm period (which applies to every log from that mount). Holds the
+  // pending seconds while the confirm strip is up; null when nothing to ask.
+  const [pendingWormPromotion, setPendingWormPromotion] = useState<number | null>(null);
+  const setWormPeriodForLog = useAnnotationStore((a) => a.setWormPeriodForLog);
+  const logFilename = useLogStore((l) => l.meta?.name ?? '');
+
+  const commitPrimaryEdit = (v: number) => {
+    if (!logHash) return;
+    void setEditedPrimary(logHash, v);
+    // Only worth asking when it would actually change the stored worm period.
+    if (Math.round(v * 100) / 100 !== (wormPeriodSec ?? 0)) setPendingWormPromotion(v);
+  };
 
   // How many cycles of the auto primary this section spans (duration ÷ primary).
   // A short section (e.g. one too brief to resolve the ~370s worm) yields a
@@ -948,10 +985,38 @@ export function AnalysisModal() {
             <PrimaryPeriodField
               value={primaryPeriodSec}
               edited={primaryRecord?.source === 'edited'}
+              fromWorm={primaryFromWorm}
               canReset={autoPrimaryRaw != null}
-              onCommit={(v) => void setEditedPrimary(logHash, v)}
+              onCommit={commitPrimaryEdit}
               onReset={() => { if (autoPrimaryRaw != null) void setAutoPrimary(logHash, autoPrimaryRaw, sectionCycles); }}
             />
+          )}
+          {/* Promote-to-worm prompt. A Primary edit applies to THIS log only;
+              the worm period is a property of the mount and travels to every log
+              from it. Offer the upgrade rather than assuming either way. */}
+          {pendingWormPromotion != null && logHash && (
+            <span className="flex items-center gap-1.5 rounded border border-sky-800 bg-sky-950/40 px-2 py-0.5 text-slate-300">
+              <span>{t('promoteWormAsk', { value: Math.round(pendingWormPromotion * 100) / 100 })}</span>
+              <button
+                type="button"
+                className="rounded bg-sky-700 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-sky-600"
+                title={t('promoteWormYesTooltip')}
+                onClick={() => {
+                  void setWormPeriodForLog(logHash, logFilename, pendingWormPromotion);
+                  setPendingWormPromotion(null);
+                }}
+              >
+                {t('promoteWormYes')}
+              </button>
+              <button
+                type="button"
+                className="rounded px-1.5 py-0.5 text-[11px] text-slate-400 hover:text-slate-200"
+                title={t('promoteWormNoTooltip')}
+                onClick={() => setPendingWormPromotion(null)}
+              >
+                {t('promoteWormNo')}
+              </button>
+            </span>
           )}
           {kind === 'spike' && spikeRun && (
             <span className="text-slate-500" title={t('spike.runStatsTooltip')}>

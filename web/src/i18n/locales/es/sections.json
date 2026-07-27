@@ -60,6 +60,13 @@
     "backlashEnabled": "Activado · {{pulse}} ms",
     "backlashDisabled": "Desactivado",
     "tooltip": "Configuración de guiado clave del encabezado PHD2 de esta sección: lado de montura, apuntado, holgura y algoritmos RA/Dec.",
-    "calibrationTooltip": "Contexto de apuntado del encabezado PHD2 de esta sección: lado de la montura, ángulo horario, declinación, altitud, acimut y posición del rotador."
+    "calibrationTooltip": "Contexto de apuntado del encabezado PHD2 de esta sección: lado de la montura, ángulo horario, declinación, altitud, acimut y posición del rotador.",
+    "mountType": "Tipo de mount",
+    "wormPeriod": "Periodo del worm",
+    "mount": {
+      "gem": "GEM / Ecuatorial",
+      "strainwave": "Strainwave / Armónica",
+      "altaz": "Alt/Az"
+    }
   }
 }

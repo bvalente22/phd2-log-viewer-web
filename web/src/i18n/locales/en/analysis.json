@@ -261,5 +261,12 @@
       "empty": "The debug log appears to be empty.",
       "popupBlocked": "Your browser blocked the new tab. Allow pop-ups for this site, then double-click the sample again."
     }
-  }
+  },
+  "fromWorm": "worm",
+  "fromWormTooltip": "Taken from the mount worm period recorded in this log's attributes, not detected from the data. Edit it in the annotation dialog.",
+  "promoteWormAsk": "Also set {{value}} s as this mount's worm period?",
+  "promoteWormYes": "Yes",
+  "promoteWormYesTooltip": "Save this value as the mount worm period in the log attributes, so it is used as the authoritative 1x period.",
+  "promoteWormNo": "Not now",
+  "promoteWormNoTooltip": "Keep the edit for this log only; leave the mount worm period unchanged."
 }

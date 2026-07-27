@@ -37,5 +37,10 @@
     "notDebugLog": "This file doesn't look like a PHD2 DEBUG log. The first line should contain 'begins execution' or 'continues execution'.",
     "noSequences": "No backlash test sequences found in this debug log. The test must have been run from PHD2's calibration UI to produce 'BLT'-tagged lines.",
     "parseFailed": "Failed to parse the debug log."
-  }
+  },
+  "noRunTitle": "This debug log has no backlash compensation run",
+  "noRunLoadedFrom": "Loaded debug log:",
+  "noRunExplain": "The file parsed correctly, but contains no BLT-tagged lines. PHD2 only writes those when the Backlash Test is run from its calibration UI, so this log simply never recorded one.",
+  "noRunPickOther": "Pick a different debug log",
+  "noRunPickOtherTooltip": "Choose another PHD2 DEBUG log — one recorded on a night when the Backlash Test was actually run."
 }

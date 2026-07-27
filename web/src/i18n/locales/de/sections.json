@@ -60,6 +60,13 @@
     "backlashEnabled": "Aktiviert · {{pulse}} ms",
     "backlashDisabled": "Deaktiviert",
     "tooltip": "Wichtige Guiding-Einstellungen aus dem PHD2-Header dieses Abschnitts — Pier-Seite, Ausrichtung, Backlash und RA/Dec-Algorithmen.",
-    "calibrationTooltip": "Ausrichtungskontext aus dem PHD2-Header dieses Abschnitts – Seite der Montierung, Stundenwinkel, Deklination, Höhe, Azimut und Rotatorposition."
+    "calibrationTooltip": "Ausrichtungskontext aus dem PHD2-Header dieses Abschnitts – Seite der Montierung, Stundenwinkel, Deklination, Höhe, Azimut und Rotatorposition.",
+    "mountType": "Mount-Typ",
+    "wormPeriod": "Worm-Periode",
+    "mount": {
+      "gem": "GEM / Äquatorial",
+      "strainwave": "Strainwave / Harmonic",
+      "altaz": "Alt/Az"
+    }
   }
 }

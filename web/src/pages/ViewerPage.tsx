@@ -58,6 +58,17 @@ export function ViewerPage() {
     return () => { delete root.dataset.theme; };
   }, [theme]);
 
+  // With no log open, the sidebar is the ONLY way in — it holds the drop zone
+  // (LogsFolderPane) and Recents. `sidebarCollapsed` persists across reloads, so
+  // a user who collapsed it while reading a log would come back to a 16px rail
+  // and an empty page with no obvious way to open anything. Force it open
+  // whenever we're logless. Runs on `log` transitions only, so collapsing the
+  // sidebar *while a log is open* still sticks — we're not fighting the user,
+  // just refusing to strand them on an empty screen.
+  useEffect(() => {
+    if (!log) setSidebarCollapsed(false);
+  }, [log, setSidebarCollapsed]);
+
   // No more dedicated home/landing page: the app always renders the viewer
   // chrome (header + sidebar + main pane). Until a log is loaded the sidebar
   // shows the Open-log drop zone (LogsFolderPane) and the Recents dropdown,

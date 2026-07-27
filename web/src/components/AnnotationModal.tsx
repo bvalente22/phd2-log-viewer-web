@@ -1,6 +1,47 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAnnotationStore, NOTES_MAXLEN } from '../state/annotationStore';
+import { MOUNT_TYPES } from '../storage/annotations';
+import { wrapTip } from '../i18n/format';
+
+/**
+ * Numeric attribute input (worm period, image scale). Free-text while typing —
+ * validation happens on save, where blank/invalid/≤0 all normalize to 0
+ * ("unknown"). `step="0.01"` matches the 2dp the store rounds to. Shows a
+ * non-blocking hint when the current text can't parse, rather than rejecting
+ * keystrokes, so a half-typed "1." never fights the user.
+ */
+function NumAttr({ label, unit, value, placeholder, title, onChange }: {
+  label: string;
+  unit: string;
+  value: string;
+  placeholder: string;
+  title: string;
+  onChange: (s: string) => void;
+}) {
+  const invalid = value.trim() !== '' && !(Number.isFinite(parseFloat(value)) && parseFloat(value) >= 0);
+  return (
+    <div className="min-w-0 flex-1">
+      <label className="mb-1 block text-[10px] uppercase tracking-wide text-slate-500">{label}</label>
+      <div className="flex items-center gap-1">
+        <input
+          type="number"
+          min={0}
+          step="0.01"
+          inputMode="decimal"
+          className={`w-full min-w-0 rounded border bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100 focus:outline-none ${
+            invalid ? 'border-red-700 focus:border-red-500' : 'border-slate-700 focus:border-sky-500'
+          }`}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          title={title}
+        />
+        <span className="flex-shrink-0 text-[11px] text-slate-500">{unit}</span>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Centered dialog for naming + annotating a log. One component serves two
@@ -17,6 +58,9 @@ export function AnnotationModal() {
   const modal = useAnnotationStore((s) => s.modal);
   const setDraftName = useAnnotationStore((s) => s.setDraftName);
   const setDraftNotes = useAnnotationStore((s) => s.setDraftNotes);
+  const setDraftMountType = useAnnotationStore((s) => s.setDraftMountType);
+  const setDraftWormPeriod = useAnnotationStore((s) => s.setDraftWormPeriod);
+  const setDraftImagingScale = useAnnotationStore((s) => s.setDraftImagingScale);
   const save = useAnnotationStore((s) => s.save);
   const clearCurrent = useAnnotationStore((s) => s.clearCurrentInModal);
   const skipFirstOpen = useAnnotationStore((s) => s.skipFirstOpen);
@@ -60,8 +104,11 @@ export function AnnotationModal() {
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
       onMouseDown={(e) => { if (e.target === e.currentTarget) void dismiss(); }}
     >
-      <div className="w-[480px] max-w-[90vw] rounded-lg border border-slate-700 bg-slate-900 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2.5">
+      {/* Edit mode is tall (name + attributes + a 10-row notes box), so the
+          dialog is capped to the viewport and the BODY scrolls — keeping the
+          title bar and the Save/Cancel row pinned and always reachable. */}
+      <div className="flex max-h-[90vh] w-[480px] max-w-[90vw] flex-col rounded-lg border border-slate-700 bg-slate-900 shadow-2xl">
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-800 px-4 py-2.5">
           <h2 className="text-sm font-medium text-slate-100">
             {isFirstOpen ? t('annotations.firstOpenTitle') : t('annotations.editTitle')}
           </h2>
@@ -75,7 +122,7 @@ export function AnnotationModal() {
           </button>
         </div>
 
-        <div className="px-4 py-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
           <label className="mb-1 block text-[10px] uppercase tracking-wide text-slate-500">
             {t('annotations.nameLabel')}
           </label>
@@ -97,7 +144,56 @@ export function AnnotationModal() {
 
           {!isFirstOpen && (
             <>
-              <label className="mb-1 mt-3 block text-[10px] uppercase tracking-wide text-slate-500">
+              {/* ---- Setup attributes ---------------------------------------
+                  Hardware facts about the rig that produced this log. Grouped
+                  under their own rule so they read as configuration rather than
+                  free-text annotation. Image scale is NOT stored on the
+                  annotation — it reads/writes the same per-log `imaging:`
+                  sidecar the Image Impact panel uses, so the two stay one
+                  value. */}
+              <div className="mt-4 border-t border-slate-800 pt-3">
+                <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  {t('annotations.attrsHeading')}
+                </div>
+
+                <label className="mb-1 block text-[10px] uppercase tracking-wide text-slate-500">
+                  {t('annotations.mountTypeLabel')}
+                </label>
+                <select
+                  className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+                  value={modal.mountType}
+                  onChange={(e) => setDraftMountType(e.target.value as typeof modal.mountType)}
+                  title={wrapTip(t('annotations.mountTypeTooltip'))}
+                >
+                  {MOUNT_TYPES.map((m) => (
+                    <option key={m} value={m}>{t(`annotations.mountType.${m}`)}</option>
+                  ))}
+                </select>
+
+                <div className="mt-3 flex items-start gap-3">
+                  <NumAttr
+                    label={t('annotations.wormPeriodLabel')}
+                    unit={t('annotations.wormPeriodUnit')}
+                    value={modal.wormPeriodText}
+                    placeholder={t('annotations.unknownPlaceholder')}
+                    title={wrapTip(t('annotations.wormPeriodTooltip'))}
+                    onChange={setDraftWormPeriod}
+                  />
+                  <NumAttr
+                    label={t('annotations.imagingScaleLabel')}
+                    unit={t('annotations.imagingScaleUnit')}
+                    value={modal.imagingScaleText}
+                    placeholder={t('annotations.unknownPlaceholder')}
+                    title={wrapTip(t('annotations.imagingScaleTooltip'))}
+                    onChange={setDraftImagingScale}
+                  />
+                </div>
+                <p className="mt-1.5 text-[10px] leading-relaxed text-slate-600">
+                  {t('annotations.attrsHint')}
+                </p>
+              </div>
+
+              <label className="mb-1 mt-4 block text-[10px] uppercase tracking-wide text-slate-500">
                 {t('annotations.notesLabel')}
               </label>
               <textarea
@@ -116,7 +212,7 @@ export function AnnotationModal() {
           )}
         </div>
 
-        <div className="flex items-center gap-2 border-t border-slate-800 px-4 py-2.5">
+        <div className="flex flex-shrink-0 items-center gap-2 border-t border-slate-800 px-4 py-2.5">
           {isFirstOpen ? (
             <>
               <button

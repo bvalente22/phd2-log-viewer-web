@@ -21,7 +21,23 @@
     "nameThisLog": "Name this log",
     "notesIndicatorTooltip": "This log has notes — click to view/edit",
     "annotateCurrentTooltip": "Name & annotate this log",
-    "hoverEditHint": "Click to edit name & notes"
+    "hoverEditHint": "Click to edit name & notes",
+    "attrsHeading": "Setup attributes",
+    "attrsHint": "Used for analysis. Leave blank if unknown. Image scale is shared with the Estimated Imaging Impact panel.",
+    "mountTypeLabel": "Mount type",
+    "mountTypeTooltip": "The mount drive type. Determines what periodic-error behaviour to expect: a GEM has a worm period, strainwave/harmonic drives show much shorter high-frequency error, and Alt/Az has no RA worm at all.",
+    "mountType": {
+      "gem": "GEM / Equatorial Mount",
+      "strainwave": "Strainwave / Harmonic",
+      "altaz": "Alt/Az"
+    },
+    "wormPeriodLabel": "Mount worm period",
+    "wormPeriodUnit": "s",
+    "wormPeriodTooltip": "The mount worm period in seconds. When set, this is used as the authoritative 1x period in Analysis instead of detecting it from the periodogram. Leave blank if unknown.",
+    "imagingScaleLabel": "Image scale",
+    "imagingScaleUnit": "\"/px",
+    "imagingScaleTooltip": "Imaging system image scale in arcsec per pixel. Shared with the Estimated Imaging Impact panel — editing it here updates it there too. Leave blank if unknown.",
+    "unknownPlaceholder": "unknown"
   },
   "buildTooltip": "build {{hash}}",
   "phdVersion": "PHD2 v{{version}}",
