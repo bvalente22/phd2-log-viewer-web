@@ -60,6 +60,13 @@
     "backlashEnabled": "Activé · {{pulse}} ms",
     "backlashDisabled": "Désactivé",
     "tooltip": "Réglages de guidage clés de l'en-tête PHD2 de cette section — côté pier, pointage, backlash et algorithmes RA/Dec.",
-    "calibrationTooltip": "Contexte de pointage de l'en-tête PHD2 de cette section — côté de la monture, angle horaire, déclinaison, altitude, azimut et position du rotateur."
+    "calibrationTooltip": "Contexte de pointage de l'en-tête PHD2 de cette section — côté de la monture, angle horaire, déclinaison, altitude, azimut et position du rotateur.",
+    "mountType": "Type de mount",
+    "wormPeriod": "Période du worm",
+    "mount": {
+      "gem": "GEM / Équatoriale",
+      "strainwave": "Strainwave / Harmonique",
+      "altaz": "Alt/Az"
+    }
   }
 }

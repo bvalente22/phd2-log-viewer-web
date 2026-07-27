@@ -1,11 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { wrapTip } from '../i18n/format';
 
 interface PrimaryPeriodFieldProps {
   /** Effective Primary period (seconds), or null when none. */
   value: number | null;
   /** True when the value is a user edit (vs the auto-detected dominant peak). */
   edited: boolean;
+  /**
+   * True when the value came from the log's recorded mount worm period rather
+   * than from the periodogram. Badged so a hardware spec is never mistaken for
+   * a measurement.
+   */
+  fromWorm?: boolean;
   /** Whether reset-to-auto can run (an auto value exists for the current section). */
   canReset: boolean;
   /** Commit a valid (> 0) edit. */
@@ -21,7 +28,7 @@ interface PrimaryPeriodFieldProps {
  * value. The value is in seconds (the periodogram x-axis unit), independent of
  * the arc-sec/pixels amplitude toggle.
  */
-export function PrimaryPeriodField({ value, edited, canReset, onCommit, onReset }: PrimaryPeriodFieldProps) {
+export function PrimaryPeriodField({ value, edited, fromWorm, canReset, onCommit, onReset }: PrimaryPeriodFieldProps) {
   const { t } = useTranslation('analysis');
   const fmt = (v: number | null) => (v == null ? '' : String(Math.round(v * 10) / 10));
   const [text, setText] = useState(() => fmt(value));
@@ -69,6 +76,14 @@ export function PrimaryPeriodField({ value, edited, canReset, onCommit, onReset 
       {edited && (
         <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">
           {t('edited')}
+        </span>
+      )}
+      {!edited && fromWorm && (
+        <span
+          className="text-[10px] font-semibold uppercase tracking-wider text-sky-400"
+          title={wrapTip(t('fromWormTooltip'))}
+        >
+          {t('fromWorm')}
         </span>
       )}
     </label>

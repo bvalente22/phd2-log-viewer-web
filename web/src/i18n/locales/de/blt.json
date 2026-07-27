@@ -37,5 +37,10 @@
     "notDebugLog": "Diese Datei sieht nicht wie ein PHD2-DEBUG-Log aus. Die erste Zeile sollte 'begins execution' oder 'continues execution' enthalten.",
     "noSequences": "Keine Backlash-Test-Sequenzen in diesem Debug-Log gefunden. Der Test muss aus der Kalibrierungs-UI von PHD2 ausgeführt worden sein, damit BLT-getaggte Zeilen erzeugt werden.",
     "parseFailed": "Debug-Log konnte nicht verarbeitet werden."
-  }
+  },
+  "noRunTitle": "Dieses DEBUG-Log enthält keinen Backlash-Durchlauf",
+  "noRunLoadedFrom": "Geladenes DEBUG-Log:",
+  "noRunExplain": "Die Datei wurde korrekt eingelesen, enthält aber keine BLT-Zeilen. PHD2 schreibt diese nur, wenn der Backlash Test über die Kalibrierungsoberfläche ausgeführt wird — in diesem Log wurde also nie einer aufgezeichnet.",
+  "noRunPickOther": "Anderes DEBUG-Log wählen",
+  "noRunPickOtherTooltip": "Wähle ein anderes PHD2-DEBUG-Log — eines aus einer Nacht, in der der Backlash Test tatsächlich lief."
 }

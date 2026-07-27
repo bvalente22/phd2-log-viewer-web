@@ -5,9 +5,14 @@ import { useLogStore } from '../state/logStore';
 import { BltChart } from './BltChart';
 import type { BltSequence } from '../parser/parseBlt';
 
-/** Top-level "Backlash Analysis" tab content. Three states:
+/** Top-level "Backlash Analysis" tab content. Four states:
  *  - No debug log loaded → drop zone with hint about the matching filename.
  *  - Loading → spinner + filename.
+ *  - Debug log loaded but it contains NO backlash test run → explicit "this log
+ *    has no BLT run" notice. Distinct from the drop zone on purpose: telling a
+ *    user who just supplied a debug log to "drop a debug log" reads as though
+ *    their file was rejected, when in fact it parsed fine and simply has no
+ *    BLT-tagged lines (the test was never run from PHD2's calibration UI).
  *  - Loaded → list of BLT runs on the left, chart + result card on the right.
  *
  *  The store is bound to the active guide log's filename via
@@ -65,6 +70,50 @@ export function BacklashTab() {
       <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-slate-400">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-slate-700 border-t-amber-500" />
         <div>{t('loading')}</div>
+      </div>
+    );
+  }
+
+  // ---- DEBUG LOG LOADED, BUT NO BACKLASH RUN IN IT ----
+  // Checked BEFORE the drop zone: both states have sequences.length === 0, and
+  // only `debugLogName` distinguishes "you haven't given me a file" from "your
+  // file has no BLT run in it".
+  if (sequences.length === 0 && debugLogName) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center p-8">
+        <div className="flex w-full max-w-2xl flex-col items-center gap-3 rounded-lg border border-amber-700/60 bg-amber-950/20 px-8 py-10 text-center">
+          <div className="text-base font-medium text-amber-200">{t('noRunTitle')}</div>
+          <div className="text-xs text-slate-400">
+            {t('noRunLoadedFrom')}
+            <div className="mt-1 break-all font-mono text-slate-300">{debugLogName}</div>
+          </div>
+          <p className="max-w-xl text-xs leading-relaxed text-slate-400">{t('noRunExplain')}</p>
+          <div className="mt-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onPick}
+              title={t('noRunPickOtherTooltip')}
+              className="rounded bg-amber-700 px-4 py-1.5 text-sm font-semibold text-amber-50 ring-1 ring-amber-600 hover:bg-amber-600"
+            >
+              {t('noRunPickOther')}
+            </button>
+            <button
+              type="button"
+              onClick={() => void clearCurrent()}
+              title={t('clearTooltip')}
+              className="rounded bg-slate-800 px-3 py-1.5 text-sm text-slate-300 ring-1 ring-slate-700 hover:bg-slate-700"
+            >
+              {t('clear')}
+            </button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,.log"
+            className="hidden"
+            onChange={onFileChosen}
+          />
+        </div>
       </div>
     );
   }

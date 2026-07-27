@@ -65,6 +65,13 @@
     "backlashEnabled": "Enabled · {{pulse}} ms",
     "backlashDisabled": "Disabled",
     "tooltip": "Key guiding setup from this section's PHD2 header — pier side, pointing, backlash, and RA/Dec algorithms.",
-    "calibrationTooltip": "Pointing context from this section's PHD2 header — pier side, hour angle, declination, altitude, azimuth, and rotator position."
+    "calibrationTooltip": "Pointing context from this section's PHD2 header — pier side, hour angle, declination, altitude, azimuth, and rotator position.",
+    "mountType": "Mount type",
+    "wormPeriod": "Worm period",
+    "mount": {
+      "gem": "GEM / Equatorial",
+      "strainwave": "Strainwave / Harmonic",
+      "altaz": "Alt/Az"
+    }
   }
 }

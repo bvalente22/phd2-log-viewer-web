@@ -37,5 +37,10 @@
     "notDebugLog": "该文件看起来不像 PHD2 DEBUG 日志。首行应包含 'begins execution' 或 'continues execution'。",
     "noSequences": "在此 debug 日志中未找到 backlash test 序列。该测试必须从 PHD2 校准界面运行才会生成 BLT 标签的行。",
     "parseFailed": "解析 debug 日志失败。"
-  }
+  },
+  "noRunTitle": "此 DEBUG 日志中没有 backlash 补偿运行记录",
+  "noRunLoadedFrom": "已加载的 DEBUG 日志：",
+  "noRunExplain": "文件解析正常，但其中没有 BLT 标记行。PHD2 只有在从校准界面运行 Backlash Test 时才会写入这些行，因此该日志从未记录过。",
+  "noRunPickOther": "选择其他 DEBUG 日志",
+  "noRunPickOtherTooltip": "选择另一个 PHD2 DEBUG 日志——来自实际运行过 Backlash Test 的那一晚。"
 }

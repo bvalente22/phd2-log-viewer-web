@@ -76,6 +76,11 @@ export const useBltStore = create<BltState & BltActions>((set, get) => ({
         debugLogSize: cached.debugLogSize,
         sequences: cached.sequences,
         selectedIndex: cached.sequences.length > 0 ? 0 : -1,
+        // Mirror loadDebugLog: a cached debug log that yielded no BLT runs is
+        // still a *loaded* log with nothing to show. Without this the restored
+        // state was indistinguishable from "no debug log yet" and the tab fell
+        // back to the drop zone with no explanation at all.
+        error: cached.sequences.length === 0 ? 'noSequences' : null,
       });
       return;
     }

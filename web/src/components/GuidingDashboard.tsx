@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
+import { useAnnotationStore } from '../state/annotationStore';
+import { effectiveWormPeriod, toMountType } from '../storage/annotations';
 import { parseGuideHeader, type AlgoInfo, type GuideHeaderInfo } from '../parser/guideHeader';
 
 /**
@@ -53,6 +55,14 @@ export function GuidingDashboard() {
   const log = useLogStore((s) => s.log);
   const sectionIdx = useLogStore((s) => s.selectedSection);
 
+  // Mount facts come from the log's user-set attributes (the annotation dialog),
+  // not the PHD2 header — PHD2 records neither the drive type nor the worm
+  // period. Worm shows only when actually set; 0/absent means "unknown" and the
+  // tile stays hidden rather than displaying a meaningless zero.
+  const annotation = useAnnotationStore((a) => a.current);
+  const mountType = annotation ? toMountType(annotation.mountType) : null;
+  const wormPeriodSec = effectiveWormPeriod(annotation);
+
   const info = useMemo<GuideHeaderInfo | null>(() => {
     if (!log || sectionIdx < 0) return null;
     const sec = log.sections[sectionIdx];
@@ -63,7 +73,8 @@ export function GuidingDashboard() {
   if (!info) return null;
   const hasAny =
     info.pierSide || info.hourAngle || info.declination || info.altitude || info.rotator ||
-    info.backlash || info.ra || info.dec || info.exposure || info.aoPresent;
+    info.backlash || info.ra || info.dec || info.exposure || info.aoPresent ||
+    mountType || wormPeriodSec != null;
   if (!hasAny) return null;
 
   return (
@@ -72,6 +83,15 @@ export function GuidingDashboard() {
       style={{ borderLeft: '3px solid var(--dash-accent)' }}
       title={t('dashboard.tooltip')}
     >
+      {/* Mount type + worm period lead the strip: they frame how to read
+          everything after them (a strainwave drive has no worm period at all,
+          and the 1× period readout in Analysis depends on this worm value). */}
+      {mountType && (
+        <Tile caption={t('dashboard.mountType')} value={t(`dashboard.mount.${mountType}`)} />
+      )}
+      {wormPeriodSec != null && (
+        <Tile caption={t('dashboard.wormPeriod')} value={`${wormPeriodSec} s`} />
+      )}
       {info.pierSide && <Tile caption={t('dashboard.pierSide')} value={info.pierSide} />}
       {info.exposure && <Tile caption={t('dashboard.exposure')} value={`${Number(info.exposure) / 1000} s`} />}
       {info.hourAngle && <Tile caption={t('dashboard.hourAngle')} value={`${info.hourAngle} h`} />}
