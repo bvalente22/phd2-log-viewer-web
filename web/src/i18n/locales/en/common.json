@@ -39,7 +39,10 @@
     "imagingScaleTooltip": "Image scale of the IMAGING system in arcsec per pixel — not the guide camera scale, which PHD2 records in the log itself. Shared with the Estimated Imaging Impact panel: editing it here updates it there too. Leave blank if unknown.",
     "unknownPlaceholder": "unknown",
     "encodersLabel": "Mount has high resolution encoders",
-    "encodersTooltip": "Tick when the mount has high-resolution encoders. Encoder-equipped mounts suppress most periodic error, so a small residual peak is expected on them rather than evidence of a well-tuned worm."
+    "encodersTooltip": "Tick when the mount has high-resolution encoders. Encoder-equipped mounts suppress most periodic error, so a small residual peak is expected on them rather than evidence of a well-tuned worm.",
+    "mountLookupLabel": "Look up worm period by mount",
+    "mountLookupPlaceholder": "— select a mount model —",
+    "mountLookupTooltip": "Pick your mount to fill in its published worm period. The period stays editable afterwards, so you can override it with a value measured from your own logs. Nothing is saved but the number itself."
   },
   "buildTooltip": "build {{hash}}",
   "phdVersion": "PHD2 v{{version}}",

@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAnnotationStore, NOTES_MAXLEN } from '../state/annotationStore';
 import { MOUNT_TYPES } from '../storage/annotations';
+import { MOUNT_CATALOG, groupByManufacturer } from '../parser/mountCatalog';
 import { wrapTip } from '../i18n/format';
 
 /**
@@ -76,6 +77,19 @@ export function AnnotationModal() {
   // Dismiss semantics differ by mode: first-open records "seen" so it never
   // re-prompts; edit just closes without persisting.
   const dismiss = modal?.mode === 'first-open' ? skipFirstOpen : close;
+
+  // Which catalog mount the user last picked, so the dropdown can keep showing
+  // it. Local and unpersisted — see the lookup markup for why the selection
+  // can't be re-derived from the saved period alone. Cleared when the dialog
+  // reopens, and dropped below as soon as the period no longer matches the pick
+  // (so hand-editing the number doesn't leave a stale model on screen).
+  const [pickedMountKey, setPickedMountKey] = useState('');
+  useEffect(() => { setPickedMountKey(''); }, [modal?.key, modal?.mode]);
+
+  const wormText = modal?.wormPeriodText ?? '';
+  const picked = MOUNT_CATALOG.find((m) => m.key === pickedMountKey);
+  const selectedMountKey =
+    picked && parseFloat(wormText) === picked.wormPeriodSec ? picked.key : '';
 
   // On the first-open prompt the name is pre-filled with the date parsed from
   // the filename. Place the caret at the START of the field (rather than the
@@ -175,6 +189,45 @@ export function AnnotationModal() {
                     <option key={m} value={m}>{t(`annotations.mountType.${m}`)}</option>
                   ))}
                 </select>
+
+                {/* Mount lookup — a convenience picker, not a stored field.
+                    Choosing a model fills the worm period below, which stays
+                    freely editable afterwards. The selection is intentionally
+                    NOT persisted: several mounts share a period (four Celestron
+                    models are all 478.69 s), so a stored number can't be mapped
+                    back to one model without guessing. */}
+                {MOUNT_CATALOG.length > 0 && (
+                  <div className="mt-3">
+                    <label
+                      className="mb-1 block text-[10px] uppercase tracking-wide text-slate-500"
+                      htmlFor="mount-lookup"
+                    >
+                      {t('annotations.mountLookupLabel')}
+                    </label>
+                    <select
+                      id="mount-lookup"
+                      className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+                      value={selectedMountKey}
+                      onChange={(e) => {
+                        const hit = MOUNT_CATALOG.find((m) => m.key === e.target.value);
+                        setPickedMountKey(hit ? hit.key : '');
+                        if (hit) setDraftWormPeriod(String(hit.wormPeriodSec));
+                      }}
+                      title={wrapTip(t('annotations.mountLookupTooltip'))}
+                    >
+                      <option value="">{t('annotations.mountLookupPlaceholder')}</option>
+                      {groupByManufacturer(MOUNT_CATALOG).map((g) => (
+                        <optgroup key={g.manufacturer} label={g.manufacturer}>
+                          {g.entries.map((m) => (
+                            <option key={m.key} value={m.key}>
+                              {m.model} — {m.wormPeriodSec} s
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div className="mt-3 flex items-start gap-3">
                   <NumAttr
