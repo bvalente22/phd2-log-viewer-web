@@ -38,6 +38,12 @@ export default defineConfig({
   // resolved paths stay on the drive letter. Harmless for this project (no symlinked
   // workspace deps).
   resolve: { preserveSymlinks: true },
+  // The mount worm-period catalog is imported (`?raw`) from `mountData/` at the
+  // REPO root, one level above this Vite root, so the data has exactly one home
+  // and no copy inside src/. The dev server refuses to read outside its root
+  // unless that path is allowed; the production build reads it directly and is
+  // unaffected by this setting.
+  server: { fs: { allow: ['..'] } },
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __APP_GITHASH__: JSON.stringify(gitHash),
