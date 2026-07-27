@@ -84,12 +84,38 @@ describe('parseAttrNumber', () => {
 });
 
 describe('mount attribute drafts', () => {
-  it('defaults a fresh editor to GEM with blank numeric fields', async () => {
+  it('defaults a fresh editor to GEM, no encoders, blank numeric fields', async () => {
     await useAnnotationStore.getState().openEditor('k9', 'log.txt');
     const m = useAnnotationStore.getState().modal;
     expect(m?.mountType).toBe('gem');
+    expect(m?.hasEncoders).toBe(false);
     expect(m?.wormPeriodText).toBe('');
     expect(m?.imagingScaleText).toBe('');
+  });
+
+  it('saves the encoders flag and reloads it into the editor', async () => {
+    await useAnnotationStore.getState().openEditor('k14', 'log.txt');
+    useAnnotationStore.getState().setDraftHasEncoders(true);
+    await useAnnotationStore.getState().save();
+    expect((await getAnnotation('k14'))?.hasEncoders).toBe(true);
+
+    await useAnnotationStore.getState().openEditor('k14', 'log.txt');
+    expect(useAnnotationStore.getState().modal?.hasEncoders).toBe(true);
+
+    // Un-ticking must persist too.
+    useAnnotationStore.getState().setDraftHasEncoders(false);
+    await useAnnotationStore.getState().save();
+    expect((await getAnnotation('k14'))?.hasEncoders).toBe(false);
+  });
+
+  it('promoting a worm period does not disturb the encoders flag', async () => {
+    await useAnnotationStore.getState().openEditor('k15', 'log.txt');
+    useAnnotationStore.getState().setDraftHasEncoders(true);
+    await useAnnotationStore.getState().save();
+    await useAnnotationStore.getState().setWormPeriodForLog('k15', 'log.txt', 383.25);
+    const rec = await getAnnotation('k15');
+    expect(rec?.wormPeriodSec).toBe(383.25);
+    expect(rec?.hasEncoders).toBe(true);
   });
 
   it('saves mount type + worm period, and reloads them into the editor', async () => {
