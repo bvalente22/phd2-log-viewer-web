@@ -58,7 +58,23 @@ export interface PlotThemeColors {
    * crimson surfaces so dark adaptation is preserved.
    */
   hoverSpike: string;
+  /**
+   * Analysis "top 3 peaks" identity colors, index 0 = peak #1. One color per
+   * rank, shared by the periodogram's dotted vertical period lines, the
+   * numbered chips beneath the chart, and the matching summary cards, so a
+   * line reads straight across to its card. Rose / violet / silver: hues the
+   * periodogram doesn't already use (amber + teal traces), checked pairwise
+   * for protan/deutan separation. The number on each chip carries identity too,
+   * so color is never the only cue. Every value is ≥ 5:1 against `paper`,
+   * which is why the chips can use `paper` as their ink.
+   */
+  peakMarkers: readonly [string, string, string];
 }
+
+// Peak-marker sets — one tuned for the dark plot backgrounds (default /
+// high-contrast / night), one deepened for the white ones (paper / monochrome).
+const PEAK_MARKERS_DARK = ['#fb7185', '#a78bfa', '#e2e8f0'] as const;
+const PEAK_MARKERS_LIGHT = ['#be123c', '#7c3aed', '#475569'] as const;
 
 export interface Theme {
   id: ThemeId;
@@ -91,6 +107,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       traceMass: '#facc15',
       traceSnr: '#e2e8f0',
       hoverSpike: '#facc15',
+      peakMarkers: PEAK_MARKERS_DARK,
     },
   },
   // White background, dark text — for daylight use or printing. Plot
@@ -116,6 +133,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       traceMass: '#b45309',
       traceSnr: '#475569',
       hoverSpike: '#0f172a',
+      peakMarkers: PEAK_MARKERS_LIGHT,
     },
   },
   // Pure-black + pure-white + high-saturation gridlines for users with
@@ -138,6 +156,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       traceMass: '#facc15',
       traceSnr: '#ffffff',
       hoverSpike: '#00ffff',
+      peakMarkers: PEAK_MARKERS_DARK,
     },
   },
   // Pure white page with all UI elements rendered in pure black —
@@ -172,6 +191,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       traceMass: '#b45309',
       traceSnr: '#475569',
       hoverSpike: '#0f172a',
+      peakMarkers: PEAK_MARKERS_LIGHT,
     },
   },
   // Astronomer night mode: very dark crimson surfaces and dim red text
@@ -196,6 +216,7 @@ export const THEMES: Record<ThemeId, Theme> = {
       traceMass: '#facc15',
       traceSnr: '#e2e8f0',
       hoverSpike: '#ffd0d0',
+      peakMarkers: PEAK_MARKERS_DARK,
     },
   },
 };

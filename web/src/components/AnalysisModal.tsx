@@ -8,6 +8,7 @@ import { useAnnotationStore } from '../state/annotationStore';
 import { effectiveWormPeriod } from '../storage/annotations';
 import { PrimaryPeriodField } from './PrimaryPeriodField';
 import { PpecPeakHint } from './PpecPeakHint';
+import { PeakChip, peakColor } from './PeakChip';
 import { CHIP_TONE, swapTone, type ChipTone } from './chipTones';
 import { themeOf } from '../themes';
 import { DriftChart } from './DriftChart';
@@ -1050,14 +1051,15 @@ export function AnalysisModal() {
                 return (
                   <div
                     key={i}
-                    className="rounded border border-amber-700/50 bg-slate-900 px-3 py-1 font-mono text-slate-200"
+                    className="rounded border border-l-4 border-amber-700/50 bg-slate-900 px-3 py-1 font-mono text-slate-200"
+                    style={{ borderLeftColor: peakColor(tc, i) ?? undefined }}
                     title={t('spike.periodTitle', {
                       index: i + 1,
                       period: fmtNumber(p.period, 1),
                       aligned: p.alignedEvents,
                     })}
                   >
-                    <div className="text-[10px] uppercase tracking-wider text-amber-300">{t('peakIndex', { index: i + 1 })}</div>
+                    <PeakChip rank={i + 1} title={t('peakIndex', { index: i + 1 })} />
                     <div>{t('period')}: {fmtNumber(p.period, 1)}s</div>
                     <div>{t('spike.magnitude')}: {fmtNumber(meanArc, 2)}″ ({fmtNumber(meanPx, 2)}px)</div>
                     <div>{t('spike.alignedEvents', { count: p.alignedEvents })}</div>
@@ -1082,11 +1084,14 @@ export function AnalysisModal() {
               return (
                 <div
                   key={i}
-                  className="rounded border border-slate-700 bg-slate-900 px-3 py-1 font-mono text-slate-200"
+                  // Left stripe + rank chip share the color of this peak's
+                  // dotted line and chip on the periodogram above.
+                  className="rounded border border-l-4 border-slate-700 bg-slate-900 px-3 py-1 font-mono text-slate-200"
+                  style={{ borderLeftColor: peakColor(tc, i) ?? undefined }}
                   title={t('peakTitle', { index: i + 1, period: fmtNumber(p.period, 1) })}
                 >
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] uppercase tracking-wider text-sky-400">{t('peakIndex', { index: i + 1 })}</span>
+                    <PeakChip rank={i + 1} title={t('peakIndex', { index: i + 1 })} />
                     {kind === 'all' && !raIsPpec && <PpecPeakHint periodSec={p.period} />}
                   </div>
                   <div>
