@@ -1,5 +1,47 @@
 import { describe, it, expect } from 'vitest';
-import { primaryPeriod, periodRatio, rampValue, curveTopPeaks } from '../perioPeaks';
+import { primaryPeriod, periodRatio, rampValue, curveTopPeaks, applyPrimaryOverride } from '../perioPeaks';
+
+describe('applyPrimaryOverride', () => {
+  // Amplitude-ranked, as curveTopPeaks returns them.
+  const peaks = [
+    { period: 389.5, amplitude: 2.34 },
+    { period: 87.6, amplitude: 0.9 },
+    { period: 83.5, amplitude: 0.7 },
+  ];
+
+  it('reports the manual period on the 1× peak and keeps its measured amplitude', () => {
+    const out = applyPrimaryOverride(peaks, 384, 0.15);
+    expect(out[0]).toEqual({ period: 384, amplitude: 2.34, measuredPeriod: 389.5 });
+    expect(out[1]).toEqual(peaks[1]);
+    expect(out[2]).toEqual(peaks[2]);
+  });
+
+  it('matches a 1× peak measured below the primary too', () => {
+    const out = applyPrimaryOverride([{ period: 365.5, amplitude: 1 }], 384, 0.15);
+    expect(out[0]).toMatchObject({ period: 384, measuredPeriod: 365.5 });
+  });
+
+  it('overrides only the strongest peak when two fall within tolerance', () => {
+    const out = applyPrimaryOverride(
+      [{ period: 395, amplitude: 3 }, { period: 372, amplitude: 2 }],
+      384, 0.15,
+    );
+    expect(out[0]).toMatchObject({ period: 384, measuredPeriod: 395 });
+    expect(out[1]).toEqual({ period: 372, amplitude: 2 });
+  });
+
+  it('leaves every peak alone when none is near the primary', () => {
+    const out = applyPrimaryOverride(peaks.slice(1), 384, 0.15);
+    expect(out).toEqual(peaks.slice(1));
+    expect(out.some((p) => 'measuredPeriod' in p)).toBe(false);
+  });
+
+  it('does not mutate its input', () => {
+    const input = [{ period: 389.5, amplitude: 2.34 }];
+    applyPrimaryOverride(input, 384, 0.15);
+    expect(input[0].period).toBe(389.5);
+  });
+});
 
 // Local maxima at periods 150 (amp 4), 300 (amp 10), 460 (amp 2). The dominant
 // (largest-amplitude) peak is 300; 460 is a small longer-period bump — exactly

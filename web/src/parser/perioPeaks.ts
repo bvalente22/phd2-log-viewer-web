@@ -96,6 +96,29 @@ export function primaryPeriod(
   return best === null ? null : best.period;
 }
 
+/**
+ * A manually set primary period (an edit in the Analysis field, or the mount
+ * worm period from the log attributes) is authoritative: the peak that IS the
+ * 1× component reports that period, not the FFT's measurement of it. The FFT
+ * bins are coarse at worm-scale periods (≈ ±27s at 384s on a 1.5h section), so
+ * the measured peak routinely lands a few seconds off a period the user knows
+ * exactly.
+ *
+ * The 1× peak is the strongest (first, since `peaks` is amplitude-ranked) peak
+ * within ±`tolerance` of the primary. It keeps its measured amplitude — the
+ * spectral peak height is still the best estimate of the component's size —
+ * and gains `measuredPeriod` so the UI can show what the FFT found. Other peaks
+ * are returned unchanged; if none is within tolerance, nothing is overridden.
+ */
+export function applyPrimaryOverride<T extends { period: number }>(
+  peaks: readonly T[],
+  primarySec: number,
+  tolerance: number,
+): (T & { measuredPeriod?: number })[] {
+  const i = peaks.findIndex((p) => Math.abs(p.period - primarySec) <= primarySec * tolerance);
+  return peaks.map((p, k) => (k === i ? { ...p, period: primarySec, measuredPeriod: p.period } : p));
+}
+
 /** Ratio of the primary period to a peak's period (primary / period). */
 export function periodRatio(primaryPeriodSec: number, periodSec: number): number {
   return periodSec > 0 ? primaryPeriodSec / periodSec : 0;
