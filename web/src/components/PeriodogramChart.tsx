@@ -11,6 +11,7 @@ import { useChartGestures } from './useChartGestures';
 import { useViewStore } from '../state/viewStore';
 import { themeOf, type PlotThemeColors } from '../themes';
 import { densePeriodogram, curveLocalMaxima, rampValue } from '../parser/perioPeaks';
+import { PeakChip, peakColor } from './PeakChip';
 
 /**
  * First-paint periodogram Y-scale switch (source toggle).
@@ -101,11 +102,11 @@ interface PeriodogramChartProps {
    *  gestures and persisted in the analysisStore so mode swaps don't
    *  reset the zoom. Null = fall back to Plotly autorange. */
   yMaxViewPx: number | null;
-  /** Top-N peak periods to mark beneath the chart with numbered chips
-   *  (rank 1 = highest amplitude). Order is preserved so the chips read
-   *  1, 2, 3 corresponding to the cards rendered by the modal. The chips
-   *  inherit the chart's x axis so log-scale zoom/pan keeps them aligned
-   *  to their data positions without extra bookkeeping. */
+  /** Top-N peak periods to mark with a color-coded dotted vertical line and
+   *  a numbered chip beneath the chart (rank 1 = highest amplitude). Order
+   *  is preserved so the chips read 1, 2, 3 and share their colors with the
+   *  cards rendered by the modal. Both inherit the chart's x axis so
+   *  log-scale zoom/pan keeps them aligned to their data positions. */
   topPeaks: ReadonlyArray<{ period: number }>;
   /** Raw-RA primary period (longest peak <= max) for the hover Ratio readout.
    *  Null when unavailable (no qualifying peak / spike mode). */
@@ -549,6 +550,24 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
     (FIT_ACTIVE_TRACE_Y ? garun.fftAmpMax : Math.max(garun.fftAmpMax, otherFftMax)) * 1.05;
   const yMaxApplied = yMaxLockPx ?? yMaxViewPx ?? initialFftMax;
   const yAxisCfg: Partial<Layout['yaxis']> = { range: [0, yMaxApplied * k], autorange: false };
+  // Dotted vertical line at each top-N period, color-coded to match its chip
+  // below the chart and its summary card. Derived from `topPeaks` on every
+  // render, so they move whenever the peaks are recomputed — a Primary-period
+  // edit, a mount worm period from the log attributes, the Max Period filter,
+  // or a tab swap. No peaks → no lines. Shape x is in data units even on a log
+  // axis (unlike `range`), so the period goes in as-is. Drawn below the traces
+  // so the curve stays on top where the line crosses the peak.
+  const peakLines: NonNullable<Layout['shapes']> = [];
+  topPeaks.forEach((p, i) => {
+    const color = peakColor(tc, i);
+    if (!color || !(p.period > 0)) return;
+    peakLines.push({
+      type: 'line', xref: 'x', yref: 'paper',
+      x0: p.period, x1: p.period, y0: 0, y1: 1,
+      line: { color, width: 2, dash: 'dot' },
+      layer: 'below',
+    });
+  });
   const layout: Partial<Layout> = {
     autosize: true,
     // Swap top/bottom margins now that the X axis labels live at the top.
@@ -613,6 +632,7 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       orientation: 'h', x: 0, y: -0.05, yanchor: 'top', xanchor: 'left',
       font: { size: 10 }, bgcolor: 'rgba(0,0,0,0)',
     },
+    shapes: peakLines,
     dragmode: false,
     hovermode: 'x',
   };
@@ -649,13 +669,8 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
             key={m.rank}
             className="absolute top-1 -translate-x-1/2"
             style={{ left: `${m.x}px` }}
-            title={`Peak ${m.rank}`}
           >
-            <span
-              className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-cyan-600 px-1.5 text-[11px] font-semibold text-white shadow ring-1 ring-cyan-300"
-            >
-              {m.rank}
-            </span>
+            <PeakChip rank={m.rank} title={`Peak ${m.rank}`} />
           </div>
         ))}
       </div>
