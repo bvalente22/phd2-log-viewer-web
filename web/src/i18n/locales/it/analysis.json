@@ -209,7 +209,7 @@
   "topPeaks": "Top 3 picchi",
   "maxPeriod": "periodo max",
   "maxPeriodSuffix": "s",
-  "maxPeriodTooltip": "Esclude qualsiasi picco la cui periodo superi questo numero di secondi; 600s (10 min) è il default.",
+  "maxPeriodTooltip": "Nasconde dalla lista top 3 qualsiasi picco il cui periodo superi questo numero di secondi; 720s (12 min) è il default. Non modifica il periodo primario rilevato automaticamente.",
   "noPeaks": "Nessun picco del periodogramma rilevato sotto i {{seconds}}s.",
   "peakTitle": "Picco {{index}}: una componente di errore periodico con periodo di {{period}}s",
   "peakIndex": "n.{{index}}",

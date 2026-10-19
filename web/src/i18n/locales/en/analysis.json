@@ -216,7 +216,7 @@
   "topPeaks": "Top 3 peaks",
   "maxPeriod": "max period",
   "maxPeriodSuffix": "s",
-  "maxPeriodTooltip": "Excludes any peak whose period exceeds this many seconds; 600s (10 min) is the default since PE worm cycles are typically well below that.",
+  "maxPeriodTooltip": "Hides any peak whose period exceeds this many seconds from the top-3 list; 720s (12 min) is the default since PE worm cycles are typically well below that. It doesn't change the auto-detected primary period.",
   "primaryPeriod": "primary period",
   "primaryPeriodTooltip": "The reference period that all period ratios divide by (and the cap on the top-3 list). Auto-filled with the dominant peak the first time this log is analyzed; edit it to your own value. Saved per guide log — it persists across sections and reloads, and a different log recalculates.",
   "resetToAuto": "reset to auto",

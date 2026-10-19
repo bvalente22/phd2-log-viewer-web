@@ -209,7 +209,7 @@
   "topPeaks": "Top 3 Peaks",
   "maxPeriod": "Max-Periode",
   "maxPeriodSuffix": "s",
-  "maxPeriodTooltip": "Schließt jeden Peak aus, dessen Periode diesen Wert in Sekunden überschreitet; 600s (10 min) ist Standard.",
+  "maxPeriodTooltip": "Blendet jeden Peak, dessen Periode diesen Wert in Sekunden überschreitet, aus der Top-3-Liste aus; 720s (12 min) ist Standard. Die automatisch erkannte Primärperiode bleibt davon unberührt.",
   "noPeaks": "Keine Periodogramm-Peaks unter {{seconds}}s gefunden.",
   "peakTitle": "Peak {{index}}: eine periodische Fehlerkomponente bei {{period}}s",
   "peakIndex": "#{{index}}",

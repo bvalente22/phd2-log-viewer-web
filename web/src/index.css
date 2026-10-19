@@ -43,6 +43,14 @@ body { @apply bg-slate-950 text-slate-100; }
 [data-theme="paper"] .bg-slate-900 { background-color: #ffffff; }
 [data-theme="paper"] .bg-slate-900\/40 { background-color: rgba(248, 250, 252, 0.6); }
 [data-theme="paper"] .bg-slate-900\/85 { background-color: rgba(255, 255, 255, 0.92); }
+/* Remaining translucent slate surfaces (Analysis/BLT bottom panels, the
+   periodogram chip strip, sticky list headers, the recents block). Without
+   these they stay dark slate on every theme. */
+[data-theme="paper"] .bg-slate-900\/30 { background-color: rgba(248, 250, 252, 0.6); }
+[data-theme="paper"] .bg-slate-900\/50 { background-color: rgba(241, 245, 249, 0.6); }
+[data-theme="paper"] .bg-slate-900\/70 { background-color: rgba(241, 245, 249, 0.9); }
+[data-theme="paper"] .bg-slate-950\/40 { background-color: rgba(248, 250, 252, 0.6); }
+[data-theme="paper"] .bg-slate-950\/95 { background-color: rgba(255, 255, 255, 0.95); }
 [data-theme="paper"] .bg-slate-800 { background-color: #f1f5f9; }
 [data-theme="paper"] .bg-slate-700 { background-color: #e2e8f0; }
 /* bg-slate-100 (SNR active chip) is intentionally NOT overridden in any
@@ -60,6 +68,14 @@ body { @apply bg-slate-950 text-slate-100; }
 [data-theme="paper"] .border-slate-700 { border-color: #cbd5e1; }
 [data-theme="paper"] .border-slate-800 { border-color: #e2e8f0; }
 [data-theme="paper"] .border-slate-800\/70 { border-color: rgba(226, 232, 240, 0.85); }
+/* Sky accent text (section titles, links, Dec-corr readouts) is tuned for
+   dark surfaces and washes out on white — deepen it to sky-700/800. */
+[data-theme="paper"] .text-sky-200,
+[data-theme="paper"] .text-sky-300,
+[data-theme="paper"] .text-sky-300\/80,
+[data-theme="paper"] .text-sky-400 { color: #0369a1; }
+[data-theme="paper"] .hover\:text-sky-200:hover,
+[data-theme="paper"] .hover\:text-sky-300:hover { color: #075985; }
 /* Sky-700 active chip stays vivid against white; lift inactive chip
    contrast so disabled buttons remain readable. */
 [data-theme="paper"] .hover\:bg-slate-700:hover { background-color: #cbd5e1; }
@@ -75,6 +91,11 @@ body { @apply bg-slate-950 text-slate-100; }
 [data-theme="monochrome"] .bg-slate-900 { background-color: #ffffff; }
 [data-theme="monochrome"] .bg-slate-900\/40 { background-color: rgba(245, 245, 245, 0.7); }
 [data-theme="monochrome"] .bg-slate-900\/85 { background-color: rgba(255, 255, 255, 0.95); }
+[data-theme="monochrome"] .bg-slate-900\/30 { background-color: rgba(245, 245, 245, 0.7); }
+[data-theme="monochrome"] .bg-slate-900\/50 { background-color: rgba(245, 245, 245, 0.8); }
+[data-theme="monochrome"] .bg-slate-900\/70 { background-color: rgba(245, 245, 245, 0.9); }
+[data-theme="monochrome"] .bg-slate-950\/40 { background-color: rgba(245, 245, 245, 0.7); }
+[data-theme="monochrome"] .bg-slate-950\/95 { background-color: rgba(255, 255, 255, 0.95); }
 [data-theme="monochrome"] .bg-slate-800 { background-color: #f5f5f5; }
 [data-theme="monochrome"] .bg-slate-700 { background-color: #e5e5e5; }
 [data-theme="monochrome"] .text-slate-100 { color: #000000; }
@@ -89,6 +110,13 @@ body { @apply bg-slate-950 text-slate-100; }
 [data-theme="monochrome"] .border-slate-700 { border-color: #000000; }
 [data-theme="monochrome"] .border-slate-800 { border-color: #000000; }
 [data-theme="monochrome"] .border-slate-800\/70 { border-color: rgba(0, 0, 0, 0.7); }
+/* Sky accent text → black ink: chrome carries no color in this theme. */
+[data-theme="monochrome"] .text-sky-200,
+[data-theme="monochrome"] .text-sky-300,
+[data-theme="monochrome"] .text-sky-300\/80,
+[data-theme="monochrome"] .text-sky-400,
+[data-theme="monochrome"] .hover\:text-sky-200:hover,
+[data-theme="monochrome"] .hover\:text-sky-300:hover { color: #000000; }
 [data-theme="monochrome"] .hover\:bg-slate-700:hover { background-color: #d4d4d4; }
 
 /* ===== HIGH CONTRAST =========================================== */
@@ -98,6 +126,11 @@ body { @apply bg-slate-950 text-slate-100; }
 [data-theme="high-contrast"] .bg-slate-900 { background-color: #0a0a0a; }
 [data-theme="high-contrast"] .bg-slate-900\/40 { background-color: rgba(20, 20, 20, 0.7); }
 [data-theme="high-contrast"] .bg-slate-900\/85 { background-color: rgba(0, 0, 0, 0.92); }
+[data-theme="high-contrast"] .bg-slate-900\/30 { background-color: rgba(20, 20, 20, 0.6); }
+[data-theme="high-contrast"] .bg-slate-900\/50 { background-color: rgba(20, 20, 20, 0.7); }
+[data-theme="high-contrast"] .bg-slate-900\/70 { background-color: rgba(10, 10, 10, 0.85); }
+[data-theme="high-contrast"] .bg-slate-950\/40 { background-color: rgba(0, 0, 0, 0.6); }
+[data-theme="high-contrast"] .bg-slate-950\/95 { background-color: rgba(0, 0, 0, 0.95); }
 [data-theme="high-contrast"] .bg-slate-800 { background-color: #1f1f1f; }
 [data-theme="high-contrast"] .bg-slate-700 { background-color: #2f2f2f; }
 [data-theme="high-contrast"] .text-slate-100 { color: #ffffff; }
@@ -123,6 +156,11 @@ body { @apply bg-slate-950 text-slate-100; }
 [data-theme="night"] .bg-slate-900 { background-color: #1a0606; }
 [data-theme="night"] .bg-slate-900\/40 { background-color: rgba(26, 6, 6, 0.7); }
 [data-theme="night"] .bg-slate-900\/85 { background-color: rgba(26, 6, 6, 0.92); }
+[data-theme="night"] .bg-slate-900\/30 { background-color: rgba(26, 6, 6, 0.6); }
+[data-theme="night"] .bg-slate-900\/50 { background-color: rgba(26, 6, 6, 0.7); }
+[data-theme="night"] .bg-slate-900\/70 { background-color: rgba(26, 6, 6, 0.85); }
+[data-theme="night"] .bg-slate-950\/40 { background-color: rgba(13, 3, 3, 0.6); }
+[data-theme="night"] .bg-slate-950\/95 { background-color: rgba(13, 3, 3, 0.95); }
 [data-theme="night"] .bg-slate-800 { background-color: #3a1414; }
 [data-theme="night"] .bg-slate-700 { background-color: #5a2020; }
 [data-theme="night"] .text-slate-100 { color: #ff8080; }

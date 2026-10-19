@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAnalysisStore, type AnalysisKind } from '../state/analysisStore';
+import { useAnalysisStore, DEFAULT_MAX_PERIOD_SEC, type AnalysisKind } from '../state/analysisStore';
 import { useViewStore } from '../state/viewStore';
 import { useLogStore } from '../state/logStore';
 import { usePrimaryPeriodStore } from '../state/primaryPeriodStore';
@@ -20,7 +20,7 @@ import { BurstSettleDialog } from './BurstSettleDialog';
 import { SimpleSpikeChart } from './SimpleSpikeChart';
 import { ManualSpikeChart } from './ManualSpikeChart';
 import { manualSpikeStats } from '../parser/manualSpikeAnalysis';
-import { fmtNumber } from '../i18n/format';
+import { fmtNumber, wrapTip } from '../i18n/format';
 import type { GARun } from '../parser/analyze';
 import { densePeriodogram, curveTopPeaks, primaryPeriod, periodRatio, rampValue } from '../parser/perioPeaks';
 import { parseGuideHeader } from '../parser/guideHeader';
@@ -178,10 +178,17 @@ export function AnalysisModal() {
     return () => window.removeEventListener('keydown', onKey);
   }, [s]);
 
-  // Auto-detected Primary period: the dominant (largest-amplitude) peak <= Max
-  // Period on the RAW RA curve, on BOTH tabs (setKind swaps garun/garunOther, so
-  // the Raw-RA run is the member with undoRaCorrections === true; unguided has a
-  // single curve). This is the FALLBACK — the persisted per-log value wins.
+  // Auto-detected Primary period: the dominant (largest-amplitude) peak on the
+  // RAW RA curve, on BOTH tabs (setKind swaps garun/garunOther, so the Raw-RA
+  // run is the member with undoRaCorrections === true; unguided has a single
+  // curve). This is the FALLBACK — the persisted per-log value wins.
+  //
+  // Searched over the FIXED default window, not the live Max Period filter.
+  // This value is persisted and ranked by cycle count, so detecting it under a
+  // lowered filter would yield a shorter period with more cycles that always
+  // "wins" and never gives way when the filter is raised again — one brief
+  // Max Period tweak would permanently hijack the log's Primary. Max Period
+  // still filters the top-3 list (see `peaks`); it just doesn't move the 1×.
   const autoPrimaryRaw = useMemo<number | null>(() => {
     if (s.state !== 'open') return null;
     if (s.kind === 'spike') return null;
@@ -194,7 +201,7 @@ export function AnalysisModal() {
       : null;
     if (!rawRa) return null;
     const curve = densePeriodogram(rawRa.fftPeriod, rawRa.fftSpline);
-    return primaryPeriod(curve, s.maxPeriodSec);
+    return primaryPeriod(curve, DEFAULT_MAX_PERIOD_SEC);
   }, [s]);
 
   // Persisted per-log Primary period (one value per guide log; survives section
@@ -966,7 +973,7 @@ export function AnalysisModal() {
             {kind === 'spike' ? t('spike.topPeriods') : t('topPeaks')}
           </span>
           {kind !== 'spike' && (
-            <label className="flex items-center gap-1 text-slate-400" title={t('maxPeriodTooltip')}>
+            <label className="flex items-center gap-1 text-slate-400" title={wrapTip(t('maxPeriodTooltip'))}>
               <span>{t('maxPeriod')}</span>
               <input
                 type="number"

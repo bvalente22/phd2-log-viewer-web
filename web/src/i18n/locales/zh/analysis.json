@@ -209,7 +209,7 @@
   "topPeaks": "前 3 个峰",
   "maxPeriod": "最大周期",
   "maxPeriodSuffix": "s",
-  "maxPeriodTooltip": "排除任何周期超过此秒数的峰；默认 600s (10 分钟)。",
+  "maxPeriodTooltip": "在前 3 列表中隐藏任何周期超过此秒数的峰；默认 720s (12 分钟)。不会改变自动检测到的主周期。",
   "noPeaks": "在 {{seconds}}s 以下未检测到 periodogram 峰。",
   "peakTitle": "Peak {{index}}：周期为 {{period}}s 的周期误差分量",
   "peakIndex": "#{{index}}",
