@@ -28,8 +28,9 @@ interface PrimaryPeriodActions {
   /**
    * Store this section's auto-detected primary when it's a BETTER estimate than
    * what's stored: when nothing is stored, or the stored value is also `auto`
-   * and this section resolved more cycles. Never overwrites a user `edited`
-   * value. This is what makes a strong section supersede a weak one's auto.
+   * and this section resolved more cycles (`beatsStoredAuto`, which also heals
+   * pre-fixed-window records). Never overwrites a user `edited` value. This is
+   * what makes a strong section supersede a weak one's auto.
    */
   setAutoIfStronger: (hash: string, value: number, cycles: number) => Promise<void>;
   setEdited: (hash: string, value: number) => Promise<void>;
@@ -37,6 +38,28 @@ interface PrimaryPeriodActions {
   setAuto: (hash: string, value: number, cycles: number) => Promise<void>;
   clear: () => void;
 }
+
+/**
+ * Whether a freshly detected auto value (`value`, spanning `cycles`) should
+ * replace the stored auto record `cur`.
+ *
+ * Normally: only when this section resolved strictly more cycles. Comparing
+ * cycles is only fair when both values were detected over the same window,
+ * which every `fixedWindow` record guarantees.
+ *
+ * A record from before the fixed window may hold a value detected under a
+ * lowered Max Period — a short period whose inflated cycle count would block
+ * every correct value forever. Its cycles can't be trusted, but cycles × value
+ * still recovers the length of the section that produced it, so compare that
+ * instead: re-analyzing the same section (or any at least as long) re-derives
+ * the value and marks it. A shorter section still can't displace it, same as
+ * before. (1s slack absorbs float error on the same section.)
+ */
+const beatsStoredAuto = (cur: PrimaryPeriodRecord, value: number, cycles: number): boolean => {
+  const curCycles = cur.cycles ?? 0;
+  if (cur.fixedWindow) return cycles > curCycles;
+  return cycles * value >= curCycles * cur.value - 1;
+};
 
 export const usePrimaryPeriodStore = create<PrimaryPeriodState & PrimaryPeriodActions>((set, get) => ({
   hash: null,
@@ -57,10 +80,9 @@ export const usePrimaryPeriodStore = create<PrimaryPeriodState & PrimaryPeriodAc
     // before knowing what's stored).
     if (s.hash !== hash || s.loadedHash !== hash) return;
     const cur = s.record;
-    // Keep a user edit; keep a stored auto value unless this section resolved
-    // strictly more cycles (a better estimate).
-    if (cur && (cur.source === 'edited' || cycles <= (cur.cycles ?? 0))) return;
-    const rec = await putPrimaryPeriod({ key: hash, value, source: 'auto', cycles });
+    // Keep a user edit; keep a stored auto value unless this one is better.
+    if (cur && (cur.source === 'edited' || !beatsStoredAuto(cur, value, cycles))) return;
+    const rec = await putPrimaryPeriod({ key: hash, value, source: 'auto', cycles, fixedWindow: true });
     if (get().hash !== hash) return;
     set({ record: rec });
   },
@@ -72,7 +94,7 @@ export const usePrimaryPeriodStore = create<PrimaryPeriodState & PrimaryPeriodAc
   },
 
   setAuto: async (hash, value, cycles) => {
-    const rec = await putPrimaryPeriod({ key: hash, value, source: 'auto', cycles });
+    const rec = await putPrimaryPeriod({ key: hash, value, source: 'auto', cycles, fixedWindow: true });
     if (get().hash !== hash) return;
     set({ record: rec, loadedHash: hash });
   },

@@ -209,7 +209,7 @@
   "topPeaks": "Top 3 picos",
   "maxPeriod": "periodo máx",
   "maxPeriodSuffix": "s",
-  "maxPeriodTooltip": "Excluye cualquier pico cuyo periodo supere este número de segundos; 600s (10 min) es el valor por defecto, ya que los ciclos de PE del sinfín suelen estar bien por debajo.",
+  "maxPeriodTooltip": "Oculta de la lista top 3 cualquier pico cuyo periodo supere este número de segundos; 720s (12 min) es el valor por defecto, ya que los ciclos de PE del sinfín suelen estar bien por debajo. No cambia el periodo primario detectado automáticamente.",
   "noPeaks": "No se han detectado picos del periodograma por debajo de {{seconds}}s. Prueba a subir el filtro de periodo máximo o revisa la señal.",
   "peakTitle": "Pico {{index}}: una componente de error periódico con periodo de {{period}}s",
   "peakIndex": "#{{index}}",

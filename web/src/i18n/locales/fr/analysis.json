@@ -209,7 +209,7 @@
   "topPeaks": "Top 3 pics",
   "maxPeriod": "période max",
   "maxPeriodSuffix": "s",
-  "maxPeriodTooltip": "Exclut tout pic dont la période dépasse ce nombre de secondes ; 600s (10 min) est la valeur par défaut.",
+  "maxPeriodTooltip": "Masque de la liste top 3 tout pic dont la période dépasse ce nombre de secondes ; 720s (12 min) est la valeur par défaut. Ne modifie pas la période primaire détectée automatiquement.",
   "noPeaks": "Aucun pic du périodogramme détecté sous {{seconds}}s.",
   "peakTitle": "Pic {{index}} : une composante d'erreur périodique de période {{period}}s",
   "peakIndex": "n°{{index}}",

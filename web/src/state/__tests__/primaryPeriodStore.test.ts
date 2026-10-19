@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { usePrimaryPeriodStore } from '../primaryPeriodStore';
-import { getPrimaryPeriod, deletePrimaryPeriod, _allPrimaryPeriodKeys } from '../../storage/primaryPeriod';
+import { getPrimaryPeriod, putPrimaryPeriod, deletePrimaryPeriod, _allPrimaryPeriodKeys } from '../../storage/primaryPeriod';
 
 beforeEach(async () => {
   for (const k of await _allPrimaryPeriodKeys()) await deletePrimaryPeriod(k.slice('primary:'.length));
@@ -36,6 +36,31 @@ describe('primaryPeriodStore', () => {
     await S().loadForLog('h1');
     await S().setAutoIfStronger('h1', 48.6, 0); // legacy/weak, cycles 0
     await S().setAutoIfStronger('h1', 369.8, 6.9);
+    expect(S().record?.value).toBe(369.8);
+  });
+
+  it('marks auto values as detected over the fixed window', async () => {
+    await S().loadForLog('h1');
+    await S().setAutoIfStronger('h1', 376.7, 6.0);
+    expect(S().record?.fixedWindow).toBe(true);
+    await S().setAuto('h1', 388.2, 4.5);
+    expect(S().record?.fixedWindow).toBe(true);
+  });
+
+  it('heals a pre-fix auto value skewed by a lowered Max Period when that section is re-analyzed', async () => {
+    // Written before the fixed window: a lowered Max Period picked a 9.6s
+    // "primary" from a 5519s section, so its cycle count is huge.
+    await putPrimaryPeriod({ key: 'h1', value: 9.6, source: 'auto', cycles: 5519 / 9.6 });
+    await S().loadForLog('h1');
+    // Same section, re-detected over the fixed window: fewer cycles, same length.
+    await S().setAutoIfStronger('h1', 549.5, 5519 / 549.5);
+    expect(S().record).toMatchObject({ value: 549.5, source: 'auto', fixedWindow: true });
+  });
+
+  it('a pre-fix auto value still beats a shorter section', async () => {
+    await putPrimaryPeriod({ key: 'h1', value: 369.8, source: 'auto', cycles: 6.9 }); // ~2552s section
+    await S().loadForLog('h1');
+    await S().setAutoIfStronger('h1', 48.6, 1.5); // ~73s section
     expect(S().record?.value).toBe(369.8);
   });
 

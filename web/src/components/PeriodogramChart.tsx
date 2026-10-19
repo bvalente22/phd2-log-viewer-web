@@ -12,6 +12,7 @@ import { useViewStore } from '../state/viewStore';
 import { themeOf, type PlotThemeColors } from '../themes';
 import { densePeriodogram, curveLocalMaxima, rampValue } from '../parser/perioPeaks';
 import { PeakChip, peakColor } from './PeakChip';
+import { spreadMarkers } from './peakMarkerLayout';
 
 /**
  * First-paint periodogram Y-scale switch (source toggle).
@@ -68,6 +69,9 @@ function formatPeriodLabel(p: number): string {
 }
 
 const PEAK_PX = 8;
+// Center-to-center spacing for peak chips that would otherwise overlap: the
+// 20px chip width plus a 2px gap (see spreadMarkers).
+const CHIP_GAP_PX = 22;
 // Residual / raw-RA trace colors are theme-aware — amber (residual) and teal
 // (raw RA), bright on dark backgrounds and deepened on the white themes where
 // the bright variants wash out. They live in the theme registry (themes.ts
@@ -472,6 +476,10 @@ export function PeriodogramChart({ garun, garunOther, kind, scaleMode, yMaxLockP
       if (px < -16 || px > xa._length + 16) continue;
       next.push({ x: xa._offset + px, rank: i + 1 });
     }
+    // Close peaks would stack their chips and hide a rank — nudge colliding
+    // chips apart sideways (order kept, so each stays beside its own line).
+    const spread = spreadMarkers(next.map((m) => m.x), CHIP_GAP_PX);
+    next.forEach((m, i) => { m.x = spread[i]; });
     // Dedupe — without this, every plotly_relayout would replace the
     // array reference even when positions hadn't changed, and the
     // resulting React re-render could itself fire plotly_relayout from

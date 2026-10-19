@@ -340,7 +340,10 @@ interface Actions {
   selectManualSpikePointsByThreshold: (thresholdArc: number) => void;
 }
 
-const DEFAULT_MAX_PERIOD_SEC = 720;
+/** Max Period the modal opens with. Also the FIXED window the auto-detected
+ *  Primary period is searched over (AnalysisModal), so that persisted value
+ *  never depends on the user's current Max Period filter. */
+export const DEFAULT_MAX_PERIOD_SEC = 720;
 const DEFAULT_SPIKE_K = 3;
 // Default minimum period for the spike top-3 filter. 8s drops Nyquist-
 // adjacent noise (typical PHD2 cadence is 1-3s) without hiding the

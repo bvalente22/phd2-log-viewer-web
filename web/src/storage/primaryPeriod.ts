@@ -23,6 +23,13 @@ export interface PrimaryPeriodRecord {
    * `edited` records and on pre-existing records (treated as 0 → upgradable).
    */
   cycles?: number;
+  /**
+   * For `auto` records: true when `value` was detected over the fixed default
+   * window rather than the live Max Period filter. Absent on records written
+   * before that fix, whose value may have been skewed by a lowered Max Period
+   * (see primaryPeriodStore.setAutoIfStronger for how those heal).
+   */
+  fixedWindow?: boolean;
   updatedAt: number;
 }
 
@@ -35,12 +42,14 @@ export async function putPrimaryPeriod(p: {
   value: number;
   source: 'auto' | 'edited';
   cycles?: number;
+  fixedWindow?: boolean;
 }): Promise<PrimaryPeriodRecord> {
   const rec: PrimaryPeriodRecord = {
     key: p.key,
     value: p.value,
     source: p.source,
     ...(p.cycles !== undefined ? { cycles: p.cycles } : {}),
+    ...(p.fixedWindow ? { fixedWindow: true } : {}),
     updatedAt: Date.now(),
   };
   await set(PREFIX + p.key, rec);
