@@ -22,7 +22,7 @@ import { ManualSpikeChart } from './ManualSpikeChart';
 import { manualSpikeStats } from '../parser/manualSpikeAnalysis';
 import { fmtNumber, wrapTip } from '../i18n/format';
 import type { GARun } from '../parser/analyze';
-import { densePeriodogram, curveTopPeaks, primaryPeriod, periodRatio, rampValue } from '../parser/perioPeaks';
+import { densePeriodogram, curveTopPeaks, primaryPeriod, periodRatio, rampValue, applyPrimaryOverride } from '../parser/perioPeaks';
 import { parseGuideHeader } from '../parser/guideHeader';
 import { pickTopSpikePeriods, type SpikeRun } from '../parser/spikeAnalysis';
 import { Spline } from '../parser/spline';
@@ -267,6 +267,11 @@ export function AnalysisModal() {
   const primaryFromWorm =
     primaryRecord?.source !== 'edited' && wormPeriodSec != null;
 
+  // True when the 1× was set by hand — an edit here or the mount worm period —
+  // rather than auto-detected. A manual primary always overrides: the 1× peak's
+  // card, dotted line and chip report it instead of the FFT's measured period.
+  const primaryIsManual = primaryRecord?.source === 'edited' || wormPeriodSec != null;
+
   // After an inline Primary edit we ask whether to promote the value to the
   // mount's worm period (which applies to every log from that mount). Holds the
   // pending seconds while the confirm strip is up; null when nothing to ask.
@@ -303,7 +308,7 @@ export function AnalysisModal() {
     void setAutoIfStrongerPrimary(logHash, autoPrimaryRaw, sectionCycles);
   }, [s.state, logHash, primaryLoadedHash, autoPrimaryRaw, sectionCycles, setAutoIfStrongerPrimary]);
 
-  const peaks = useMemo(() => {
+  const peaks = useMemo<{ period: number; amplitude: number; measuredPeriod?: number }[]>(() => {
     if (s.state !== 'open') return [];
     if (s.kind === 'spike') return [];
     // The top-3 peaks are capped near the primary period (the dominant PE peak)
@@ -320,8 +325,12 @@ export function AnalysisModal() {
     const cap = primaryPeriodSec != null
       ? Math.min(primaryPeriodSec * (1 + PRIMARY_CAP_TOLERANCE), s.maxPeriodSec)
       : s.maxPeriodSec;
-    return topPeaks(s.garun, 3, cap);
-  }, [s, primaryPeriodSec]);
+    const top = topPeaks(s.garun, 3, cap);
+    // The same ±tolerance that keeps the 1× peak under the cap identifies it.
+    return primaryIsManual && primaryPeriodSec != null
+      ? applyPrimaryOverride(top, primaryPeriodSec, PRIMARY_CAP_TOLERANCE)
+      : top;
+  }, [s, primaryPeriodSec, primaryIsManual]);
 
   const spikePeriods = useMemo(() => {
     if (s.state !== 'open') return [];
@@ -1103,6 +1112,17 @@ export function AnalysisModal() {
                   </div>
                   <div>
                     {t('period')}: {fmtNumber(p.period, 1)}s
+                    {/* Manual primary overrode the measured period — badge it
+                        (same EDITED / WORM tags as the field) so it isn't
+                        read as a measurement; the tooltip has the FFT value. */}
+                    {p.measuredPeriod != null && (
+                      <span
+                        className={`ms-1.5 font-sans text-[10px] font-semibold uppercase tracking-wider ${primaryFromWorm ? 'text-sky-400' : 'text-amber-400'}`}
+                        title={wrapTip(t('periodOverrideTooltip', { measured: fmtNumber(p.measuredPeriod, 1) }))}
+                      >
+                        {primaryFromWorm ? t('fromWorm') : t('edited')}
+                      </span>
+                    )}
                     {primaryPeriodSec !== null && (
                       <>{'  '}{t('ratio')} {fmtNumber(periodRatio(primaryPeriodSec, p.period), 1)}x</>
                     )}

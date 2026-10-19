@@ -264,6 +264,7 @@
   },
   "fromWorm": "worm",
   "fromWormTooltip": "Taken from the mount worm period recorded in this log's attributes, not detected from the data. Edit it in the annotation dialog.",
+  "periodOverrideTooltip": "Your primary period. The periodogram measured this peak at {{measured}}s; a manually set primary period (edited above, or the mount worm period from the log attributes) always overrides the measurement.",
   "promoteWormAsk": "Also set {{value}} s as this mount's worm period?",
   "promoteWormYes": "Yes",
   "promoteWormYesTooltip": "Save this value as the mount worm period in the log attributes, so it is used as the authoritative 1x period.",
