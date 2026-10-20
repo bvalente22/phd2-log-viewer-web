@@ -40,10 +40,10 @@
     "expandTooltip": "Développe le panneau de gauche pour afficher la zone d'ouverture de log, les logs récents et la liste des sessions."
   },
   "dropZone": {
-    "title": "Déposez ici un guide log PHD2",
-    "tooltip": "Déposez ici un fichier de guide log PHD2. Le log est analysé localement ; rien n'est téléversé.",
+    "title": "Déposez ici des guide/debug logs PHD ou un .zip",
+    "tooltip": "Déposez un guide log PHD2, une paire guide + debug log, ou un .zip qui les contient (p. ex. le paquet « Upload Log Files » de PHD2). Tout est analysé localement ; rien n'est téléversé. Chaque guide log est associé à son PHD2_DebugLog par nom de fichier, ce qui permet d'ouvrir le debug log d'un double-clic.",
     "pickFile": "ou choisir un fichier",
-    "pickFileTooltip": "Ouvrir le sélecteur de fichiers pour choisir un guide log PHD2",
+    "pickFileTooltip": "Ouvrir le sélecteur de fichiers pour choisir un guide log PHD2 (vous pouvez aussi sélectionner son PHD2_DebugLog) ou un .zip de logs.",
     "parsing": "Analyse…",
     "chooseLogsFolder": "Choisir le dossier de logs…",
     "chooseLogsFolderTooltip": "Sélectionne ton dossier de logs PHD2 ; ensuite chaque guide log sera consultable depuis la barre latérale",

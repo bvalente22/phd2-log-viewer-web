@@ -24,6 +24,9 @@ export interface DebugLogHandleRecord {
   handle: FileSystemFileHandle;
   /** Debug log filename, for display. */
   fileName: string;
+  /** Set when the debug log lives inside a zip: `handle` is the ZIP's handle
+   *  and this is the debug log's path within it. */
+  entry?: string;
   cachedAt: number;
 }
 
@@ -32,9 +35,11 @@ const saveIndex = (names: string[]) => set(INDEX_KEY, names);
 
 /** Remember the debug-log handle for a guide log (MRU; evicts the LRU tail). */
 export async function putDebugLogHandle(
-  key: string, handle: FileSystemFileHandle, fileName: string,
+  key: string, handle: FileSystemFileHandle, fileName: string, entry?: string,
 ): Promise<void> {
-  const rec: DebugLogHandleRecord = { key, handle, fileName, cachedAt: Date.now() };
+  const rec: DebugLogHandleRecord = {
+    key, handle, fileName, ...(entry ? { entry } : {}), cachedAt: Date.now(),
+  };
   await set(PREFIX + key, rec);
   let names = [key, ...(await loadIndex()).filter((n) => n !== key)];
   while (names.length > MAX_REMEMBERED) {

@@ -89,10 +89,10 @@
     "resizeTooltip": "Drag to resize the sidebar. Double-click to reset to the default width."
   },
   "dropZone": {
-    "title": "Drop PHD guide/debug log pair here",
-    "tooltip": "Drop a PHD2 guide log file here (parsed locally; nothing is uploaded). Tip: drag the guide log AND its PHD2_DebugLog together to enable double-click-to-open-debug-log.",
+    "title": "Drop PHD guide/debug logs or a .zip here",
+    "tooltip": "Drop a PHD2 guide log, a guide + debug log pair, or a .zip of them (e.g. PHD2's Upload Log Files bundle). Everything is parsed locally; nothing is uploaded. Each guide log is paired with its PHD2_DebugLog by filename, which enables double-click-to-open-debug-log.",
     "pickFile": "or pick a file",
-    "pickFileTooltip": "Open the file picker to choose a PHD2 guide log (you can select its PHD2_DebugLog too).",
+    "pickFileTooltip": "Open the file picker to choose a PHD2 guide log (you can select its PHD2_DebugLog too) or a .zip of logs.",
     "parsing": "Parsing…",
     "chooseLogsFolder": "Choose logs folder…",
     "chooseLogsFolderTooltip": "Pick your PHD2 logs folder; afterwards every guide log will be browsable from the sidebar",

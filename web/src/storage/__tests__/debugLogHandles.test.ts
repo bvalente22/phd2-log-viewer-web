@@ -21,6 +21,13 @@ describe('debugLogHandles', () => {
     expect((rec?.handle as unknown as { name: string }).name).toBe('PHD2_DebugLog_x.txt');
   });
 
+  it('records the entry path when the debug log lives inside a zip (and omits it otherwise)', async () => {
+    await putDebugLogHandle('hz', fakeHandle('PHD2_logs_8Crq.zip'), 'PHD2_DebugLog_x.txt', 'logs/PHD2_DebugLog_x.txt');
+    expect((await getDebugLogHandle('hz'))?.entry).toBe('logs/PHD2_DebugLog_x.txt');
+    await putDebugLogHandle('hf', fakeHandle('PHD2_DebugLog_y.txt'), 'PHD2_DebugLog_y.txt');
+    expect(await getDebugLogHandle('hf')).not.toHaveProperty('entry');
+  });
+
   it('deleteDebugLogHandle removes it', async () => {
     await putDebugLogHandle('h1', fakeHandle('d.txt'), 'd.txt');
     await deleteDebugLogHandle('h1');

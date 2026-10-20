@@ -68,5 +68,20 @@
       "strainwave": "Strainwave / Armónica",
       "altaz": "Alt/Az"
     }
+  },
+  "bundle": {
+    "titleZip": "Logs en {{name}} ({{count}})",
+    "titleFiles": "Logs soltados ({{count}})",
+    "droppedFiles": "{{count}} archivos soltados",
+    "dismissTooltip": "Cierra esta lista. El log abierto sigue abierto y cada log que abriste desde aquí está en Logs recientes.",
+    "rowDebug": "Debug log: {{name}}",
+    "rowNoDebug": "No hay un debug log correspondiente en este paquete.",
+    "noGuideLog": "No se encontró ningún guide log de PHD2 en {{name}}.",
+    "zipError": "No se pudo leer {{name}}: {{reason}}.",
+    "reasonNotZip": "no es un archivo zip válido",
+    "reasonCorrupt": "el archivo está dañado",
+    "reasonEncrypted": "está protegido con contraseña",
+    "reasonUnsupported": "usa un método de compresión no compatible; vuelve a comprimirlo con la configuración estándar",
+    "reasonNoDecompression": "este navegador no puede descomprimir archivos zip; descomprímelo primero"
   }
 }

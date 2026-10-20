@@ -40,10 +40,10 @@
     "expandTooltip": "展开左侧面板以显示打开日志区域、最近日志与会话列表。"
   },
   "dropZone": {
-    "title": "将 PHD2 guide log 拖到此处",
-    "tooltip": "将 PHD2 guide log 文件拖到此处。日志在本地解析,不会上传任何内容。",
+    "title": "将 PHD guide/debug 日志或 .zip 拖到此处",
+    "tooltip": "拖入 PHD2 guide log、guide + debug log 配对，或包含它们的 .zip（例如 PHD2「Upload Log Files」生成的压缩包）。所有内容均在本地解析，不会上传。每个 guide log 会按文件名与其 PHD2_DebugLog 配对，从而支持双击打开 debug log。",
     "pickFile": "或选择文件",
-    "pickFileTooltip": "打开文件选择器以选择 PHD2 guide log",
+    "pickFileTooltip": "打开文件选择器，选择 PHD2 guide log（也可同时选择其 PHD2_DebugLog）或日志 .zip。",
     "parsing": "解析中…",
     "chooseLogsFolder": "选择日志文件夹…",
     "chooseLogsFolderTooltip": "选择你的 PHD2 日志文件夹;之后所有 guide log 都可在侧边栏浏览",
