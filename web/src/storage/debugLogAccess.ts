@@ -1,27 +1,26 @@
 import { useFolderStore } from '../state/folderStore';
 import { useLogStore } from '../state/logStore';
 import { getDebugLogHandle, putDebugLogHandle } from './debugLogHandles';
+import { debugLogNameFor } from './logBundle';
+import { listZipEntries, readZipEntry } from './zipReader';
 
-/**
- * Sibling debug-log filename for a guide log: PHD2 writes them side by side and
- * the only difference is `GuideLog` → `DebugLog`
- * (PHD2_GuideLog_2026-05-10_005406.txt → PHD2_DebugLog_2026-05-10_005406.txt).
- */
-export function debugLogNameFor(guideLogName: string): string {
-  return guideLogName.replace(/GuideLog/i, 'DebugLog');
-}
+export { debugLogNameFor };
 
 /** Whether the browser can prompt for a folder (File System Access API). */
 export const canGrantFolder = typeof window !== 'undefined' && 'showDirectoryPicker' in window;
 
+/** A debug log we hold this session: the file itself, or a loader that
+ *  extracts it on demand (a zip entry — inflated only when first needed). */
+export type StashedDebugLog = File | (() => Promise<File>);
+
 // Session stash of the debug log dragged in with the guide log, keyed by the
 // guide log's content hash (matches the persisted handle + the annotations /
 // primary-period sidecars).
-const stashedDebugLogs = new Map<string, File>();
+const stashedDebugLogs = new Map<string, StashedDebugLog>();
 
 /** Remember (for this session) the debug log dragged in with the guide log. */
-export function setStashedDebugLog(hash: string, file: File): void {
-  stashedDebugLogs.set(hash, file);
+export function setStashedDebugLog(hash: string, source: StashedDebugLog): void {
+  stashedDebugLogs.set(hash, source);
 }
 
 /** Guide-log hashes whose debug log is stashed in memory this session. */
@@ -33,11 +32,13 @@ export function getStashedDebugLogHashes(): string[] {
  * Persist a HANDLE (link, not bytes) to the dragged debug log so a later session
  * can re-read it. Chromium-only — `getAsFileSystemHandle` yields the handle from
  * a drop; elsewhere there's nothing to persist and the stash stays session-only.
+ * For a debug log inside a zip, `handle` is the ZIP's and `entry` is the debug
+ * log's path within it.
  */
 export async function rememberDebugLogHandle(
-  hash: string, handle: FileSystemFileHandle, fileName: string,
+  hash: string, handle: FileSystemFileHandle, fileName: string, entry?: string,
 ): Promise<void> {
-  await putDebugLogHandle(hash, handle, fileName);
+  await putDebugLogHandle(hash, handle, fileName, entry);
 }
 
 /**
@@ -45,11 +46,12 @@ export async function rememberDebugLogHandle(
  * neuters the DataTransfer the instant the drop handler yields at an `await`, so
  * reading `e.dataTransfer.files` *after* awaiting the handle promises returns an
  * empty list — which silently dropped the pair. Capture the files first, then
- * collect the debug log's FileSystemFileHandle (Chromium) when offered.
+ * collect every dropped file's FileSystemFileHandle (Chromium) when offered —
+ * the pairing step decides which ones (debug logs, zips) are worth persisting.
  */
 export async function readDroppedFiles(
   dataTransfer: DataTransfer,
-): Promise<{ files: File[]; debugHandle: FileSystemFileHandle | null }> {
+): Promise<{ files: File[]; handles: FileSystemFileHandle[] }> {
   const files = Array.from(dataTransfer.files); // capture NOW, before any await
   const handlePromises: Promise<FileSystemHandle | null>[] = [];
   const items = dataTransfer.items;
@@ -61,15 +63,14 @@ export async function readDroppedFiles(
       if (it.kind === 'file' && it.getAsFileSystemHandle) handlePromises.push(it.getAsFileSystemHandle());
     }
   }
-  let debugHandle: FileSystemFileHandle | null = null;
+  let handles: FileSystemFileHandle[] = [];
   try {
-    const handles = await Promise.all(handlePromises);
-    const dh = handles.find((h) => h && h.kind === 'file' && /DebugLog/i.test(h.name));
-    if (dh) debugHandle = dh as FileSystemFileHandle;
+    handles = (await Promise.all(handlePromises))
+      .filter((h): h is FileSystemFileHandle => !!h && h.kind === 'file');
   } catch {
     // handles are best-effort (Chromium only) — files still carry the data.
   }
-  return { files, debugHandle };
+  return { files, handles };
 }
 
 const currentHash = (): string | null => useLogStore.getState().meta?.hash ?? null;
@@ -142,9 +143,13 @@ async function fileFromStoredHandle(hash: string): Promise<File | null> {
     const rec = await getDebugLogHandle(hash);
     if (!rec) return null;
     if (!(await ensureRead(rec.handle))) return null;
-    return await rec.handle.getFile();
+    const file = await rec.handle.getFile();
+    if (!rec.entry) return file;
+    // The debug log came out of a zip: re-open the zip and extract that entry.
+    const entry = (await listZipEntries(file)).find((e) => e.path === rec.entry);
+    return entry ? await readZipEntry(file, entry) : null;
   } catch {
-    return null; // permission denied, file moved/deleted, etc.
+    return null; // permission denied, file moved/deleted, unreadable zip, etc.
   }
 }
 
@@ -159,7 +164,16 @@ export async function resolveDebugLogFile(guideLogName: string): Promise<File | 
   const hash = currentHash();
   if (hash) {
     const stashed = stashedDebugLogs.get(hash);
-    if (stashed) return stashed;
+    if (stashed && typeof stashed !== 'function') return stashed;
+    if (stashed) {
+      try {
+        const file = await stashed();
+        stashedDebugLogs.set(hash, file); // inflate a zipped debug log only once
+        return file;
+      } catch {
+        // Unreadable zip entry — fall through to the other sources.
+      }
+    }
     const fromHandle = await fileFromStoredHandle(hash);
     if (fromHandle) return fromHandle;
   }

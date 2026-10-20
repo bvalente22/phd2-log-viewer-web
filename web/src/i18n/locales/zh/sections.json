@@ -68,5 +68,20 @@
       "strainwave": "谐波 / Strainwave",
       "altaz": "地平式 Alt/Az"
     }
+  },
+  "bundle": {
+    "titleZip": "{{name}} 中的日志（{{count}}）",
+    "titleFiles": "拖入的日志（{{count}}）",
+    "droppedFiles": "{{count}} 个拖入的文件",
+    "dismissTooltip": "关闭此列表。已打开的日志保持打开，从此列表打开过的日志都在“最近日志”中。",
+    "rowDebug": "Debug log：{{name}}",
+    "rowNoDebug": "此压缩包中没有匹配的 debug log。",
+    "noGuideLog": "在 {{name}} 中未找到 PHD2 guide log。",
+    "zipError": "无法读取 {{name}}：{{reason}}。",
+    "reasonNotZip": "不是有效的 zip 文件",
+    "reasonCorrupt": "压缩包已损坏",
+    "reasonEncrypted": "该文件受密码保护",
+    "reasonUnsupported": "使用了不支持的压缩方式——请用标准设置重新压缩",
+    "reasonNoDecompression": "此浏览器无法解压 zip 文件——请先解压"
   }
 }

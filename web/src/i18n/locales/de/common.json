@@ -40,10 +40,10 @@
     "expandTooltip": "Klappt das linke Panel aus, um den Log-Bereich, die letzten Logs und die Sitzungsliste zu zeigen."
   },
   "dropZone": {
-    "title": "PHD2-Guidelog hier ablegen",
-    "tooltip": "PHD2-Guidelog-Datei hier ablegen. Das Log wird lokal verarbeitet; nichts wird hochgeladen.",
+    "title": "PHD Guide-/Debug-Logs oder ein .zip hier ablegen",
+    "tooltip": "Ein PHD2-Guidelog, ein Guide- + Debug-Log-Paar oder ein .zip davon ablegen (z. B. das Paket aus PHD2s „Upload Log Files“). Alles wird lokal verarbeitet; nichts wird hochgeladen. Jedes Guidelog wird anhand des Dateinamens mit seinem PHD2_DebugLog verknüpft – so öffnet ein Doppelklick das Debug-Log.",
     "pickFile": "oder Datei auswählen",
-    "pickFileTooltip": "Dateiauswahl öffnen, um ein PHD2-Guidelog zu wählen",
+    "pickFileTooltip": "Dateiauswahl öffnen, um ein PHD2-Guidelog (optional mit seinem PHD2_DebugLog) oder ein .zip mit Logs zu wählen.",
     "parsing": "Verarbeite…",
     "chooseLogsFolder": "Log-Ordner wählen…",
     "chooseLogsFolderTooltip": "Wähle deinen PHD2-Log-Ordner; danach lassen sich alle Guidelogs aus der Seitenleiste durchsuchen",

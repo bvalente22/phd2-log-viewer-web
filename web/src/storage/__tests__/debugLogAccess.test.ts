@@ -13,10 +13,17 @@ vi.mock('../debugLogHandles', () => ({
   getDebugLogHandle: vi.fn(async () => undefined),
   putDebugLogHandle: vi.fn(async () => {}),
 }));
+// Zip extraction is covered by zipReader.test.ts; here we only check that a
+// remembered zip handle + entry path is routed through it.
+vi.mock('../zipReader', () => ({
+  listZipEntries: vi.fn(async () => [{ path: 'logs/PHD2_DebugLog_z.txt', name: 'PHD2_DebugLog_z.txt' }]),
+  readZipEntry: vi.fn(async (_zip: Blob, entry: { name: string }) => new File(['zipped'], entry.name)),
+}));
 
 import { useLogStore } from '../../state/logStore';
 import { getDebugLogHandle, putDebugLogHandle } from '../debugLogHandles';
 import { resolveDebugLogFile, setStashedDebugLog, readDroppedFiles } from '../debugLogAccess';
+import { readZipEntry } from '../zipReader';
 
 const setHash = (hash: string | null) =>
   (useLogStore.getState as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ meta: hash ? { hash } : null });
@@ -83,6 +90,25 @@ describe('resolveDebugLogFile resolution order', () => {
     // later session (Recents reopen) resolves it without re-granting the folder.
     expect(putHandleMock).toHaveBeenCalledWith('h4', fileHandle, 'PHD2_DebugLog_x.txt');
   });
+
+  it('inflates a stashed zip-entry loader once, then reuses the extracted file', async () => {
+    setHash('h5');
+    const extracted = new File(['d'], 'PHD2_DebugLog_z.txt');
+    const loader = vi.fn(async () => extracted);
+    setStashedDebugLog('h5', loader);
+    expect(await resolveDebugLogFile('g.txt')).toBe(extracted);
+    expect(await resolveDebugLogFile('g.txt')).toBe(extracted);
+    expect(loader).toHaveBeenCalledTimes(1);
+  });
+
+  it('extracts the debug log from a remembered zip handle + entry path', async () => {
+    setHash('h6');
+    const zipFile = new File(['zip bytes'], 'PHD2_logs_Ay27.zip');
+    getHandleMock.mockResolvedValue({ ...storedHandle(zipFile), entry: 'logs/PHD2_DebugLog_z.txt' });
+    const file = await resolveDebugLogFile('PHD2_GuideLog_z.txt');
+    expect(file?.name).toBe('PHD2_DebugLog_z.txt');
+    expect(readZipEntry).toHaveBeenCalledWith(zipFile, expect.objectContaining({ path: 'logs/PHD2_DebugLog_z.txt' }));
+  });
 });
 
 describe('readDroppedFiles', () => {
@@ -105,19 +131,19 @@ describe('readDroppedFiles', () => {
       ] as unknown as DataTransferItemList,
     } as unknown as DataTransfer;
 
-    const { files, debugHandle } = await readDroppedFiles(dataTransfer);
+    const { files, handles } = await readDroppedFiles(dataTransfer);
     expect(files.map((f) => f.name)).toEqual(['PHD2_GuideLog_x.txt', 'PHD2_DebugLog_x.txt']);
-    expect((debugHandle as unknown as { name: string } | null)?.name).toBe('PHD2_DebugLog_x.txt');
+    expect(handles.map((h) => h.name)).toEqual(['PHD2_DebugLog_x.txt']);
   });
 
-  it('returns no debug handle when the browser does not expose getAsFileSystemHandle', async () => {
+  it('returns no handles when the browser does not expose getAsFileSystemHandle', async () => {
     const guide = new File(['g'], 'PHD2_GuideLog_y.txt');
     const dataTransfer = {
       files: { 0: guide, length: 1 } as unknown as FileList,
       items: [{ kind: 'file' }] as unknown as DataTransferItemList,
     } as unknown as DataTransfer;
-    const { files, debugHandle } = await readDroppedFiles(dataTransfer);
+    const { files, handles } = await readDroppedFiles(dataTransfer);
     expect(files.map((f) => f.name)).toEqual(['PHD2_GuideLog_y.txt']);
-    expect(debugHandle).toBeNull();
+    expect(handles).toEqual([]);
   });
 });

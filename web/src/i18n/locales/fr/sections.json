@@ -68,5 +68,20 @@
       "strainwave": "Strainwave / Harmonique",
       "altaz": "Alt/Az"
     }
+  },
+  "bundle": {
+    "titleZip": "Logs dans {{name}} ({{count}})",
+    "titleFiles": "Logs déposés ({{count}})",
+    "droppedFiles": "{{count}} fichiers déposés",
+    "dismissTooltip": "Fermer cette liste. Le log ouvert reste ouvert, et chaque log ouvert depuis celle-ci figure dans les logs récents.",
+    "rowDebug": "Debug log : {{name}}",
+    "rowNoDebug": "Aucun debug log correspondant dans ce paquet.",
+    "noGuideLog": "Aucun guide log PHD2 trouvé dans {{name}}.",
+    "zipError": "Impossible de lire {{name}} : {{reason}}.",
+    "reasonNotZip": "ce n'est pas un fichier zip valide",
+    "reasonCorrupt": "l'archive est endommagée",
+    "reasonEncrypted": "il est protégé par mot de passe",
+    "reasonUnsupported": "il utilise une méthode de compression non prise en charge — recompressez-le avec les réglages standard",
+    "reasonNoDecompression": "ce navigateur ne sait pas décompresser les fichiers zip — décompressez-le d’abord"
   }
 }

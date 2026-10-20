@@ -4,22 +4,30 @@ import { wrapTip } from '../i18n/format';
 import { useLogStore } from '../state/logStore';
 import { useAnnotationStore } from '../state/annotationStore';
 import { useDebugPresenceStore } from '../state/debugLogPresenceStore';
+import { useLogBundleStore } from '../state/logBundleStore';
 import { DebugBadge } from './DebugBadge';
-import { setStashedDebugLog, rememberDebugLogHandle, readDroppedFiles, canPickFileHandle } from '../storage/debugLogAccess';
+import { BundleLogList } from './BundleLogList';
+import { readDroppedFiles, canPickFileHandle } from '../storage/debugLogAccess';
 
 /**
  * Sidebar pane that lets the user load a new guide log via drag-and-drop or
  * a file picker — same behaviour as the home-page drop zone, but sized to
- * fit the sidebar above the section list. Loading a log here goes through
- * `useLogStore.loadFromText`, the same path as picking from Recents, so the
+ * fit the sidebar above the section list. Accepts loose guide/debug logs and
+ * `.zip` bundles of them; everything goes through `useLogBundleStore`, which
+ * pairs each guide log with its debug log and loads the newest via
+ * `useLogStore.loadFromText` — the same path as picking from Recents, so the
  * rest of the UI refreshes the same way.
  */
 export function LogsFolderPane() {
   const { t } = useTranslation('common');
   const { t: tSections } = useTranslation('sections');
-  const loadFromText = useLogStore((s) => s.loadFromText);
-  const loading = useLogStore((s) => s.loading);
-  const error = useLogStore((s) => s.error);
+  const openFiles = useLogBundleStore((s) => s.openFiles);
+  const bundleBusy = useLogBundleStore((s) => s.busy);
+  const bundleError = useLogBundleStore((s) => s.error);
+  const parsing = useLogStore((s) => s.loading);
+  const parseError = useLogStore((s) => s.error);
+  const loading = parsing || bundleBusy;
+  const error = bundleError ?? parseError;
   const meta = useLogStore((s) => s.meta);
   // Subscribe to the open log's annotation so the strip refreshes the instant
   // the modal saves/clears (save/clearCurrentInModal update `current` for the
@@ -54,55 +62,49 @@ export function LogsFolderPane() {
   // previous sessions); drag-both refreshes it again via processFiles.
   useEffect(() => { void useDebugPresenceStore.getState().refresh(); }, []);
 
-  // Accept one OR more files: the guide log, optionally with its debug log.
-  // Dragging both in at once makes the debug log available so double-clicking a
-  // sample (and Backlash) opens it directly — the most reliable path, since the
-  // browser can't see a dropped file's parent folder to auto-find the sibling.
-  // `debugHandle` (drag only, Chromium) persists a link to it across sessions.
-  // Guide log only → nothing stashed (auto-find / pick fallback).
+  // Accept one OR more files: guide logs, their debug logs, and/or `.zip`
+  // bundles of them. The bundle store pairs each guide log with its debug log
+  // (by PHD2's shared timestamp) and opens the newest; a multi-log drop also
+  // lists every log under the drop zone. Providing the debug log this way makes
+  // double-clicking a sample (and Backlash) open it directly — the browser
+  // can't see a dropped file's parent folder to auto-find the sibling. The
+  // handles (Chromium) let a debug log — even one inside a zip — be re-read in
+  // a later session.
   const processFiles = useCallback(async (
-    files: File[], debugHandle: FileSystemFileHandle | null,
+    files: File[], handles: FileSystemFileHandle[],
   ) => {
-    if (files.length === 0) return;
-    const guide = files.find((f) => /GuideLog/i.test(f.name)) ?? files[0];
-    const debug = files.find((f) => /DebugLog/i.test(f.name) && f !== guide) ?? null;
-    const text = await guide.text();
-    await loadFromText(text, guide.name);
-    const hash = useLogStore.getState().meta?.hash;
-    if (debug && hash) {
-      setStashedDebugLog(hash, debug); // this session
-      if (debugHandle) await rememberDebugLogHandle(hash, debugHandle, debug.name); // across sessions
-      void useDebugPresenceStore.getState().refresh(); // light up the "D" badge
-    }
-  }, [loadFromText]);
+    await openFiles(files, handles);
+  }, [openFiles]);
 
   // Drop: capture the files synchronously (the DataTransfer is neutered the
-  // moment this handler yields at an await) before collecting the debug handle.
+  // moment this handler yields at an await) before collecting the handles.
   const handleDrop = useCallback(async (e: React.DragEvent) => {
-    const { files, debugHandle } = await readDroppedFiles(e.dataTransfer);
-    await processFiles(files, debugHandle);
+    const { files, handles } = await readDroppedFiles(e.dataTransfer);
+    await processFiles(files, handles);
   }, [processFiles]);
 
   // "Pick file": prefer the File System Access picker (Chromium) so selecting
-  // the guide log AND its debug log together yields a durable debug-log HANDLE —
-  // processFiles persists it by guide-log hash, so the double-click-to-debug
-  // jump still works after reopening the guide log from Recents in a later
-  // session. Falls back to the plain multi-file <input> (bytes only, no handle)
-  // where the API is missing.
+  // the guide log AND its debug log (or a zip of them) yields durable HANDLES —
+  // the bundle store persists the debug log's link by guide-log hash, so the
+  // double-click-to-debug jump still works after reopening the guide log from
+  // Recents in a later session. Falls back to the plain multi-file <input>
+  // (bytes only, no handle) where the API is missing.
   const handlePick = useCallback(async () => {
     if (!canPickFileHandle) { inputRef.current?.click(); return; }
     let handles: FileSystemFileHandle[];
     try {
       handles = await window.showOpenFilePicker({
         multiple: true,
-        types: [{ description: 'PHD2 guide / debug log', accept: { 'text/plain': ['.txt', '.log'] } }],
+        types: [{
+          description: 'PHD2 guide / debug logs or a .zip of them',
+          accept: { 'text/plain': ['.txt', '.log'], 'application/zip': ['.zip'] },
+        }],
       });
     } catch {
       return; // user cancelled the picker
     }
     const files = await Promise.all(handles.map((h) => h.getFile()));
-    const debugHandle = handles.find((h) => /DebugLog/i.test(h.name)) ?? null;
-    await processFiles(files, debugHandle);
+    await processFiles(files, handles);
   }, [processFiles]);
 
   return (
@@ -118,7 +120,7 @@ export function LogsFolderPane() {
       {open && (
         <div className="px-3 py-3">
           <div
-            title={t('dropZone.tooltip')}
+            title={wrapTip(t('dropZone.tooltip'))}
             className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-3 text-center transition-colors ${
               dragOver ? 'border-sky-400 bg-sky-950/30' : 'border-slate-600'
             }`}
@@ -134,25 +136,27 @@ export function LogsFolderPane() {
             <button
               className="rounded bg-sky-600 px-3 py-1 text-xs hover:bg-sky-500"
               onClick={() => void handlePick()}
-              title={t('dropZone.pickFileTooltip')}
+              title={wrapTip(t('dropZone.pickFileTooltip'))}
             >
               {t('dropZone.pickFile')}
             </button>
             <input
               ref={inputRef}
               type="file"
-              accept=".log,.txt,text/plain"
+              accept=".log,.txt,.zip,text/plain,application/zip"
               multiple
               className="hidden"
               onChange={(e) => {
                 const files = Array.from(e.target.files ?? []);
                 e.target.value = '';
-                void processFiles(files, null);
+                void processFiles(files, []);
               }}
             />
             {loading && <p className="mt-2 text-xs text-slate-400">{t('dropZone.parsing')}</p>}
             {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
           </div>
+          {/* Every log from a multi-log drop (zip or loose pairs). */}
+          <BundleLogList />
           {/* Current-log strip: friendly name (or filename + name cue) plus a
               2-line notes preview. Whole strip is the edit affordance — clicking
               opens the same AnnotationModal in edit mode. Lives below the drop
