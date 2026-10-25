@@ -149,9 +149,9 @@ export function SectionList() {
                     // whose exclusions differ from the default settling ones
                     // (a manual range, Include all, the dither policy…).
                     <span
-                      className={`flex flex-shrink-0 items-center gap-1 font-mono text-[11px] tabular-nums ${
-                        isSelected ? 'text-sky-300' : 'text-slate-300'
-                      }`}
+                      // Same type as the frames/duration text beside it;
+                      // tabular-nums keeps the digits lined up down the column.
+                      className="flex flex-shrink-0 items-center gap-1 text-[10px] font-normal tabular-nums text-slate-400"
                       title={wrapTip(rmsTip)}
                       data-testid="section-rms"
                     >
@@ -162,7 +162,9 @@ export function SectionList() {
                           aria-label={t('list.rmsEditedTooltip')}
                         />
                       )}
-                      {rms.includedCount > 0 ? fmtRms(rms.rmsTotal, session.pixelScale) : '—'}
+                      {t('list.rmsValue', {
+                        value: rms.includedCount > 0 ? fmtRms(rms.rmsTotal, session.pixelScale) : '—',
+                      })}
                     </span>
                   )}
                 </span>
