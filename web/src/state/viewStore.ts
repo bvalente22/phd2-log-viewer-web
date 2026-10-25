@@ -11,6 +11,16 @@ export type ScaleMode = 'PIXELS' | 'ARCSEC';
 export type GraphMode = 'TIME' | 'SCATTER';
 export type SettlingPolicy = 'desktop' | 'web';
 
+/**
+ * The policy a guiding section gets the first time it is viewed (GuideGraph),
+ * so its stats match the desktop PHD2 Log Viewer.
+ */
+export const DEFAULT_SETTLING_POLICY: SettlingPolicy = 'desktop';
+
+/** The settling-exclusion mask a policy produces on its own (no manual edits). */
+export const settlingMaskFor = (session: GuideSession, policy: SettlingPolicy): Uint8Array =>
+  computeSettlingMask(session, undefined, { includeDithers: policy === 'web' });
+
 /** Sidebar width bounds (px). Drag-resize is clamped to this range. */
 export const SIDEBAR_MIN = 180;
 export const SIDEBAR_MAX = 480;
@@ -177,12 +187,16 @@ interface ViewState {
   /** Drop every per-session mask. Called when a new log loads so stale masks
    *  from the previous log can't collide by sessionIdx with the new one. */
   clearExclusions: () => void;
+  /** Replace every per-session mask + policy at once — a reopened log's saved
+   *  filters (see storage/sectionFilters.ts). */
+  restoreExclusions: (exclusions: Map<number, Uint8Array>, settlingPolicy: Map<number, SettlingPolicy>) => void;
 }
 
 // View preferences are persisted to localStorage so toggles survive a reload.
 // Per-section exclusion masks and the lockedYRange snapshot are NOT persisted
-// because they only make sense with the currently-loaded log; the partialize
-// option below filters them out.
+// here because they only make sense with the currently-loaded log; the
+// partialize option below filters them out. Masks + settling policies are
+// instead saved per log, by content hash, in the `filters:` sidecar (logStore).
 export const useViewStore = create<ViewState>()(persist((set, get) => ({
   coordMode: 'RA_DEC',
   device: 'MOUNT',
@@ -307,13 +321,11 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
 
   applySettlingPolicy: (sessionIdx, session, policy) => {
     const entryCount = session.entries.length;
-    const oldPolicy = get().settlingPolicy.get(sessionIdx) ?? 'desktop';
+    const oldPolicy = get().settlingPolicy.get(sessionIdx) ?? DEFAULT_SETTLING_POLICY;
     const cur = get().exclusions.get(sessionIdx);
     const hasCur = cur != null && cur.length === entryCount;
-    const settleFor = (p: SettlingPolicy) =>
-      computeSettlingMask(session, undefined, { includeDithers: p === 'web' });
-    const oldSettle = settleFor(oldPolicy);
-    const newSettle = settleFor(policy);
+    const oldSettle = settlingMaskFor(session, oldPolicy);
+    const newSettle = settlingMaskFor(session, policy);
     const next = new Uint8Array(entryCount);
     for (let i = 0; i < entryCount; i++) {
       // manual = a hand-excluded bit that wasn't part of the old policy's settling
@@ -372,6 +384,7 @@ export const useViewStore = create<ViewState>()(persist((set, get) => ({
   },
 
   clearExclusions: () => set({ exclusions: new Map(), settlingPolicy: new Map() }),
+  restoreExclusions: (exclusions, settlingPolicy) => set({ exclusions, settlingPolicy }),
 }), {
   name: 'phd-view-settings',
   // Persist UI preferences only; exclusion masks and lockedYRange are

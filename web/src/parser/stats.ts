@@ -57,12 +57,20 @@ const pcaEllipse = (ras: number[], decs: number[]) => {
   return { theta, lx, ly, elongation };
 };
 
-export function calcStats(s: GuideSession, mask?: ExclusionMask): SessionStats {
+/** The RMS figures alone — the cheap subset of SessionStats. */
+export interface SessionRms {
+  rmsRa: number;
+  rmsDec: number;
+  rmsTotal: number;
+  includedCount: number;
+  excludedCount: number;
+}
+
+/** RA/Dec of every frame that counts toward the stats (included and not masked). */
+const collectIncluded = (s: GuideSession, mask?: ExclusionMask) => {
   const ras: number[] = [];
   const decs: number[] = [];
-  let included = 0;
   let excluded = 0;
-
   for (let i = 0; i < s.entries.length; i++) {
     const e = s.entries[i];
     const masked = mask && mask[i] === 1;
@@ -70,24 +78,49 @@ export function calcStats(s: GuideSession, mask?: ExclusionMask): SessionStats {
       excluded++;
       continue;
     }
-    included++;
     ras.push(e.raraw);
     decs.push(e.decraw);
   }
+  return { ras, decs, included: ras.length, excluded };
+};
+
+const mean = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+
+// RMS is the standard deviation of the displacement (RMS *about the mean*),
+// matching the desktop PHDLogView's CalcStats: it accumulates sum and sumsq
+// and returns sqrt(sumsq/n - mean^2). Computing RMS about zero instead would
+// fold any net pointing/drift offset into the figure (RMS_zero^2 = var +
+// mean^2), inflating it most on the axis with the larger mean offset — which
+// is exactly the Dec-vs-RA discrepancy users see against the desktop app.
+const rmsAboutMean = (a: number[], m: number) =>
+  a.length ? Math.sqrt(a.reduce((x, y) => x + (y - m) * (y - m), 0) / a.length) : 0;
+
+/**
+ * Just the RMS figures and frame counts, without the polar-alignment / drift /
+ * ellipse work calcStats does. The section list computes this for every guiding
+ * section at once; it shares calcStats' inclusion rule and RMS definition, so
+ * the two can never disagree.
+ */
+export function calcRms(s: GuideSession, mask?: ExclusionMask): SessionRms {
+  const { ras, decs, included, excluded } = collectIncluded(s, mask);
+  const rmsRa = rmsAboutMean(ras, mean(ras));
+  const rmsDec = rmsAboutMean(decs, mean(decs));
+  return {
+    rmsRa, rmsDec,
+    rmsTotal: Math.sqrt(rmsRa * rmsRa + rmsDec * rmsDec),
+    includedCount: included,
+    excludedCount: excluded,
+  };
+}
+
+export function calcStats(s: GuideSession, mask?: ExclusionMask): SessionStats {
+  const { ras, decs, included, excluded } = collectIncluded(s, mask);
 
   const peakRa = ras.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
   const peakDec = decs.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
-  const meanRa = ras.length ? ras.reduce((a, b) => a + b, 0) / ras.length : 0;
-  const meanDec = decs.length ? decs.reduce((a, b) => a + b, 0) / decs.length : 0;
+  const meanRa = mean(ras);
+  const meanDec = mean(decs);
 
-  // RMS is the standard deviation of the displacement (RMS *about the mean*),
-  // matching the desktop PHDLogView's CalcStats: it accumulates sum and sumsq
-  // and returns sqrt(sumsq/n - mean^2). Computing RMS about zero instead would
-  // fold any net pointing/drift offset into the figure (RMS_zero^2 = var +
-  // mean^2), inflating it most on the axis with the larger mean offset — which
-  // is exactly the Dec-vs-RA discrepancy users see against the desktop app.
-  const rmsAboutMean = (a: number[], mean: number) =>
-    a.length ? Math.sqrt(a.reduce((x, y) => x + (y - mean) * (y - mean), 0) / a.length) : 0;
   const rmsRa = rmsAboutMean(ras, meanRa);
   const rmsDec = rmsAboutMean(decs, meanDec);
   const rmsTotal = Math.sqrt(rmsRa * rmsRa + rmsDec * rmsDec);

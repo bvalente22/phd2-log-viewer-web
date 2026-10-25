@@ -1,7 +1,10 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLogStore } from '../state/logStore';
-import { fmtInteger, fmtDuration } from '../i18n/format';
+import { useViewStore } from '../state/viewStore';
+import { fmtInteger, fmtDuration, fmtNumber, wrapTip } from '../i18n/format';
 import { extractGAResults } from '../parser/gaResults';
+import { defaultMasks, sessionRmsList } from './sectionRms';
 
 const GuideIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -28,10 +31,26 @@ export function SectionList() {
   const log = useLogStore((s) => s.log);
   const selected = useLogStore((s) => s.selectedSection);
   const select = useLogStore((s) => s.selectSection);
+  const exclusions = useViewStore((s) => s.exclusions);
+  const scaleMode = useViewStore((s) => s.scaleMode);
+
+  // Total RMS per guide session, live with each section's exclusions. The
+  // default (first-view) masks only depend on the log, so they're built once
+  // per log; the RMS pass re-runs on every exclusion change, which is cheap.
+  const defaults = useMemo(() => (log ? defaultMasks(log.sessions) : []), [log]);
+  const rmsBySession = useMemo(
+    () => (log ? sessionRmsList(log.sessions, exclusions, defaults) : []),
+    [log, exclusions, defaults],
+  );
 
   if (!log || log.sections.length === 0) {
     return <p className="p-3 text-sm text-slate-400">{t('list.noSections')}</p>;
   }
+
+  // Follows the global px / arc-sec toggle, like the stats footer.
+  const arcsec = scaleMode === 'ARCSEC';
+  const fmtRms = (px: number, pixelScale: number) =>
+    arcsec ? `${fmtNumber(px * pixelScale, 2)}″` : `${fmtNumber(px, 2)} px`;
 
   return (
     <>
@@ -71,6 +90,16 @@ export function SectionList() {
               duration: fmtDuration(log.sessions[sec.idx].duration),
             });
         const tip = hasGa ? `${baseTip} · ${t('list.gaTooltip')}` : baseTip;
+        const rms = session ? rmsBySession[sec.idx] : null;
+        const rmsTip = rms && session
+          ? t(rms.viewed ? 'list.rmsTooltip' : 'list.rmsTooltipUnviewed', {
+              total: fmtRms(rms.rmsTotal, session.pixelScale),
+              ra: fmtRms(rms.rmsRa, session.pixelScale),
+              dec: fmtRms(rms.rmsDec, session.pixelScale),
+              included: fmtInteger(rms.includedCount),
+              frames: fmtInteger(session.entries.length),
+            })
+          : '';
         return (
           <li key={i}>
             <button
@@ -110,7 +139,33 @@ export function SectionList() {
                     </span>
                   )}
                 </span>
-                <span className="block text-[10px] font-normal text-slate-400">{sub}</span>
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className="text-[10px] font-normal text-slate-400">{sub}</span>
+                  {rms && session && (
+                    // Right-aligned so the values read down the list as a
+                    // column. It sits on the sub-line, not the label line:
+                    // there it would squeeze the label into wrapping at the
+                    // default sidebar width. The amber dot flags a section
+                    // whose exclusions differ from the default settling ones
+                    // (a manual range, Include all, the dither policy…).
+                    <span
+                      className={`flex flex-shrink-0 items-center gap-1 font-mono text-[11px] tabular-nums ${
+                        isSelected ? 'text-sky-300' : 'text-slate-300'
+                      }`}
+                      title={wrapTip(rmsTip)}
+                      data-testid="section-rms"
+                    >
+                      {rms.edited && (
+                        <span
+                          className="h-1.5 w-1.5 rounded-full bg-amber-400"
+                          title={wrapTip(t('list.rmsEditedTooltip'))}
+                          aria-label={t('list.rmsEditedTooltip')}
+                        />
+                      )}
+                      {rms.includedCount > 0 ? fmtRms(rms.rmsTotal, session.pixelScale) : '—'}
+                    </span>
+                  )}
+                </span>
               </span>
             </button>
           </li>

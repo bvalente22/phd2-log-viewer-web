@@ -12,6 +12,9 @@
     "guideIconTooltip": "Guide session",
     "calibrationIconTooltip": "Calibration section",
     "gaTooltip": "Guiding Assistant ran during this session — open the section to see its recommendations.",
+    "rmsTooltip": "Total RMS {{total}} (RA {{ra}} · Dec {{dec}}) over {{included}} of {{frames}} frames, with this section's current exclusions. Updates as you exclude frames or change the settling policy.",
+    "rmsTooltipUnviewed": "Total RMS {{total}} (RA {{ra}} · Dec {{dec}}) over {{included}} of {{frames}} frames, with the default settling exclusions. This section hasn't been opened yet.",
+    "rmsEditedTooltip": "Exclusions changed from the default settling",
     "selectGuiding": "Select a guiding section."
   },
   "header": {
