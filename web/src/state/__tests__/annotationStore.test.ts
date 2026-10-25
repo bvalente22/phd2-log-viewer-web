@@ -25,6 +25,40 @@ describe('annotationStore', () => {
     expect(useAnnotationStore.getState().modal?.name).toBe('log.txt');
   });
 
+  it('first-open editor saves the setup attributes and notes along with the name', async () => {
+    await useAnnotationStore.getState().loadForLog('k2', 'PHD2_GuideLog_2026-03-30_161541.txt');
+    const s = useAnnotationStore.getState();
+    s.setDraftMountType('strainwave');
+    s.setDraftHasEncoders(true);
+    s.setDraftWormPeriod('383.25');
+    s.setDraftImagingScale('1.23');
+    s.setDraftNotes('first night with the new mount');
+    await useAnnotationStore.getState().save();
+
+    const rec = await getAnnotation('k2');
+    expect(rec?.friendlyName).toBe('2026-03-30');
+    expect(rec?.mountType).toBe('strainwave');
+    expect(rec?.hasEncoders).toBe(true);
+    expect(rec?.wormPeriodSec).toBe(383.25);
+    expect(rec?.notes).toBe('first night with the new mount');
+    expect((await getImagingSettings('k2'))?.imagingScale).toBe(1.23);
+    expect(useAnnotationStore.getState().current?.mountType).toBe('strainwave');
+  });
+
+  it('first-open editor surfaces a scale set elsewhere and preserves its seeing FWHM', async () => {
+    // An unseen log can already have an imaging record from the Image Impact panel.
+    await putImagingSettings({ key: 'k3', imagingScale: 2.5, seeingFwhm: 3 });
+    await useAnnotationStore.getState().loadForLog('k3', 'log.txt');
+    expect(useAnnotationStore.getState().modal?.mode).toBe('first-open');
+    expect(useAnnotationStore.getState().modal?.imagingScaleText).toBe('2.5');
+
+    useAnnotationStore.getState().setDraftImagingScale('1.5');
+    await useAnnotationStore.getState().save();
+    const rec = await getImagingSettings('k3');
+    expect(rec?.imagingScale).toBe(1.5);
+    expect(rec?.seeingFwhm).toBe(3);
+  });
+
   it('loading a seen log does not prompt and sets current', async () => {
     await useAnnotationStore.getState().loadForLog('k1', 'log.txt');
     await useAnnotationStore.getState().skipFirstOpen(); // marks seen

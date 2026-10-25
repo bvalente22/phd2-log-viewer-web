@@ -1,7 +1,7 @@
 {
   "appName": "PHD2 Log Viewer Web",
   "annotations": {
-    "firstOpenTitle": "Name this log",
+    "firstOpenTitle": "Name & annotate this log",
     "editTitle": "Annotate log",
     "nameLabel": "Friendly name",
     "namePlaceholder": "e.g. Backyard — windy night",
@@ -9,7 +9,7 @@
     "notesPlaceholder": "Your own comments about this session…",
     "save": "Save",
     "skip": "Skip",
-    "addNotes": "+ notes",
+    "skipTooltip": "Close without saving. This log won't ask again; annotate it later from the file list or the header.",
     "delete": "Delete",
     "clear": "Clear",
     "cancel": "Cancel",
