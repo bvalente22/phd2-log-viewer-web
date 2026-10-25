@@ -11,7 +11,11 @@
     "calibrationTooltip": "Calibration · {{date}} · {{count}} 步",
     "guideIconTooltip": "Guide 会话",
     "calibrationIconTooltip": "Calibration 区段",
-    "selectGuiding": "请选择一个 guiding 区段。"
+    "selectGuiding": "请选择一个 guiding 区段。",
+    "rmsValue": "RMS {{value}}",
+    "rmsTooltip": "总 RMS {{total}} (RA {{ra}} · Dec {{dec}}),基于 {{frames}} frame 中的 {{included}} frame,使用本区段当前的排除。排除 frame 或更改 settling 排除时会随之更新。",
+    "rmsTooltipUnviewed": "总 RMS {{total}} (RA {{ra}} · Dec {{dec}}),基于 {{frames}} frame 中的 {{included}} frame,使用默认的 settling 排除。本区段尚未打开。",
+    "rmsEditedTooltip": "排除已不同于默认的 settling 排除"
   },
   "header": {
     "guiding": "Guiding header",

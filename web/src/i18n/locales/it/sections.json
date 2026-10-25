@@ -11,7 +11,11 @@
     "calibrationTooltip": "Calibrazione · {{date}} · {{count}} passi",
     "guideIconTooltip": "Sessione di guiding",
     "calibrationIconTooltip": "Sezione di calibrazione",
-    "selectGuiding": "Seleziona una sezione di guiding."
+    "selectGuiding": "Seleziona una sezione di guiding.",
+    "rmsValue": "RMS {{value}}",
+    "rmsTooltip": "RMS totale {{total}} (RA {{ra}} · Dec {{dec}}) su {{included}} di {{frames}} frame, con le esclusioni attuali di questa sezione. Si aggiorna quando escludi frame o cambi l'esclusione settling.",
+    "rmsTooltipUnviewed": "RMS totale {{total}} (RA {{ra}} · Dec {{dec}}) su {{included}} di {{frames}} frame, con l'esclusione settling predefinita. Questa sezione non è ancora stata aperta.",
+    "rmsEditedTooltip": "Esclusioni modificate rispetto all'esclusione settling predefinita"
   },
   "header": {
     "guiding": "Header di guiding",
