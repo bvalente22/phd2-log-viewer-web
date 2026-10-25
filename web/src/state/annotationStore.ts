@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import {
-  getAnnotation, putAnnotation, markSeen, toMountType, DEFAULT_MOUNT_TYPE,
+  getAnnotation, putAnnotation, markSeen, toMountType,
   type Annotation, type MountType,
 } from '../storage/annotations';
-import { getImagingSettings, putImagingSettings } from '../storage/imagingSettings';
+import {
+  getImagingSettings, putImagingSettings, type ImagingSettingsRecord,
+} from '../storage/imagingSettings';
 import { useImagingSettingsStore } from './imagingSettingsStore';
 import { dateFromFilename } from '../parser/filename';
 
@@ -60,6 +62,33 @@ export function parseAttrNumber(text: string): number {
 const attrText = (v: number | undefined): string =>
   typeof v === 'number' && Number.isFinite(v) && v > 0 ? String(Math.round(v * 100) / 100) : '';
 
+/**
+ * Build the dialog draft from the two sidecars behind it: `anno:` (name/notes/
+ * mount) and `imaging:` (scale/seeing, shared with the Image Impact panel).
+ * Either may be absent — every field then starts at its "unknown" default.
+ */
+function draftFrom(
+  mode: 'edit' | 'first-open',
+  key: string,
+  filename: string,
+  existing: Annotation | undefined,
+  imaging: ImagingSettingsRecord | undefined,
+): NonNullable<Modal> {
+  return {
+    mode,
+    key,
+    filename,
+    name: existing?.friendlyName ?? '',
+    notes: existing?.notes ?? '',
+    mountType: toMountType(existing?.mountType),
+    hasEncoders: existing?.hasEncoders === true,
+    wormPeriodText: attrText(existing?.wormPeriodSec),
+    imagingScaleText: attrText(imaging?.imagingScale),
+    imagingScaleOriginalText: attrText(imaging?.imagingScale),
+    seeingFwhm: imaging?.seeingFwhm ?? 0,
+  };
+}
+
 interface AnnotationState {
   /** Annotation for the currently-loaded log (null if unseen/none). */
   current: Annotation | null;
@@ -69,12 +98,10 @@ interface AnnotationState {
   /** Bumped on every persisted change so list views (RecentsDropdown) refetch. */
   revision: number;
 
-  /** Called when a log loads. Sets `current`, or opens the first-open prompt. */
+  /** Called when a log loads. Sets `current`, or opens the first-open editor. */
   loadForLog: (key: string, filename: string) => Promise<void>;
   /** Open the full editor for any log (e.g. from the file-list pencil). */
   openEditor: (key: string, filename: string) => Promise<void>;
-  /** First-open prompt → expand into the full editor (keeps drafts). */
-  expandToNotes: () => void;
   setDraftName: (s: string) => void;
   setDraftNotes: (s: string) => void;
   setDraftMountType: (m: MountType) => void;
@@ -104,13 +131,18 @@ export const useAnnotationStore = create<AnnotationState>((set, get) => ({
   revision: 0,
 
   loadForLog: async (key, filename) => {
-    const existing = await getAnnotation(key);
+    // The imaging sidecar is read up front too: an unseen log can still carry a
+    // scale typed into the Image Impact panel, and the first-open editor must
+    // show it (and preserve its seeing FWHM) exactly as edit mode does.
+    const [existing, imaging] = await Promise.all([
+      getAnnotation(key),
+      getImagingSettings(key),
+    ]);
     if (existing) {
       set({ current: existing, currentKey: key });
     } else {
-      // First-open prompt stays name-only (see the design spec) — the new
-      // hardware attributes are edit-mode fields, so no imaging read is needed
-      // on this path.
+      // First open of an unseen log opens the FULL editor — name, setup
+      // attributes and notes — so everything can be filled in at once.
       // Default the suggested friendly name to the log's date (YYYY-MM-DD)
       // rather than its verbose PHD2 filename; fall back to the filename when
       // the name carries no date. If the user cancels/skips, no name is saved
@@ -119,48 +151,20 @@ export const useAnnotationStore = create<AnnotationState>((set, get) => ({
         current: null,
         currentKey: key,
         modal: {
-          mode: 'first-open',
-          key,
-          filename,
+          ...draftFrom('first-open', key, filename, undefined, imaging),
           name: dateFromFilename(filename) ?? filename,
-          notes: '',
-          mountType: DEFAULT_MOUNT_TYPE,
-          hasEncoders: false,
-          wormPeriodText: '',
-          imagingScaleText: '',
-          imagingScaleOriginalText: '',
-          seeingFwhm: 0,
         },
       });
     }
   },
 
   openEditor: async (key, filename) => {
-    // Two sidecars back this dialog: `anno:` (name/notes/mount) and `imaging:`
-    // (scale/seeing, shared with the Image Impact panel). Read both in parallel.
     const [existing, imaging] = await Promise.all([
       getAnnotation(key),
       getImagingSettings(key),
     ]);
-    set({
-      modal: {
-        mode: 'edit',
-        key,
-        filename,
-        name: existing?.friendlyName ?? '',
-        notes: existing?.notes ?? '',
-        mountType: toMountType(existing?.mountType),
-        hasEncoders: existing?.hasEncoders === true,
-        wormPeriodText: attrText(existing?.wormPeriodSec),
-        imagingScaleText: attrText(imaging?.imagingScale),
-        imagingScaleOriginalText: attrText(imaging?.imagingScale),
-        seeingFwhm: imaging?.seeingFwhm ?? 0,
-      },
-    });
+    set({ modal: draftFrom('edit', key, filename, existing, imaging) });
   },
-
-  expandToNotes: () =>
-    set((st) => (st.modal ? { modal: { ...st.modal, mode: 'edit' } } : st)),
 
   setDraftName: (s) =>
     set((st) => (st.modal ? { modal: { ...st.modal, name: s } } : st)),

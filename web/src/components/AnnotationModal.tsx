@@ -56,13 +56,14 @@ function NumAttr({ label, unit, value, placeholder, title, onChange, trailing }:
 }
 
 /**
- * Centered dialog for naming + annotating a log. One component serves two
- * modes (driven by annotationStore.modal.mode):
- *   - 'first-open': name-only prompt fired the first time an unseen log opens.
- *     Save / Skip; a "+ notes" link expands into the full editor. Dismissing
- *     (Escape / backdrop / Skip) records "seen" so it never re-prompts.
- *   - 'edit': full editor (name + ≥10-line notes textarea + Delete), opened
- *     from the file-list pencil/note icon or the header annotate button.
+ * Centered dialog for naming + annotating a log. Both modes (driven by
+ * annotationStore.modal.mode) show the same full editor — name, setup
+ * attributes, notes — and differ only in title and dismissal:
+ *   - 'first-open': fired the first time an unseen log opens, name pre-filled
+ *     with the log's date. Skip / Save. Dismissing (Escape / backdrop / Skip)
+ *     records "seen" so it never re-prompts.
+ *   - 'edit': opened from the file-list pencil/note icon or the header
+ *     annotate button. Clear / Cancel / Save.
  * Renders nothing when annotationStore.modal is null.
  */
 export function AnnotationModal() {
@@ -77,7 +78,6 @@ export function AnnotationModal() {
   const save = useAnnotationStore((s) => s.save);
   const clearCurrent = useAnnotationStore((s) => s.clearCurrentInModal);
   const skipFirstOpen = useAnnotationStore((s) => s.skipFirstOpen);
-  const expandToNotes = useAnnotationStore((s) => s.expandToNotes);
   const close = useAnnotationStore((s) => s.close);
 
   // Dismiss semantics differ by mode: first-open records "seen" so it never
@@ -87,7 +87,7 @@ export function AnnotationModal() {
   // The mount picker is a transient popup that only writes the period into the
   // field, so there is no selection state to track here — see MountLookup.
 
-  // On the first-open prompt the name is pre-filled with the date parsed from
+  // On the first-open editor the name is pre-filled with the date parsed from
   // the filename. Place the caret at the START of the field (rather than the
   // browser default of end / select-all) so the user can type a prefix in
   // front of the suggested date without first repositioning the cursor.
@@ -120,7 +120,7 @@ export function AnnotationModal() {
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
       onMouseDown={(e) => { if (e.target === e.currentTarget) void dismiss(); }}
     >
-      {/* Edit mode is tall (name + attributes + a 10-row notes box), so the
+      {/* The editor is tall (name + attributes + a 10-row notes box), so the
           dialog is capped to the viewport and the BODY scrolls — keeping the
           title bar and the Save/Cancel row pinned and always reachable. */}
       <div className="flex max-h-[90vh] w-[480px] max-w-[90vw] flex-col rounded-lg border border-slate-700 bg-slate-900 shadow-2xl">
@@ -158,118 +158,108 @@ export function AnnotationModal() {
             </p>
           )}
 
-          {!isFirstOpen && (
-            <>
-              {/* ---- Setup attributes ---------------------------------------
-                  Hardware facts about the rig that produced this log. Grouped
-                  under their own rule so they read as configuration rather than
-                  free-text annotation. Image scale is NOT stored on the
-                  annotation — it reads/writes the same per-log `imaging:`
-                  sidecar the Image Impact panel uses, so the two stay one
-                  value. */}
-              <div className="mt-4 border-t border-slate-800 pt-3">
-                <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-                  {t('annotations.attrsHeading')}
-                </div>
+          {/* ---- Setup attributes -------------------------------------------
+              Hardware facts about the rig that produced this log. Grouped under
+              their own rule so they read as configuration rather than free-text
+              annotation. Image scale is NOT stored on the annotation — it
+              reads/writes the same per-log `imaging:` sidecar the Image Impact
+              panel uses, so the two stay one value. */}
+          <div className="mt-4 border-t border-slate-800 pt-3">
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              {t('annotations.attrsHeading')}
+            </div>
 
-                <label className="mb-1 block text-[10px] uppercase tracking-wide text-slate-500">
-                  {t('annotations.mountTypeLabel')}
-                </label>
-                <select
-                  className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
-                  value={modal.mountType}
-                  onChange={(e) => setDraftMountType(e.target.value as typeof modal.mountType)}
-                  title={wrapTip(t('annotations.mountTypeTooltip'))}
-                >
-                  {MOUNT_TYPES.map((m) => (
-                    <option key={m} value={m}>{t(`annotations.mountType.${m}`)}</option>
-                  ))}
-                </select>
+            <label className="mb-1 block text-[10px] uppercase tracking-wide text-slate-500">
+              {t('annotations.mountTypeLabel')}
+            </label>
+            <select
+              className="w-full rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+              value={modal.mountType}
+              onChange={(e) => setDraftMountType(e.target.value as typeof modal.mountType)}
+              title={wrapTip(t('annotations.mountTypeTooltip'))}
+            >
+              {MOUNT_TYPES.map((m) => (
+                <option key={m} value={m}>{t(`annotations.mountType.${m}`)}</option>
+              ))}
+            </select>
 
-                <div className="mt-3 flex items-start gap-3">
-                  <NumAttr
-                    label={t('annotations.wormPeriodLabel')}
-                    unit={t('annotations.wormPeriodUnit')}
-                    value={modal.wormPeriodText}
-                    placeholder={t('annotations.unknownPlaceholder')}
-                    title={wrapTip(t('annotations.wormPeriodTooltip'))}
-                    onChange={setDraftWormPeriod}
-                    trailing={
-                      <MountLookup
-                        onPick={(m) => setDraftWormPeriod(String(m.wormPeriodSec))}
-                      />
-                    }
+            <div className="mt-3 flex items-start gap-3">
+              <NumAttr
+                label={t('annotations.wormPeriodLabel')}
+                unit={t('annotations.wormPeriodUnit')}
+                value={modal.wormPeriodText}
+                placeholder={t('annotations.unknownPlaceholder')}
+                title={wrapTip(t('annotations.wormPeriodTooltip'))}
+                onChange={setDraftWormPeriod}
+                trailing={
+                  <MountLookup
+                    onPick={(m) => setDraftWormPeriod(String(m.wormPeriodSec))}
                   />
-                  <NumAttr
-                    label={t('annotations.imagingScaleLabel')}
-                    unit={t('annotations.imagingScaleUnit')}
-                    value={modal.imagingScaleText}
-                    placeholder={t('annotations.unknownPlaceholder')}
-                    title={wrapTip(t('annotations.imagingScaleTooltip'))}
-                    onChange={setDraftImagingScale}
-                  />
-                </div>
-
-                <label
-                  className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-slate-300"
-                  title={wrapTip(t('annotations.encodersTooltip'))}
-                >
-                  <input
-                    type="checkbox"
-                    className="h-3.5 w-3.5 cursor-pointer accent-sky-600"
-                    checked={modal.hasEncoders}
-                    onChange={(e) => setDraftHasEncoders(e.target.checked)}
-                  />
-                  {t('annotations.encodersLabel')}
-                </label>
-
-                <p className="mt-2 text-[10px] leading-relaxed text-slate-600">
-                  {t('annotations.attrsHint')}
-                </p>
-              </div>
-
-              <label className="mb-1 mt-4 block text-[10px] uppercase tracking-wide text-slate-500">
-                {t('annotations.notesLabel')}
-              </label>
-              <textarea
-                rows={10}
-                maxLength={NOTES_MAXLEN}
-                className="w-full resize-y rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-xs leading-relaxed text-slate-200 focus:border-sky-500 focus:outline-none"
-                value={modal.notes}
-                placeholder={t('annotations.notesPlaceholder')}
-                onChange={(e) => setDraftNotes(e.target.value)}
-                title={t('annotations.notesLabel')}
+                }
               />
-              <p className="mt-0.5 text-right text-[10px] text-slate-600">
-                {modal.notes.length.toLocaleString()} / {NOTES_MAXLEN.toLocaleString()}
-              </p>
-            </>
-          )}
+              <NumAttr
+                label={t('annotations.imagingScaleLabel')}
+                unit={t('annotations.imagingScaleUnit')}
+                value={modal.imagingScaleText}
+                placeholder={t('annotations.unknownPlaceholder')}
+                title={wrapTip(t('annotations.imagingScaleTooltip'))}
+                onChange={setDraftImagingScale}
+              />
+            </div>
+
+            <label
+              className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-slate-300"
+              title={wrapTip(t('annotations.encodersTooltip'))}
+            >
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 cursor-pointer accent-sky-600"
+                checked={modal.hasEncoders}
+                onChange={(e) => setDraftHasEncoders(e.target.checked)}
+              />
+              {t('annotations.encodersLabel')}
+            </label>
+
+            <p className="mt-2 text-[10px] leading-relaxed text-slate-600">
+              {t('annotations.attrsHint')}
+            </p>
+          </div>
+
+          <label className="mb-1 mt-4 block text-[10px] uppercase tracking-wide text-slate-500">
+            {t('annotations.notesLabel')}
+          </label>
+          <textarea
+            rows={10}
+            maxLength={NOTES_MAXLEN}
+            className="w-full resize-y rounded border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-xs leading-relaxed text-slate-200 focus:border-sky-500 focus:outline-none"
+            value={modal.notes}
+            placeholder={t('annotations.notesPlaceholder')}
+            onChange={(e) => setDraftNotes(e.target.value)}
+            title={t('annotations.notesLabel')}
+          />
+          <p className="mt-0.5 text-right text-[10px] text-slate-600">
+            {modal.notes.length.toLocaleString()} / {NOTES_MAXLEN.toLocaleString()}
+          </p>
         </div>
 
         <div className="flex flex-shrink-0 items-center gap-2 border-t border-slate-800 px-4 py-2.5">
           {isFirstOpen ? (
+            // First-open: nothing is saved yet, so there is nothing to Clear —
+            // Skip takes the left slot and Save stays rightmost, as in edit.
             <>
-              <button
-                className="rounded bg-sky-600 px-3 py-1 text-xs font-medium text-white hover:bg-sky-500"
-                onClick={() => void save()}
-                title={t('annotations.save')}
-              >
-                {t('annotations.save')}
-              </button>
               <button
                 className="rounded px-3 py-1 text-xs text-slate-400 hover:text-slate-200"
                 onClick={() => void skipFirstOpen()}
-                title={t('annotations.skip')}
+                title={wrapTip(t('annotations.skipTooltip'))}
               >
                 {t('annotations.skip')}
               </button>
               <button
-                className="ms-auto text-xs text-sky-400 hover:text-sky-300"
-                onClick={() => expandToNotes()}
-                title={t('annotations.addNotes')}
+                className="ms-auto rounded bg-sky-600 px-3 py-1 text-xs font-medium text-white hover:bg-sky-500"
+                onClick={() => void save()}
+                title={t('annotations.save')}
               >
-                {t('annotations.addNotes')}
+                {t('annotations.save')}
               </button>
             </>
           ) : (
