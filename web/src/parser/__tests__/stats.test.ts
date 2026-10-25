@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcStats } from '../stats';
+import { calcStats, calcRms } from '../stats';
 import { newGuideSession } from '../types';
 import type { GuideEntry } from '../types';
 import { computePolarAlignment } from '../polarAlignment';
@@ -90,5 +90,33 @@ describe('calcStats polar-alignment fields', () => {
     s.hourAngleHours = -3;
     const st = calcStats(s);
     expect(st.effectiveHaHours).not.toBeNull();
+  });
+});
+
+describe('calcRms', () => {
+  it('matches calcStats RMS and frame counts, with and without a mask', () => {
+    const s = newGuideSession('x');
+    s.entries = [
+      mkE(1, 1, 2, 5), mkE(2, 2, 2, 5), mkE(3, 3, 4, 9), mkE(4, 4, 4, 9),
+      mkE(5, 5, 40, -30, false), // not included by PHD2 — never counts
+    ];
+    for (const mask of [undefined, new Uint8Array([0, 0, 0, 1, 0])]) {
+      const full = calcStats(s, mask);
+      const r = calcRms(s, mask);
+      expect(r.rmsRa).toBe(full.rmsRa);
+      expect(r.rmsDec).toBe(full.rmsDec);
+      expect(r.rmsTotal).toBe(full.rmsTotal);
+      expect(r.includedCount).toBe(full.includedCount);
+      expect(r.excludedCount).toBe(full.excludedCount);
+    }
+  });
+
+  it('is all zeros when every frame is excluded', () => {
+    const s = newGuideSession('x');
+    s.entries = [mkE(1, 1, 1, 1), mkE(2, 2, -1, -1)];
+    const r = calcRms(s, new Uint8Array([1, 1]));
+    expect(r.rmsTotal).toBe(0);
+    expect(r.includedCount).toBe(0);
+    expect(r.excludedCount).toBe(2);
   });
 });

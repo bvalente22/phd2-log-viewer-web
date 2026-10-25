@@ -7,7 +7,7 @@ import Plot from 'react-plotly.js';
 import Plotly from 'plotly.js/dist/plotly';
 import type { Data, Layout, Shape, Annotations } from 'plotly.js';
 import { useLogStore } from '../state/logStore';
-import { useViewStore } from '../state/viewStore';
+import { useViewStore, DEFAULT_SETTLING_POLICY } from '../state/viewStore';
 import { useDebugLogStore } from '../state/debugLogStore';
 import type { GuideSession } from '../parser';
 import { useChartGestures } from './useChartGestures';
@@ -759,7 +759,7 @@ export function GuideGraph() {
     // skip when a mask of the CURRENT session's size already exists.
     const existing = exclusions.get(data.sessionIdx);
     if (existing && existing.length === data.session.entries.length) return;
-    applySettlingPolicy(data.sessionIdx, data.session, 'desktop');
+    applySettlingPolicy(data.sessionIdx, data.session, DEFAULT_SETTLING_POLICY);
   }, [data, exclusions, applySettlingPolicy]);
 
   const initialAnnotations = useMemo<Partial<Annotations>[]>(() => {
